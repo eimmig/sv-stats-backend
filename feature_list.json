@@ -1,0 +1,93 @@
+{
+  "features": [
+    {
+      "id": "feat-001",
+      "name": "Setup do projeto + consumidor RabbitMQ",
+      "description": "Inicializar projeto Spring Boot 4.x (Java 25) com Maven, pacotes domain/application/adapter/config (arquitetura hexagonal - ver docs/CONVENTIONS.md), schema-per-tenant (tenant_<slug>, resolvido a partir do header X-Tenant-Id nas consultas e do campo tenantId do envelope de evento - NAO mais X-User-Id, ver docs/DECISIONS-LOG.md 2026-08-02 e docs/API-CONTRACTS.md), Flyway configurado para migracao lazy por schema (ver docs/CONVENTIONS.md secao 'Migrations'), JaCoCo com gate de 80% vinculado a fase verify. MessageSource/ResourceBundle configurado para i18n de erros (pt-BR/en-US/es). Consumidores dos eventos BetCreated e BetSettled (adapter/in/messaging), assincronos e idempotentes (ver feat-002 para PROCESSED_EVENT), validando cada mensagem contra o JSON Schema correspondente em docs/contracts/. Expor tambem uma rota administrativa que cria o schema tenant_<slug> deste servico quando um tenant novo e provisionado, autenticada por X-Admin-Api-Key (ver docs/API-CONTRACTS.md) - chamada manualmente pelo operador, NAO orquestrada por auth-service em codigo (decisao de 2026-08-02, ver docs/DECISIONS-LOG.md item 3: 3 chamadas manuais separadas).",
+      "dependencies": [],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-002",
+      "name": "Modelo OLAP (esquema estrela) + idempotencia",
+      "description": "Banco Postgres proprio, isolado por cliente. Tabela fato FACT_BET (com status varchar e profit/isWin nullable ate liquidacao) e dimensoes DIM_DATE, DIM_BETTING_HOUSE, DIM_SPORT, DIM_LEAGUE, DIM_MARKET, DIM_TIPSTER. Tabela tecnica PROCESSED_EVENT (id, eventId, processedAt) para idempotencia do consumo - verificar antes de processar, inserir na mesma transacao. Ver docs/services/stats-service.md.",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-003",
+      "name": "Consumo dos eventos - insert em BetCreated, upsert em BetSettled",
+      "description": "BetCreated: insert em FACT_BET com dados dimensionais, status='pending', profit/isWin null. BetSettled: upsert na mesma linha por betId, atualizando status/profit/isWin - nao deve falhar se o BetCreated correspondente ainda nao foi processado (mensagens fora de ordem). RN06: linhas com status='pending' nunca entram em agregacoes.",
+      "dependencies": [
+        "feat-002"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-004",
+      "name": "RF09 - Calculo de metricas",
+      "description": "ROI agregado (RN04) e segmentado por mercado/esporte/casa (RN09), taxa de acerto, lucro acumulado, volume total de unidades - todas as agregacoes filtram FACT_BET por status IN ('won','lost','void') (RN06).",
+      "dependencies": [
+        "feat-003"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-005",
+      "name": "Cache Redis cache-aside",
+      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market} (ingles, ver docs/API-CONTRACTS.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache hit responde direto; cache miss consulta FACT_BET e grava no Redis depois.",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-006",
+      "name": "RF11 - Endpoint GET /api/v1/statistics com filtros dinamicos",
+      "description": "Filtros em ingles (sport, league, market, tipster - ver docs/API-CONTRACTS.md) recalculando as metricas dinamicamente (RN08). Meta de performance < 300ms com cache quente (RNF03).",
+      "dependencies": [
+        "feat-005"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-007",
+      "name": "Pipeline de CI (GitHub Actions + SonarCloud)",
+      "description": "Workflow ja versionado em .github/workflows/ci.yml (dentro deste repositorio - este servico e seu proprio repositorio Git, nao um monorepo, ver docs/CI-CD.md) com 5 passos: validacao de CHANGELOG.md atualizado, validacao de chaves de traducao (messages_pt_BR/en_US/es.properties), build (mvn package), testes unitarios + cobertura (mvn test jacoco:report), qualidade/cobertura no SonarCloud (mvn sonar:sonar, projectKey sv-stats-backend). Scripts de validacao em .github/scripts/ (duplicados neste repositorio, nao compartilhados). Repositorio GitHub: https://github.com/eimmig/sv-stats-backend.git. So funciona de fato apos este repositorio existir no GitHub e o setup do SonarCloud (org, projeto, SONAR_TOKEN, SONAR_ORGANIZATION) estar feito - ver docs/CI-CD.md secao 'Setup pendente'.",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    }
+  ]
+}

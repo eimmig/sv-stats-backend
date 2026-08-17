@@ -1,0 +1,20 @@
+# Build Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties.bak
+
+# Relatorios de cobertura (gerados por jacoco, consumidos pelo SonarCloud)
+*.exec
+
+# Segredos — nunca versionados (ver docs/OBSERVABILITY-AND-CONFIG.md no vault)
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# SO
+Thumbs.db
+.DS_Store
