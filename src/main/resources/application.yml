@@ -23,6 +23,11 @@ management:
           include: readinessState, db
       show-details: always
 
+logging:
+  structured:
+    format:
+      console: ecs
+
 ---
 spring:
   config:
