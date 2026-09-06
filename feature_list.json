@@ -12,7 +12,7 @@
         {
           "id": "feat-001.1",
           "name": "Endurecer pipeline de CI antes do bootstrap (porta o padrao ja validado de bets-service)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-111",
           "detail": "Achado do Plan Reviewer: ci.yml/CHANGELOG.md deste repositorio ainda tem os mesmos 3 gotchas de goal/guarda + falta o 6o passo, ja corrigidos reativamente em auth-service/bets-service - portar a versao endurecida agora evita repetir o mesmo ciclo de descoberta.",
           "checklist": [
@@ -26,7 +26,7 @@
         {
           "id": "feat-001.2",
           "name": "Bootstrap do pom.xml e esqueleto hexagonal",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-112",
           "detail": "Mesmo padrao de bets-service feat-001.2 - Spring Boot 4.1.1, Java 25, Maven, groupId com.stakevault.stats, artifactId stats-service. Dependencias de mensageria (spring-boot-starter-amqp, com.networknt:json-schema-validator:1.5.9, org.testcontainers:testcontainers-rabbitmq) entram aqui, nao depois, porque o consumidor ja e escopo desta feature.",
           "checklist": [
