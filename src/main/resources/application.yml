@@ -10,6 +10,19 @@ spring:
   messages:
     fallback-to-system-locale: false
 
+management:
+  health:
+    rabbit:
+      enabled: false
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState, db
+      show-details: always
+
 ---
 spring:
   config:
