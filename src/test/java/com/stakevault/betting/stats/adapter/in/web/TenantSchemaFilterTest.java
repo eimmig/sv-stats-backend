@@ -1,16 +1,22 @@
 package com.stakevault.betting.stats.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.MessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.servlet.LocaleResolver;
 
 import tools.jackson.databind.ObjectMapper;
 import com.stakevault.betting.stats.config.TenantContextHolder;
@@ -21,7 +27,10 @@ import com.stakevault.betting.stats.domain.port.in.ProvisionTenantSchemaUseCase;
 class TenantSchemaFilterTest {
 
 	private final ProvisionTenantSchemaUseCase provisionTenantSchema = mock(ProvisionTenantSchemaUseCase.class);
-	private final TenantSchemaFilter filter = new TenantSchemaFilter(provisionTenantSchema, new ObjectMapper());
+	private final MessageSource messageSource = mock(MessageSource.class);
+	private final LocaleResolver localeResolver = mock(LocaleResolver.class);
+	private final TenantSchemaFilter filter = new TenantSchemaFilter(
+			provisionTenantSchema, messageSource, localeResolver, new ObjectMapper());
 
 	@Test
 	void shouldPassThroughWithoutHeader() throws Exception {
@@ -37,6 +46,11 @@ class TenantSchemaFilterTest {
 
 	@Test
 	void shouldReturn400ForInvalidTenantSlugWithoutCallingUseCase() throws Exception {
+		when(localeResolver.resolveLocale(any())).thenReturn(Locale.forLanguageTag("pt-BR"));
+		when(messageSource.getMessage("error.invalid-tenant-id.title", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Tenant invalido");
+		when(messageSource.getMessage("error.invalid-tenant-id.detail", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Header invalido");
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.addHeader(TenantSchemaFilter.TENANT_HEADER, "ACME!!!");
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -52,6 +66,11 @@ class TenantSchemaFilterTest {
 
 	@Test
 	void shouldReturn404WhenTenantIsNotProvisioned() throws Exception {
+		when(localeResolver.resolveLocale(any())).thenReturn(Locale.forLanguageTag("pt-BR"));
+		when(messageSource.getMessage("error.tenant-not-found.title", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Tenant nao encontrado");
+		when(messageSource.getMessage("error.tenant-not-found.detail", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Nenhum tenant provisionado");
 		doThrow(new TenantSchemaNotFoundException(new TenantSchemaName("tenant_acme")))
 				.when(provisionTenantSchema).migrateIfPending("acme");
 		MockHttpServletRequest request = new MockHttpServletRequest();

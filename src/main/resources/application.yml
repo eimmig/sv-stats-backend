@@ -7,6 +7,8 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
+  messages:
+    fallback-to-system-locale: false
 
 ---
 spring:
