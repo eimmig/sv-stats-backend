@@ -40,7 +40,7 @@
         {
           "id": "feat-001.3",
           "name": "Conexao Postgres com profiles dev/test/prod",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-113",
           "detail": "Mesmo padrao de bets-service feat-001.3 - variavel de ambiente direta (${DB_HOST:localhost} etc.), sem spring-dotenv.",
           "checklist": [
@@ -53,7 +53,7 @@
         {
           "id": "feat-001.4",
           "name": "Provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-114",
           "detail": "Mesmo padrao de bets-service feat-001.4 (ensureSchemaExists/migrateExistingOnly via Flyway.createSchemas, TenantSchemaName, filtro le X-Tenant-Id) + rota admin bundlada nesta feature, reaproveitando AdminApiKeyFilter ja corrigido em auth-service/bets-service (UriUtils.decode() antes de comparar prefixo de path). Sem multi-tenancy do Hibernate ainda (fica para feat-002, quando existirem entidades JPA) - so Flyway puro.",
           "checklist": [
