@@ -45,4 +45,12 @@ class HealthChecksTest {
 		assertThat(response.statusCode()).isEqualTo(200);
 		assertThat(response.body()).contains("\"status\":\"UP\"").contains("\"db\"");
 	}
+
+	@Test
+	void shouldIncludeRabbitCheckForReadiness() throws Exception {
+		HttpResponse<String> response = get("/actuator/health/readiness");
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).contains("\"rabbit\"");
+	}
 }
