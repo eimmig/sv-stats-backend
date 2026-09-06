@@ -196,7 +196,7 @@
         {
           "id": "feat-002.1",
           "name": "Migration Flyway do esquema estrela + PROCESSED_EVENT",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-125",
           "detail": "Primeira migration de verdade deste servico (Flyway ja configurado desde feat-001.4, so nunca teve arquivo em db/migration).",
           "checklist": [
@@ -209,7 +209,7 @@
         {
           "id": "feat-002.2",
           "name": "Multi-tenancy do Hibernate + enforcement de X-Tenant-Id",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-126",
           "detail": "Achado MAJOR do Plan Reviewer: primeira introducao de JPA/Hibernate multi-tenant neste servico (portar padrao de bets-service feat-002.2), e correcao do residual de feat-001.4 (TenantSchemaFilter precisa exigir X-Tenant-Id agora que existe escrita real de dados por tenant).",
           "checklist": [
