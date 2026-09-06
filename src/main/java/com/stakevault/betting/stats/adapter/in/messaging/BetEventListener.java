@@ -27,7 +27,9 @@ public class BetEventListener {
 		JsonNode event = objectMapper.readTree(body);
 		String eventType = event.path("eventType").asText();
 		schemaValidator.validate(eventType, event);
-		log.info("received {} event {} for tenant {}", eventType, event.path("eventId").asText(),
-				event.path("tenantId").asText());
+		if (log.isInfoEnabled()) {
+			log.info("received {} event {} for tenant {}", eventType, event.path("eventId").asText(),
+					event.path("tenantId").asText());
+		}
 	}
 }

@@ -50,7 +50,7 @@ class BetEventSchemaValidatorTest {
 	}
 
 	@Test
-	void shouldAcceptAValidBetCreatedEvent() throws Exception {
+	void shouldAcceptAValidBetCreatedEvent() {
 		assertThatNoException().isThrownBy(() -> validator.validate("BetCreated", validBetCreated()));
 	}
 

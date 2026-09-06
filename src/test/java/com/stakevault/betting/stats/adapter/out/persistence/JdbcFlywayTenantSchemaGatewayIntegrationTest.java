@@ -41,6 +41,11 @@ class JdbcFlywayTenantSchemaGatewayIntegrationTest extends TenantSchemaIntegrati
 	@Test
 	void migrateIfPendingShouldRunWithoutFailingWhenSchemaAlreadyExists() {
 		provisionTenantSchema.migrateIfPending(tenantSlug);
+
+		Integer count = jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM information_schema.schemata WHERE schema_name = ?",
+				Integer.class, schema.value());
+		assertThat(count).isEqualTo(1);
 	}
 
 	@Test
@@ -54,6 +59,6 @@ class JdbcFlywayTenantSchemaGatewayIntegrationTest extends TenantSchemaIntegrati
 		Integer count = jdbcTemplate.queryForObject(
 				"SELECT count(*) FROM information_schema.schemata WHERE schema_name = ?",
 				Integer.class, missingSchema.value());
-		assertThat(count).isEqualTo(0);
+		assertThat(count).isZero();
 	}
 }
