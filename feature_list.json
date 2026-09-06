@@ -185,14 +185,72 @@
     {
       "id": "feat-002",
       "name": "Modelo OLAP (esquema estrela) + idempotencia",
-      "description": "Banco Postgres proprio, isolado por cliente. Tabela fato FACT_BET (com status varchar e profit/isWin nullable ate liquidacao) e dimensoes DIM_DATE, DIM_BETTING_HOUSE, DIM_SPORT, DIM_LEAGUE, DIM_MARKET, DIM_TIPSTER. Tabela tecnica PROCESSED_EVENT (id, eventId, processedAt) para idempotencia do consumo - verificar antes de processar, inserir na mesma transacao. Ver docs/services/stats-service.md.",
+      "description": "Banco Postgres proprio, isolado por cliente. Tabela fato FACT_BET (com status varchar e profit/isWin nullable ate liquidacao) e dimensoes DIM_DATE, DIM_BETTING_HOUSE, DIM_SPORT, DIM_LEAGUE, DIM_MARKET, DIM_TIPSTER. Tabela tecnica PROCESSED_EVENT (id, eventId, processedAt) para idempotencia do consumo - verificar antes de processar, inserir na mesma transacao. So schema + camada de persistencia (migration, entidades JPA, ports/adapters) - a escrita real (insert em BetCreated, upsert em BetSettled, check de PROCESSED_EVENT antes de processar) e feat-003, que consome o BetEventListener ja existente (feat-001.9). Sem exposicao REST (GET /api/v1/statistics e feat-006). Ver docs/services/stats-service.md e docs/DATA-MODEL.md.",
       "dependencies": [
         "feat-001"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-06, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: READY WITH CONCERNS, 1 achado MAJOR corrigido no plano (nao exigia decisao do usuario - o achado que exigia decisao, nomes das dimensoes, ja foi resolvido separadamente com o usuario e implementado em bets-service feat-010 antes desta feature comecar). (MAJOR) Esta e a primeira introducao de JPA/Hibernate neste servico - sem o resolver de multi-tenancy do Hibernate (CurrentTenantIdentifierResolver/MultiTenantConnectionProvider), toda escrita via JPA iria para o schema 'public' em vez do schema do tenant corrente, silenciosamente vazando dado entre tenants (mesmo achado MAJOR que bets-service feat-002.2 encontrou ao introduzir suas primeiras entidades JPA - nao redescoberto aqui, aplicado direto). Plano corrigido: nova subtask feat-002.2 porta SchemaMultiTenantConnectionProvider/TenantIdentifierResolver/TenantHibernatePropertiesCustomizer de bets-service (reaproveita TenantContextHolder/TenantContextScope ja existentes de feat-001.4) + TenantSchemaFilter passa a exigir X-Tenant-Id (400 missing-tenant-id) em rotas de negocio, fechando o residual aceito em feat-001.4 (que so passava por transparencia porque nenhuma rota de negocio existia ainda). Confirmado por leitura direta do jar Hibernate 7.x deste servico (mesma versao de bets-service, via spring-boot-starter-parent 4.1.1) que as chaves MultiTenancySettings.MULTI_TENANT_CONNECTION_PROVIDER/MULTI_TENANT_IDENTIFIER_RESOLVER nao mudaram. Escopo confirmado (sem decisao do usuario necessaria): dimensoes ganham so id+name (id = mesmo uuid do catalogo de bets-service, name denormalizado do payload do evento, ja resolvido); FACT_BET.betCount mantido fiel ao ERD original (docs/DATA-MODEL.md) mesmo sem uso aparente ainda - RF09 (feat-004) pode precisar. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-124",
+      "subtasks": [
+        {
+          "id": "feat-002.1",
+          "name": "Migration Flyway do esquema estrela + PROCESSED_EVENT",
+          "status": "in-progress",
+          "jira": "SV-125",
+          "detail": "Primeira migration de verdade deste servico (Flyway ja configurado desde feat-001.4, so nunca teve arquivo em db/migration).",
+          "checklist": [
+            "fact_bet (id, date_id, betting_house_id, sport_id, league_id, market_id, tipster_id nullable, stake, profit nullable, is_win nullable, status, bet_count) + dim_date/dim_betting_house/dim_sport/dim_league/dim_market/dim_tipster (id+name, exceto dim_date com day/month/year/quarter/day_of_week) + processed_event (id, event_id unique, processed_at), fieis a docs/DATA-MODEL.md.",
+            "UNIQUE constraint em processed_event.event_id (mecanismo real de idempotencia, nao so verificacao em aplicacao)."
+          ],
+          "validation": "./init.sh migra sem erro em schema de tenant novo (mesmo mecanismo lazy de feat-001.4).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.2",
+          "name": "Multi-tenancy do Hibernate + enforcement de X-Tenant-Id",
+          "status": "not-started",
+          "jira": "SV-126",
+          "detail": "Achado MAJOR do Plan Reviewer: primeira introducao de JPA/Hibernate multi-tenant neste servico (portar padrao de bets-service feat-002.2), e correcao do residual de feat-001.4 (TenantSchemaFilter precisa exigir X-Tenant-Id agora que existe escrita real de dados por tenant).",
+          "checklist": [
+            "Portar SchemaMultiTenantConnectionProvider/TenantIdentifierResolver/TenantHibernatePropertiesCustomizer de bets-service, reaproveitando TenantContextHolder/TenantContextScope ja existentes aqui.",
+            "TenantSchemaFilter: responder 400 missing-tenant-id (chave de mensagem, i18n 3 locales) quando X-Tenant-Id ausente em rotas fora de /api/v1/admin/** e /actuator/** - remove o chain.doFilter direto.",
+            "Remover o residual correspondente de docs/CONVENTIONS.md e progress.md deste servico no mesmo commit, se citado."
+          ],
+          "validation": "Teste de integracao: dois tenants diferentes nao vazam dado entre schemas (mesma entidade logica); chamada sem X-Tenant-Id em rota de negocio recebe 400.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.3",
+          "name": "Entidades JPA e persistencia (domain + adapter)",
+          "status": "not-started",
+          "jira": "SV-127",
+          "detail": "FactBet, DimDate/DimBettingHouse/DimSport/DimLeague/DimMarket/DimTipster, ProcessedEvent como records de dominio + entidades JPA (AbstractJpaEntity, mesmo padrao de bets-service) + ports/adapters minimos provados por teste de integracao real - sem wiring no BetEventListener ainda (feat-003).",
+          "checklist": [
+            "Records de dominio (domain/model) para os 8 conceitos.",
+            "Entidades JPA (adapter/out/persistence) + Spring Data repositories.",
+            "Ports (domain/port/out): FactBetRepository (save, findById), um repositorio por dimensao (existsById, save - upsert-if-missing), ProcessedEventRepository (existsByEventId, save).",
+            "Teste de integracao por repositorio provando persistencia real (Testcontainers Postgres ja configurado)."
+          ],
+          "validation": "./init.sh (mvn verify) verde - persistencia das 8 tabelas provada por teste real, nao so compilacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-128",
+          "detail": "Fecha a feature - primeiro schema OLAP deste servico.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {
