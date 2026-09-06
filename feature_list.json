@@ -118,7 +118,7 @@
         {
           "id": "feat-001.9",
           "name": "Consumidor RabbitMQ BetCreated/BetSettled (adapter/in/messaging)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-119",
           "detail": "Achado do Plan Reviewer (MAJOR #2): listener ligado a fila real 'stats.bet-events' (nome e argumentos identicos a infra/rabbitmq/definitions.json - nao redeclarar com argumentos diferentes, ver docs/API-CONTRACTS.md 'Topologia RabbitMQ'), valida cada mensagem contra o schema do eventType correspondente antes de processar. Sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003) - so recebe, valida e loga; excecao em schema invalido deixa o RabbitMQ redirecionar para DLQ via x-delivery-limit.",
           "checklist": [
@@ -133,7 +133,7 @@
         {
           "id": "feat-001.10",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-120",
           "detail": "Fecha a feature com o gate real do harness, nao so com os testes isolados de cada subtask.",
           "checklist": [
