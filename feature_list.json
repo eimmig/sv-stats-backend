@@ -133,7 +133,7 @@
         {
           "id": "feat-001.10",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-120",
           "detail": "Fecha a feature com o gate real do harness, nao so com os testes isolados de cada subtask.",
           "checklist": [
@@ -146,7 +146,40 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-06 (branch feature/SV-110, story SV-110 com 10 subtasks SV-111..120, 9 PRs de subtask mergeadas). Primeiro codigo de stats-service: bootstrap Spring Boot 4.1.1/Java 25/Maven (groupId com.stakevault.betting compartilhado com os outros 2 servicos Java, package com.stakevault.betting.stats), Postgres dev/test/prod, provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key, gate JaCoCo 80%, i18n (MessageSource, 3 locales), health checks do Actuator (db + rabbit), .env.example + logging estruturado ECS, e o consumidor RabbitMQ dos eventos BetCreated/BetSettled (adapter/in/messaging) com validacao de schema em runtime - sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify, JaCoCo 80% incluso) verde localmente com Docker ativo, em cada uma das 10 subtasks.",
+              "CI verde em todas as 9 PRs de subtask (subtask/SV-111..119 -> feature/SV-110).",
+              "41 testes reais: schema de tenant/isolamento entre tenants, i18n nos 3 locales via MessageSource real, health checks (db/rabbit) contra Testcontainers reais, validacao de schema JSON contra os 2 eventos reais (BetCreated/BetSettled), consumo end-to-end via RabbitMQ real (Testcontainers) com contagem de fila/DLQ."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "RabbitMQ Testcontainers/Declarable beans planejados para entrar em feat-001.2 (junto do bootstrap) foram adiados para feat-001.9 (junto do consumidor) - bootstrap ficou identico ao padrao minimo ja usado em bets-service (so Postgres), evitando acoplar infraestrutura de mensageria a uma feature que ainda nao a usa."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): REVISE, 2 MAJOR corrigidos no plano - gotcha de CI (mesmos 3 gotchas ja vistos em auth-service/bets-service) e a distincao real entre a copia vendorizada do schema em teste (bets-service, produtor) vs em producao (stats-service, consumidor) - ver campo plan_review.",
+              "Achado real de execucao (feat-001.7, health checks): spring-boot-starter-amqp ja no classpath desde feat-001.2 ativa RabbitHealthIndicator automaticamente, derrubando a liveness (/actuator/health, que agrega todos os indicators por padrao) porque ainda nao havia RabbitMQ configurado. Corrigido com management.health.rabbit.enabled: false, revertido em feat-001.9 quando o consumidor real foi conectado.",
+              "Achado real de execucao (feat-001.9, consumidor RabbitMQ - o mais significativo da feature): uma falha de validacao de schema classificada como RuntimeException comum e reenfileirada indefinidamente pelo error handler padrao do Spring AMQP (medido: 128+ redeliveries em ~10s), porque o x-delivery-limit da quorum queue so e respeitado quando o container para de pedir requeue - nao e so um numero teorico, o teste de integracao real destravou isso rodando contra RabbitMQ real via Testcontainers. Corrigido fazendo InvalidBetEventException/UnknownBetEventTypeException estenderem AmqpRejectAndDontRequeueException - correto tambem semanticamente (falha de schema e permanente, nunca passa numa proxima tentativa) e documentado em docs/CONVENTIONS.md para qualquer consumidor RabbitMQ futuro (proximo: retry automatico via x-delivery-limit deve ser reservado para falha genuinamente transitoria, ex.: conexao com banco ao persistir FACT_BET em feat-002/003)."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo da feature (60 arquivos) sem achado residual alem dos ja corrigidos e documentados.",
+              "docs/API-CONTRACTS.md, docs/CONVENTIONS.md e docs/services/stats-service.md (repositorio raiz sv-harness) atualizados nos commits correspondentes as subtasks feat-001.9/feat-001.10."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-002",
