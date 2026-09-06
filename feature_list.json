@@ -53,7 +53,7 @@
         {
           "id": "feat-001.4",
           "name": "Provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-114",
           "detail": "Mesmo padrao de bets-service feat-001.4 (ensureSchemaExists/migrateExistingOnly via Flyway.createSchemas, TenantSchemaName, filtro le X-Tenant-Id) + rota admin bundlada nesta feature, reaproveitando AdminApiKeyFilter ja corrigido em auth-service/bets-service (UriUtils.decode() antes de comparar prefixo de path). Sem multi-tenancy do Hibernate ainda (fica para feat-002, quando existirem entidades JPA) - so Flyway puro.",
           "checklist": [
@@ -67,7 +67,7 @@
         {
           "id": "feat-001.5",
           "name": "Gate de cobertura JaCoCo 80%",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-115",
           "detail": "mvn verify precisa falhar abaixo de 80% - o passo 4 do ci.yml (feat-001.1) ja assume isso.",
           "checklist": [
