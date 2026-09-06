@@ -209,7 +209,7 @@
         {
           "id": "feat-002.2",
           "name": "Multi-tenancy do Hibernate + enforcement de X-Tenant-Id",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-126",
           "detail": "Achado MAJOR do Plan Reviewer: primeira introducao de JPA/Hibernate multi-tenant neste servico (portar padrao de bets-service feat-002.2), e correcao do residual de feat-001.4 (TenantSchemaFilter precisa exigir X-Tenant-Id agora que existe escrita real de dados por tenant).",
           "checklist": [
@@ -223,7 +223,7 @@
         {
           "id": "feat-002.3",
           "name": "Entidades JPA e persistencia (domain + adapter)",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-127",
           "detail": "FactBet, DimDate/DimBettingHouse/DimSport/DimLeague/DimMarket/DimTipster, ProcessedEvent como records de dominio + entidades JPA (AbstractJpaEntity, mesmo padrao de bets-service) + ports/adapters minimos provados por teste de integracao real - sem wiring no BetEventListener ainda (feat-003).",
           "checklist": [
