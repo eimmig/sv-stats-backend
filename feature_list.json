@@ -92,7 +92,7 @@
         {
           "id": "feat-001.7",
           "name": "Health checks do Actuator",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-117",
           "detail": "Necessario para o healthcheck do docker-compose e para confirmar que o servico sobe de fato - grupo de readiness inclui rabbit desde o inicio (consumidor ja e escopo desta feature).",
           "checklist": [
@@ -105,7 +105,7 @@
         {
           "id": "feat-001.8",
           "name": ".env.example e logging estruturado",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-118",
           "detail": ".env.example restrito ao que feat-001 realmente le - ADMIN_API_KEY e variaveis de RabbitMQ ja sao consumidas aqui.",
           "checklist": [
