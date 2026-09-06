@@ -14,7 +14,23 @@ target/
 .idea/
 .vscode/
 *.iml
+*.iws
+*.ipr
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+.apt_generated/
 
 # SO
 Thumbs.db
 .DS_Store
+
+# Python (.github/scripts/*.py)
+__pycache__/
+*.pyc
+
+# Boilerplate do Spring Initializr, nao mantido
+HELP.md
