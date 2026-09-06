@@ -79,7 +79,7 @@
         {
           "id": "feat-001.6",
           "name": "Scaffold de i18n (MessageSource) e teste smoke",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-116",
           "detail": "messages.properties SEM sufixo de locale e obrigatorio (gotcha critico de auth-service feat-003.6 - MessageSourceAutoConfiguration nunca ativa sem ele) - criar desde o inicio.",
           "checklist": [
@@ -92,7 +92,7 @@
         {
           "id": "feat-001.7",
           "name": "Health checks do Actuator",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-117",
           "detail": "Necessario para o healthcheck do docker-compose e para confirmar que o servico sobe de fato - grupo de readiness inclui rabbit desde o inicio (consumidor ja e escopo desta feature).",
           "checklist": [
