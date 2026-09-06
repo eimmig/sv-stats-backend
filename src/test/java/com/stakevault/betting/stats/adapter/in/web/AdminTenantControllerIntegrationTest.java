@@ -108,6 +108,27 @@ class AdminTenantControllerIntegrationTest extends TenantSchemaIntegrationSuppor
 	}
 
 	@Test
+	void shouldLocalizeErrorTitleAndDetailPerAcceptLanguage() throws Exception {
+		HttpResponse<String> response = post(
+				"{\"slug\":\"" + tenantSlug + "\"}",
+				"X-Admin-Api-Key", "test-admin-api-key",
+				"Accept-Language", "es");
+
+		assertThat(response.statusCode()).isEqualTo(409);
+		assertThat(response.body()).contains("El tenant ya existe");
+	}
+
+	@Test
+	void shouldLocalizeAdminApiKeyErrorPerAcceptLanguage() throws Exception {
+		HttpResponse<String> response = post(
+				"{\"slug\":\"" + tenantSlug + "\"}",
+				"Accept-Language", "es");
+
+		assertThat(response.statusCode()).isEqualTo(401);
+		assertThat(response.body()).contains("Clave de administrador inválida");
+	}
+
+	@Test
 	void shouldReturn401ForPercentEncodedPathBypassAttempt() throws Exception {
 		HttpRequest request = HttpRequest.newBuilder(
 				URI.create("http://localhost:" + port + "/api/v1/adm%69n/tenants"))
