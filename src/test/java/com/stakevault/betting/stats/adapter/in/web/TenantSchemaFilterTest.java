@@ -30,18 +30,52 @@ class TenantSchemaFilterTest {
 	private final MessageSource messageSource = mock(MessageSource.class);
 	private final LocaleResolver localeResolver = mock(LocaleResolver.class);
 	private final TenantSchemaFilter filter = new TenantSchemaFilter(
-			provisionTenantSchema, messageSource, localeResolver, new ObjectMapper());
+			provisionTenantSchema, messageSource, localeResolver, new ObjectMapper(),
+			"/api/v1/admin/", "/actuator");
 
 	@Test
-	void shouldPassThroughWithoutHeader() throws Exception {
+	void shouldReturn400WhenHeaderMissingOnBusinessRoute() throws Exception {
+		when(localeResolver.resolveLocale(any())).thenReturn(Locale.forLanguageTag("pt-BR"));
+		when(messageSource.getMessage("error.missing-tenant-id.title", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Tenant ausente");
+		when(messageSource.getMessage("error.missing-tenant-id.detail", new Object[0], Locale.forLanguageTag("pt-BR")))
+				.thenReturn("Header obrigatorio");
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		MockFilterChain chain = new MockFilterChain();
 
 		filter.doFilter(request, response, chain);
 
+		assertThat(response.getStatus()).isEqualTo(400);
+		assertThat(response.getContentAsString()).contains("\"type\":\"https://docs/errors/missing-tenant-id\"");
 		verifyNoInteractions(provisionTenantSchema);
 		assertThat(TenantContextHolder.current()).isNull();
+	}
+
+	@Test
+	void shouldSkipAdminRoutesEntirely() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/admin/tenants");
+		request.setRequestURI("/api/v1/admin/tenants");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		MockFilterChain chain = new MockFilterChain();
+
+		filter.doFilter(request, response, chain);
+
+		verifyNoInteractions(provisionTenantSchema);
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldSkipActuatorRoutesEntirely() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/actuator/health");
+		request.setRequestURI("/actuator/health");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		MockFilterChain chain = new MockFilterChain();
+
+		filter.doFilter(request, response, chain);
+
+		verifyNoInteractions(provisionTenantSchema);
+		assertThat(response.getStatus()).isEqualTo(200);
 	}
 
 	@Test
