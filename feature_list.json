@@ -5,11 +5,182 @@
       "name": "Setup do projeto + consumidor RabbitMQ",
       "description": "Inicializar projeto Spring Boot 4.x (Java 25) com Maven, pacotes domain/application/adapter/config (arquitetura hexagonal - ver docs/CONVENTIONS.md), schema-per-tenant (tenant_<slug>, resolvido a partir do header X-Tenant-Id nas consultas e do campo tenantId do envelope de evento - NAO mais X-User-Id, ver docs/DECISIONS-LOG.md 2026-08-02 e docs/API-CONTRACTS.md), Flyway configurado para migracao lazy por schema (ver docs/CONVENTIONS.md secao 'Migrations'), JaCoCo com gate de 80% vinculado a fase verify. MessageSource/ResourceBundle configurado para i18n de erros (pt-BR/en-US/es). Consumidores dos eventos BetCreated e BetSettled (adapter/in/messaging), assincronos e idempotentes (ver feat-002 para PROCESSED_EVENT), validando cada mensagem contra o JSON Schema correspondente em docs/contracts/. Expor tambem uma rota administrativa que cria o schema tenant_<slug> deste servico quando um tenant novo e provisionado, autenticada por X-Admin-Api-Key (ver docs/API-CONTRACTS.md) - chamada manualmente pelo operador, NAO orquestrada por auth-service em codigo (decisao de 2026-08-02, ver docs/DECISIONS-LOG.md item 3: 3 chamadas manuais separadas).",
       "dependencies": [],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-06, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 2 achados MAJOR corrigidos no plano (nenhum exigia decisao do usuario). (MAJOR #1) .github/workflows/ci.yml e CHANGELOG.md deste repositorio sao o scaffold antigo do epic-009 (bootstrap), com os mesmos 3 gotchas ja documentados e corrigidos em auth-service/bets-service (docs/CI-CD.md 'Guarda por arquivo-marcador'): passo de testes chama 'mvn test jacoco:report' (goal solto), passo Sonar usa o atalho 'mvn sonar:sonar' (nunca resolve sem pluginGroups/pom), falta o 6o passo (gate de zero issue/hotspot, validate-sonar-issues.py) e o sonar.qualitygate.wait condicional (quebra em push direto pra develop); CHANGELOG.md ainda em formato Keep a Changelog com prosa, anterior a decisao de uma linha por issue do Jira. Corrigido no plano: feat-001.1 (primeira subtask) porta o ci.yml/validate-sonar-issues.py ja endurecidos de bets-service (projectKey eimmig_sv-stats-backend), reescrevendo CHANGELOG.md pro novo formato antes do bootstrap - a entrada prosa preexistente (fix de sonar.projectKey) reaproveita a mesma Jira SV-9 ja usada por auth-service/bets-service para o mesmo fix, nao cria issue nova. (MAJOR #2) A description bundla o consumidor RabbitMQ (BetCreated/BetSettled) dentro do MESMO feat-001 de bootstrap - diferente de bets-service, onde o publicador so chegou em feat-006. Isso exige uma peca que docs/API-CONTRACTS.md ainda nao cobre: o produtor (bets-service) so precisava do JSON Schema vendorizado em src/test/resources/contracts/ (validacao so em teste, contra a propria mensagem publicada); o CONSUMIDOR precisa validar toda mensagem recebida em PRODUCAO (decidir DLQ vs processar), entao a copia vendorizada aqui tem que existir tambem em src/main/resources/contracts/ (lida em runtime), nao so em test. Corrigido no plano: feat-001.9 (nova subtask, consumidor) inclui atualizar docs/API-CONTRACTS.md (repositorio raiz) com essa distincao antes de vendorizar os 2 schemas nos dois diretorios deste repositorio. Escopo confirmado do consumidor nesta feature (sem decisao do usuario necessaria - already implicito na propria description): listener ligado a fila REAL de producao 'stats.bet-events' (nome e argumentos identicos a infra/rabbitmq/definitions.json, ver docs/API-CONTRACTS.md 'Topologia RabbitMQ' - nao e uma fila fake de teste como bets-service fez pro lado publicador, porque aqui o nome real importa para o @RabbitListener funcionar em producao), valida contra o schema correspondente ao eventType e loga recebimento (exception em schema invalido deixa o RabbitMQ redirecionar para DLQ via x-delivery-limit, sem tratamento especial no codigo) - SEM persistencia ainda (nao ha FACT_BET nem PROCESSED_EVENT nesta etapa, adiado para feat-002/003 conforme a propria description ja aponta 'ver feat-002 para PROCESSED_EVENT'). Auditoria confirmou que RabbitMQ Testcontainers (rabbitmq:4-management-alpine, mesma imagem de bets-service) suporta quorum queue em broker single-node para fins de teste. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-110",
+      "subtasks": [
+        {
+          "id": "feat-001.1",
+          "name": "Endurecer pipeline de CI antes do bootstrap (porta o padrao ja validado de bets-service)",
+          "status": "done",
+          "jira": "SV-111",
+          "detail": "Achado do Plan Reviewer: ci.yml/CHANGELOG.md deste repositorio ainda tem os mesmos 3 gotchas de goal/guarda + falta o 6o passo, ja corrigidos reativamente em auth-service/bets-service - portar a versao endurecida agora evita repetir o mesmo ciclo de descoberta.",
+          "checklist": [
+            "ci.yml: build 'mvn -B -DskipTests package', testes 'mvn -B verify', Sonar com coordenadas completas do plugin + sonar.qualitygate.wait condicional, 6o passo validate-sonar-issues.py.",
+            "Portar .github/scripts/validate-sonar-issues.py de bets-service para este repositorio.",
+            "Reescrever CHANGELOG.md para o formato de uma linha por issue do Jira, preservando a entrada de fix do sonar.projectKey sob a mesma chave SV-9."
+          ],
+          "validation": "ci.yml deste repositorio bate 1:1 com o de bets-service (so projectKey/nome diferentes); CHANGELOG.md no novo formato.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.2",
+          "name": "Bootstrap do pom.xml e esqueleto hexagonal",
+          "status": "done",
+          "jira": "SV-112",
+          "detail": "Mesmo padrao de bets-service feat-001.2 - Spring Boot 4.1.1, Java 25, Maven, groupId com.stakevault.stats, artifactId stats-service. Dependencias de mensageria (spring-boot-starter-amqp, com.networknt:json-schema-validator:1.5.9, org.testcontainers:testcontainers-rabbitmq) entram aqui, nao depois, porque o consumidor ja e escopo desta feature.",
+          "checklist": [
+            "pom.xml com Spring Boot 4.1.1 (parent), Java 25, spring-boot-starter-web/data-jpa/actuator/validation/amqp, flyway-core, postgresql driver, json-schema-validator 1.5.9, jacoco-maven-plugin.",
+            "Pacotes domain/application/adapter/{in/web,in/messaging,out/persistence}/config vazios (so package-info.java) criados.",
+            "Testcontainers (Postgres + RabbitMQ, mesma imagem rabbitmq:4-management-alpine de bets-service) configurados em src/test."
+          ],
+          "validation": "mvn -B -DskipTests package verde.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.3",
+          "name": "Conexao Postgres com profiles dev/test/prod",
+          "status": "done",
+          "jira": "SV-113",
+          "detail": "Mesmo padrao de bets-service feat-001.3 - variavel de ambiente direta (${DB_HOST:localhost} etc.), sem spring-dotenv.",
+          "checklist": [
+            "application.yml com profiles dev/test/prod, datasource via variavel de ambiente.",
+            "application-test.yml delega ao Testcontainers (@ServiceConnection)."
+          ],
+          "validation": "mvn -B verify sobe o contexto Spring nos 3 profiles sem erro (test via Testcontainers real).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.4",
+          "name": "Provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key",
+          "status": "done",
+          "jira": "SV-114",
+          "detail": "Mesmo padrao de bets-service feat-001.4 (ensureSchemaExists/migrateExistingOnly via Flyway.createSchemas, TenantSchemaName, filtro le X-Tenant-Id) + rota admin bundlada nesta feature, reaproveitando AdminApiKeyFilter ja corrigido em auth-service/bets-service (UriUtils.decode() antes de comparar prefixo de path). Sem multi-tenancy do Hibernate ainda (fica para feat-002, quando existirem entidades JPA) - so Flyway puro.",
+          "checklist": [
+            "TenantContextHolder/TenantContextScope/TenantSchemaFilter portados do padrao ja usado em auth-service/bets-service.",
+            "POST administrativo que cria o schema tenant_<slug> deste servico, autenticado por X-Admin-Api-Key.",
+            "Teste de integracao: schema criado sob demanda, isolamento entre tenants confirmado."
+          ],
+          "validation": "Duas requisicoes com X-Tenant-Id diferentes migram schemas distintos, sem vazamento entre eles.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.5",
+          "name": "Gate de cobertura JaCoCo 80%",
+          "status": "done",
+          "jira": "SV-115",
+          "detail": "mvn verify precisa falhar abaixo de 80% - o passo 4 do ci.yml (feat-001.1) ja assume isso.",
+          "checklist": [
+            "jacoco-maven-plugin configurado com regra de linha 80% vinculada a fase verify."
+          ],
+          "validation": "mvn verify falha de proposito com cobertura artificialmente baixa, depois volta a passar.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.6",
+          "name": "Scaffold de i18n (MessageSource) e teste smoke",
+          "status": "done",
+          "jira": "SV-116",
+          "detail": "messages.properties SEM sufixo de locale e obrigatorio (gotcha critico de auth-service feat-003.6 - MessageSourceAutoConfiguration nunca ativa sem ele) - criar desde o inicio.",
+          "checklist": [
+            "messages.properties + messages_pt_BR.properties + messages_en_US.properties + messages_es.properties.",
+            "Teste smoke confirmando resolucao de uma chave nos 3 locales."
+          ],
+          "validation": "Teste smoke verde nos 3 locales.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.7",
+          "name": "Health checks do Actuator",
+          "status": "done",
+          "jira": "SV-117",
+          "detail": "Necessario para o healthcheck do docker-compose e para confirmar que o servico sobe de fato - grupo de readiness inclui rabbit desde o inicio (consumidor ja e escopo desta feature).",
+          "checklist": [
+            "management.endpoint.health.group.readiness.include com db e rabbit.",
+            "Teste de integracao confirmando os dois nos readiness."
+          ],
+          "validation": "GET /actuator/health/readiness reporta UP com Postgres e RabbitMQ reais (Testcontainers).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.8",
+          "name": ".env.example e logging estruturado",
+          "status": "done",
+          "jira": "SV-118",
+          "detail": ".env.example restrito ao que feat-001 realmente le - ADMIN_API_KEY e variaveis de RabbitMQ ja sao consumidas aqui.",
+          "checklist": [
+            ".env.example com DB_*, ADMIN_API_KEY, RABBITMQ_*.",
+            "Logging estruturado (JSON, mesmo padrao ECS de bets-service) configurado."
+          ],
+          "validation": "Logs em JSON no console ao subir o servico.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.9",
+          "name": "Consumidor RabbitMQ BetCreated/BetSettled (adapter/in/messaging)",
+          "status": "done",
+          "jira": "SV-119",
+          "detail": "Achado do Plan Reviewer (MAJOR #2): listener ligado a fila real 'stats.bet-events' (nome e argumentos identicos a infra/rabbitmq/definitions.json - nao redeclarar com argumentos diferentes, ver docs/API-CONTRACTS.md 'Topologia RabbitMQ'), valida cada mensagem contra o schema do eventType correspondente antes de processar. Sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003) - so recebe, valida e loga; excecao em schema invalido deixa o RabbitMQ redirecionar para DLQ via x-delivery-limit.",
+          "checklist": [
+            "docs/API-CONTRACTS.md (repositorio raiz sv-harness) atualizado: copia vendorizada do consumidor vive em src/main/resources/contracts/ (lida em producao, nao so em teste como no lado publicador de bets-service) - commit separado no repositorio raiz.",
+            "Copias vendorizadas de bet-created.schema.json e bet-settled.schema.json em src/main/resources/contracts/ (producao) e src/test/resources/contracts/ (fixture de teste) deste repositorio.",
+            "@RabbitListener(queues = \"stats.bet-events\") deserializa o envelope, valida payload contra o schema pelo eventType, loga recebimento.",
+            "Teste de integracao (Testcontainers RabbitMQ real): mensagem valida de cada eventType e processada sem erro; mensagem que viola o schema lanca excecao (nao e engolida silenciosamente)."
+          ],
+          "validation": "Teste de integracao publica BetCreated/BetSettled reais no exchange bets.events (routing key bet.created/bet.settled) e confirma consumo; mensagem malformada gera excecao registrada.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.10",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-120",
+          "detail": "Fecha a feature com o gate real do harness, nao so com os testes isolados de cada subtask.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-06 (branch feature/SV-110, story SV-110 com 10 subtasks SV-111..120, 9 PRs de subtask mergeadas). Primeiro codigo de stats-service: bootstrap Spring Boot 4.1.1/Java 25/Maven (groupId com.stakevault.betting compartilhado com os outros 2 servicos Java, package com.stakevault.betting.stats), Postgres dev/test/prod, provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key, gate JaCoCo 80%, i18n (MessageSource, 3 locales), health checks do Actuator (db + rabbit), .env.example + logging estruturado ECS, e o consumidor RabbitMQ dos eventos BetCreated/BetSettled (adapter/in/messaging) com validacao de schema em runtime - sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify, JaCoCo 80% incluso) verde localmente com Docker ativo, em cada uma das 10 subtasks.",
+              "CI verde em todas as 9 PRs de subtask (subtask/SV-111..119 -> feature/SV-110).",
+              "41 testes reais: schema de tenant/isolamento entre tenants, i18n nos 3 locales via MessageSource real, health checks (db/rabbit) contra Testcontainers reais, validacao de schema JSON contra os 2 eventos reais (BetCreated/BetSettled), consumo end-to-end via RabbitMQ real (Testcontainers) com contagem de fila/DLQ."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "RabbitMQ Testcontainers/Declarable beans planejados para entrar em feat-001.2 (junto do bootstrap) foram adiados para feat-001.9 (junto do consumidor) - bootstrap ficou identico ao padrao minimo ja usado em bets-service (so Postgres), evitando acoplar infraestrutura de mensageria a uma feature que ainda nao a usa."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): REVISE, 2 MAJOR corrigidos no plano - gotcha de CI (mesmos 3 gotchas ja vistos em auth-service/bets-service) e a distincao real entre a copia vendorizada do schema em teste (bets-service, produtor) vs em producao (stats-service, consumidor) - ver campo plan_review.",
+              "Achado real de execucao (feat-001.7, health checks): spring-boot-starter-amqp ja no classpath desde feat-001.2 ativa RabbitHealthIndicator automaticamente, derrubando a liveness (/actuator/health, que agrega todos os indicators por padrao) porque ainda nao havia RabbitMQ configurado. Corrigido com management.health.rabbit.enabled: false, revertido em feat-001.9 quando o consumidor real foi conectado.",
+              "Achado real de execucao (feat-001.9, consumidor RabbitMQ - o mais significativo da feature): uma falha de validacao de schema classificada como RuntimeException comum e reenfileirada indefinidamente pelo error handler padrao do Spring AMQP (medido: 128+ redeliveries em ~10s), porque o x-delivery-limit da quorum queue so e respeitado quando o container para de pedir requeue - nao e so um numero teorico, o teste de integracao real destravou isso rodando contra RabbitMQ real via Testcontainers. Corrigido fazendo InvalidBetEventException/UnknownBetEventTypeException estenderem AmqpRejectAndDontRequeueException - correto tambem semanticamente (falha de schema e permanente, nunca passa numa proxima tentativa) e documentado em docs/CONVENTIONS.md para qualquer consumidor RabbitMQ futuro (proximo: retry automatico via x-delivery-limit deve ser reservado para falha genuinamente transitoria, ex.: conexao com banco ao persistir FACT_BET em feat-002/003).",
+              "Achado tardio, no proprio gate feature->develop (PR #10, apos feat-001.10 ja marcada done - subtasks pulam SonarCloud de proposito, so a story inteira roda a analise): SonarCloud reportou 4 apontamentos - java:S2699 BLOCKER (teste de integracao copiado verbatim de bets-service sem nenhuma assercao, so provava 'nao lanca exception'; nunca pego la porque o PR de subtask que o introduziu nao roda Sonar), java:S5838 (isEqualTo(0) -> isZero()), java:S1130 (throws Exception desnecessario num metodo de teste - a excecao checked so ocorre dentro do lambda passado a assertThatNoException, nao propaga pro metodo), java:S2629 (argumentos de log.info avaliados incondicionalmente, guardado com log.isInfoEnabled()). Todos corrigidos antes do merge."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo da feature (60 arquivos) sem achado residual alem dos ja corrigidos e documentados.",
+              "docs/API-CONTRACTS.md, docs/CONVENTIONS.md e docs/services/stats-service.md (repositorio raiz sv-harness) atualizados nos commits correspondentes as subtasks feat-001.9/feat-001.10."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-002",

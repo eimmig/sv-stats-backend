@@ -6,3 +6,8 @@
 *.yaml text eol=lf
 *.json text eol=lf
 *.properties text eol=lf
+
+# Maven wrapper: script POSIX precisa de LF mesmo em checkout Windows; o .cmd e so para
+# Windows, mantem CRLF.
+/mvnw text eol=lf
+*.cmd text eol=crlf
