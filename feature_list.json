@@ -332,7 +332,7 @@
         {
           "id": "feat-003.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-132",
           "detail": "Fecha a feature - primeiro consumo real de evento com efeito persistente deste servico.",
           "checklist": [
@@ -345,7 +345,40 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-129, story SV-129 com 3 subtasks SV-130..132, 2 PRs de subtask mergeadas). Primeiro consumo real de evento com efeito persistente deste servico: BetCreated insere FACT_BET pending, BetSettled faz upsert real (status/profit/isWin), idempotencia real via PROCESSED_EVENT (existsByEventId + insert na mesma transacao), mensagens fora de ordem tratadas sem reverter liquidacao ja aplicada, tenant nao resolvivel vai direto pra DLQ.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo - 66 testes.",
+              "CI verde nas 2 PRs de subtask (subtask/SV-130/131 -> feature/SV-129).",
+              "Teste de integracao real (RabbitMQ + Postgres via Testcontainers): insert em BetCreated, upsert real em BetSettled (linha unica, campos mutados de verdade), BetSettled chegando antes do BetCreated correspondente (nao reverte liquidacao), redelivery do mesmo eventId nao reprocessa, tenant nao provisionado vai para DLQ.",
+              "Teste unitario complementar (ProcessBetEventServiceTest, DimensionResolverTest) prova os mesmos ramos com mocks - falha rapida e localizada."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 1 MAJOR corrigido no plano - JpaFactBetRepository.save() (feat-002.3) sempre construia uma entidade nova, que Hibernate sempre tentaria INSERT (isNew=true numa instancia recem-construida, independente de a linha ja existir) - um upsert real (BetSettled sobre BetCreated ja inserido) falharia por chave duplicada. Corrigido carregando a instancia existente via findById antes de mutar.",
+              "Achado real durante a implementacao (nao pego pelo Plan Reviewer): a primeira versao do fix acima usou @Setter do Lombok na classe inteira - docs/CONVENTIONS.md ja documentava (de bets-service feat-004/005) que a mutacao deve ser feita por um metodo da propria entidade, nao um @Setter amplo. Corrigido consolidando os campos mutaveis em FactBetJpaEntity.applyFrom(FactBet), reaproveitado pelo construtor e pelo caminho de update - nota do vault atualizada confirmando o reaproveitamento."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 MAJOR corrigido) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (14 arquivos) sem achado residual alem do ja corrigido e documentado.",
+              "docs/services/stats-service.md (repositorio raiz) atualizado para refletir consumo real (insert/upsert/idempotencia), substituindo a nota de 'ainda sem persistencia' de feat-001.9."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-004",
