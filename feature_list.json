@@ -576,7 +576,7 @@
       "dependencies": [
         "feat-005"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada). Veredito: READY WITH CONCERNS, 1 achado BLOCKED resolvido com o usuario via AskUserQuestion, 2 achados MAJOR corrigidos no plano. (BLOCKED, resolvido com o usuario) Nenhuma nota do vault fixava o formato de resposta de GET /api/v1/statistics - RF11/RN08 definem os filtros (ja convencionados em API-CONTRACTS.md) mas nao a forma JSON do payload, e essa e uma decisao de contrato externo (apps/web ainda nao construido vai consumir esta rota) que nao da pra inferir com seguranca do resto do vault. 3 opcoes apresentadas (bundle unico / resposta minima+groupBy / endpoints separados por segmento) - usuario escolheu bundle unico: {overall, bySport, byMarket, byBettingHouse, monthly}, uma chamada por mudanca de filtro (coerente com docs/services/web.md 'cada mudanca de filtro e uma nova consulta a GET /api/v1/statistics', singular). (MAJOR #1) FactBet nao guarda um timestamp direto (so dateId, FK pra DimDate com day/month/year como inteiros separados) - filtrar por from/to (intervalo de data, RF11) exige comparar contra uma data reconstruida. Corrigido no plano: JPQL com FUNCTION('make_date', d.year, d.month, d.day) (Postgres, ja o unico banco alvo do projeto - flyway-database-postgresql, imagens postgres nos 3 servicos) comparado contra from/to truncados pra LocalDate na fronteira da aplicacao (mesmo padrao UTC ja usado em DimensionResolver.resolveDate). (MAJOR #2) FactBetRepository/CalculateMetricsUseCase (feat-004/005) foram desenhados sem parametro de filtro - bundle filtrado precisa dos mesmos 5 metodos de agregacao, mas com filtro opcional aplicado. Corrigido no plano: migrar as assinaturas existentes pra aceitar StatisticsFilter (todos os campos nullable, StatisticsFilter.none() = sem filtro nenhum) em vez de manter dois conjuntos paralelos de metodos (com/sem filtro) - GetDashboardMetricsService (cache-aside, feat-005) passa a chamar CalculateMetricsUseCase sempre com StatisticsFilter.none() internamente, sem mudar seu proprio contrato de porta (getOverall/getBySport/etc continuam sem parametro, cache continua so pra vista sem filtro). Predicados opcionais em JPQL via '(:param IS NULL OR campo = :param)', mesmo padrao usado em bets-service pra filtros de listagem (confirmado por analogia, nao reinventado). Serie mensal do bundle (campo 'monthly') e sempre calculada direto via CalculateMetricsUseCase.calculateMonthly(filter), nunca pelo cache de feat-005 (GetDashboardMetricsUseCase.getMonthly(year,month) - decisao de escopo, nao removida): decisao de implementacao (nao de contrato) - a serie e uma agregacao GROUP BY barata e de baixa cardinalidade (poucos meses com dado), enquanto overall/segmentos sao consultas mais pesadas e mais valiosas de cachear; sem essa distincao seria necessario descobrir quais meses existem antes de poder usar o cache por mes, complicando o mecanismo sem ganho real. Rota GET /api/v1/statistics: X-Tenant-Id ja exigido pelo TenantSchemaFilter existente (feat-001.4), sem middleware novo. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
       "jira": "SV-141",
       "subtasks": [
@@ -618,7 +618,7 @@
         {
           "id": "feat-006.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-144",
           "detail": "Fecha a feature - ultima planejada deste servico (feat-001..006).",
           "checklist": [
@@ -631,7 +631,41 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-141, story SV-141 com 3 subtasks SV-142..144, 3 PRs de subtask mergeadas). RF11/RN08 completos: GET /api/v1/statistics aceita 7 filtros opcionais (bettingHouseId/sportId/leagueId/marketId/tipsterId/from/to) e responde um bundle unico (overall/bySport/byMarket/byBettingHouse/monthly) - decisao do usuario. StatisticsFilter substituiu as assinaturas sem parametro de feat-004/005 (uma mecanica so, nao dois conjuntos paralelos). Sem filtro usa o cache-aside de feat-005; com filtro bypassa e calcula direto contra FACT_BET. Fecha o backlog de RF/RN deste servico (feat-001..006) - falta so feat-007 (fechamento formal do pipeline de CI, ja rodando de verdade desde feat-001).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-142..144 -> feature/SV-141) e na PR de story->develop.",
+              "Teste de integracao real (Testcontainers Postgres): filtro por sportId exclui outro esporte da agregacao overall; filtro por from/to exclui apostas fora do intervalo de data.",
+              "Teste HTTP real (SpringBootTest RANDOM_PORT, java.net.http.HttpClient): sem filtro (200, bundle completo, parse real do JSON confirmando overall/segmentos/mensal com os valores certos, chave aparece no Redis apos a chamada), com filtro sportId (resultado restrito, so o esporte filtrado aparece), sem X-Tenant-Id (400, ja coberto pelo TenantSchemaFilter existente)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review (achado BLOCKED resolvido com o usuario via AskUserQuestion sobre o formato de resposta, e 2 achados MAJOR corrigidos no plano antes de codificar - ver campo plan_review desta feature)."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real durante feat-006.1: Postgres nao consegue inferir o tipo de um parametro null usado so dentro de CAST/FUNCTION ('could not determine data type of parameter') - a abordagem original do plano (predicado '(:from IS NULL OR CAST(:from AS date) ...)') falhava; corrigido substituindo from/to ausentes por limites-sentinela (1900-01-01/2999-12-31) antes de montar a query, removendo a necessidade do IS NULL para as datas.",
+              "Achado do self-review (Delivery Reviewer/Test Suite Auditor, feat-006.3): a resposta real do bundle aninha as metricas de cada segmento/mes sob uma chave 'metrics' (reaproveitando SegmentedBetMetrics/MonthlyBetMetrics ja existentes desde feat-004/005), diferente do exemplo achatado mostrado ao usuario durante a decisao do formato (AskUserQuestion) - o exemplo servia so para ilustrar a escolha bundle-unico-vs-endpoints-separados, nao o formato exato de cada item; corrigido a documentacao (API-CONTRACTS.md) pra bater com a resposta real, e o teste HTTP fortalecido pra fazer parse de verdade do JSON (antes so checava substring) em vez de so provar que a chave aparecia na resposta.",
+              "Achado do self-review (mesmo passe): docs/services/web.md ainda citava os query params antigos sem sufixo Id ('sport', 'league', 'market'), drift pre-existente contra a correcao ja feita em API-CONTRACTS.md antes desta sessao - corrigido no mesmo commit, junto com a omissao de 'casa de apostas' na lista de filtros em prosa daquela nota."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 BLOCKED resolvido com o usuario, 2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (feature/SV-141 vs develop) - 2 achados reais corrigidos antes do fechamento (formato de resposta na documentacao, drift em web.md).",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-007",

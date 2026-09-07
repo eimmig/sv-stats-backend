@@ -15,6 +15,9 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
@@ -46,12 +49,13 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	private final DimLeagueRepository dimLeagueRepository;
 	private final DimMarketRepository dimMarketRepository;
 	private final StringRedisTemplate redisTemplate;
+	private final ObjectMapper objectMapper;
 
 	StatisticsControllerIntegrationTest(ProvisionTenantSchemaUseCase provisionTenantSchema, JdbcTemplate jdbcTemplate,
 			FactBetRepository factBetRepository, DimDateRepository dimDateRepository,
 			DimBettingHouseRepository dimBettingHouseRepository, DimSportRepository dimSportRepository,
 			DimLeagueRepository dimLeagueRepository, DimMarketRepository dimMarketRepository,
-			StringRedisTemplate redisTemplate) {
+			StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
 		super(provisionTenantSchema, jdbcTemplate);
 		this.factBetRepository = factBetRepository;
 		this.dimDateRepository = dimDateRepository;
@@ -60,6 +64,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		this.dimLeagueRepository = dimLeagueRepository;
 		this.dimMarketRepository = dimMarketRepository;
 		this.redisTemplate = redisTemplate;
+		this.objectMapper = objectMapper;
 	}
 
 	private HttpResponse<String> get(String query, String... headers) throws Exception {
@@ -91,8 +96,20 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		HttpResponse<String> response = get(null, "X-Tenant-Id", tenantSlug);
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		assertThat(response.body()).contains("\"overall\"").contains("\"bySport\"").contains("\"byMarket\"")
-				.contains("\"byBettingHouse\"").contains("\"monthly\"");
+		JsonNode body = objectMapper.readTree(response.body());
+		assertThat(body.path("overall").path("totalStaked").asDouble()).isEqualTo(100.0);
+		assertThat(body.path("overall").path("settledCount").asInt()).isEqualTo(1);
+		// Cada item de segmento/mes aninha as metricas sob "metrics" (mesmos records de dominio
+		// ja usados desde feat-004/005), nao achatado - ver docs/API-CONTRACTS.md.
+		JsonNode sportSegment = body.path("bySport").get(0);
+		assertThat(sportSegment.path("dimensionName").asString()).isEqualTo("Soccer");
+		assertThat(sportSegment.path("metrics").path("totalStaked").asDouble()).isEqualTo(100.0);
+		assertThat(body.path("byMarket").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
+		assertThat(body.path("byBettingHouse").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
+		JsonNode monthEntry = body.path("monthly").get(0);
+		assertThat(monthEntry.path("year").asInt()).isEqualTo(2026);
+		assertThat(monthEntry.path("month").asInt()).isEqualTo(9);
+		assertThat(monthEntry.path("metrics").path("settledCount").asInt()).isEqualTo(1);
 		try (var _ = TenantContextScope.open(schema)) {
 			assertThat(redisTemplate.hasKey("tenant:" + tenantSlug + ":dashboard:consolidated")).isTrue();
 		}
@@ -101,13 +118,15 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	@Test
 	void shouldRestrictResultsWhenFilteredBySportId() throws Exception {
 		UUID soccerId = seedSettledBet("Soccer");
-		UUID tennisId = seedSettledBet("Tennis");
+		seedSettledBet("Tennis");
 
 		HttpResponse<String> response = get("sportId=" + soccerId, "X-Tenant-Id", tenantSlug);
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		assertThat(response.body()).contains(soccerId.toString());
-		assertThat(response.body()).doesNotContain(tennisId.toString());
+		JsonNode body = objectMapper.readTree(response.body());
+		assertThat(body.path("overall").path("settledCount").asInt()).isEqualTo(1);
+		assertThat(body.path("bySport")).hasSize(1);
+		assertThat(body.path("bySport").get(0).path("dimensionId").asString()).isEqualTo(soccerId.toString());
 	}
 
 	@Test
