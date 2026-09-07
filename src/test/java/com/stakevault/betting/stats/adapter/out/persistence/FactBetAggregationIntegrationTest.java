@@ -68,6 +68,13 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 				stake, null, null, BetStatus.PENDING, 1);
 	}
 
+	// RN06 inclui explicitamente void nas agregacoes (aposta devolvida) - stake volta pro
+	// apostador, profit=0, nao conta como vitoria nem derrota.
+	private FactBet voidBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
+		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
+				stake, BigDecimal.ZERO, false, BetStatus.VOID, 1);
+	}
+
 	@Test
 	void shouldExcludePendingBetsFromOverallAggregate() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -78,14 +85,16 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 					BigDecimal.valueOf(50), true));
 			factBetRepository.save(settledBet(houseId, sportId, marketId, BigDecimal.valueOf(100),
 					BigDecimal.valueOf(-100), false));
+			factBetRepository.save(voidBet(houseId, sportId, marketId, BigDecimal.valueOf(100)));
 			factBetRepository.save(pendingBet(houseId, sportId, marketId, BigDecimal.valueOf(999)));
 
 			BetAggregate aggregate = factBetRepository.aggregateOverall();
 
-			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(200));
+			// void entra na soma (RN06) mas nao conta como vitoria.
+			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(300));
 			assertThat(aggregate.netProfit()).isEqualByComparingTo(BigDecimal.valueOf(-50));
 			assertThat(aggregate.wonCount()).isEqualTo(1);
-			assertThat(aggregate.settledCount()).isEqualTo(2);
+			assertThat(aggregate.settledCount()).isEqualTo(3);
 		}
 	}
 
