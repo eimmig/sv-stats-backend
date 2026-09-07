@@ -238,7 +238,7 @@
         {
           "id": "feat-002.4",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-128",
           "detail": "Fecha a feature - primeiro schema OLAP deste servico.",
           "checklist": [
@@ -251,7 +251,39 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-06 (branch feature/SV-124, story SV-124 com 4 subtasks SV-125..128, 3 PRs de subtask mergeadas). Primeiro schema OLAP deste servico: migration Flyway (fact_bet + 6 dimensoes + processed_event, UNIQUE real em event_id), multi-tenancy do Hibernate (CurrentTenantIdentifierResolver/MultiTenantConnectionProvider portados de bets-service, TenantSchemaFilter passa a exigir X-Tenant-Id em rotas de negocio), e a camada completa de persistencia (domain + adapter) para os 8 conceitos - sem wiring no BetEventListener ainda (feat-003, que faz o insert/upsert de verdade).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 4 subtasks - 53 testes.",
+              "CI verde em todas as 3 PRs de subtask (subtask/SV-125..127 -> feature/SV-124).",
+              "Testes reais de persistencia contra Postgres (Testcontainers): save/existsById nas 5 dimensoes id+name, save/findByDayAndMonthAndYear em DimDate (chave natural), save/findById + isolamento real entre dois schemas de tenant em FactBet, save/existsByEventId + UNIQUE constraint real (DataIntegrityViolationException) em ProcessedEvent."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review - a validacao original de feat-002.2 ('teste de integracao: dois tenants nao vazam dado') so foi de fato satisfeita em feat-002.3, quando passou a existir uma entidade (FactBet) para isolar - mesma sequencia real que bets-service seguiu (confirmado lendo o historico de commits daquele servico), nao uma lacuna nova."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 1 MAJOR corrigido no plano - primeira introducao de JPA/Hibernate neste servico exigia o resolver de multi-tenancy (sem ele, toda escrita iria para o schema 'public', vazando dado entre tenants); nova subtask feat-002.2 portando o mecanismo ja provado em bets-service feat-002.2, em vez de descobrir isso reativamente.",
+              "Achado real de execucao (feat-002.3): BigDecimal.equals() distingue escala (100 vs 100.00 vindo da coluna NUMERIC) - mesmo gotcha ja documentado em docs/TESTING.md a partir de bets-service feat-003, mas aplicado apenas reativamente aqui (o teste falhou primeiro, a comparacao por campo com isEqualByComparingTo foi a correcao) em vez de evitado de proposito - reforca que a nota do vault precisa ser lembrada ativamente ao escrever teste com BigDecimal, nao so consultada quando algo ja quebrou."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 MAJOR corrigido) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (62 arquivos) sem achado residual alem do ja corrigido e documentado.",
+              "tools/jira_story.py usado normalmente (criacao da story + 4 subtasks, --sync-status a cada transicao real)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-003",
