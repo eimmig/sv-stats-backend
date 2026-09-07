@@ -475,7 +475,7 @@
     {
       "id": "feat-005",
       "name": "Cache Redis cache-aside",
-      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market|house} (ingles, ver docs/services/stats-service.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache-aside (hit responde direto, miss consulta FACT_BET e grava depois) COM invalidacao no consumo do evento (BetCreated/BetSettled evictam as 5 chaves do tenant, incluindo o mes especifico do evento) - decisao do usuario (2026-09-07) resolvendo uma divergencia real entre docs/ARCHITECTURE.md (fluxo dizia 'stats-service... atualiza o cache Redis' ao consumir evento) e esta description original (so mencionava cache-aside puro, sem invalidacao) - sem isso o dashboard mostraria metricas desatualizadas por todo o TTL apos uma aposta ser liquidada.",
+      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market|house} (ingles, ver docs/services/stats-service.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache-aside (hit responde direto, miss consulta FACT_BET e grava depois) COM invalidacao no consumo do evento - decisao do usuario (2026-09-07) resolvendo uma divergencia real entre docs/ARCHITECTURE.md (fluxo dizia 'stats-service... atualiza o cache Redis' ao consumir evento) e esta description original (so mencionava cache-aside puro, sem invalidacao) - sem isso o dashboard mostraria metricas desatualizadas por todo o TTL apos uma aposta ser liquidada. So BetSettled evicta as 5 chaves do tenant (incluindo o mes especifico do evento) - achado real durante a implementacao de feat-005.2, corrigindo a premissa inicial do plan_review de que BetCreated tambem evictaria: RN06 exclui status=pending de toda agregacao, entao o insert de BetCreated e invisivel pras metricas cacheadas, evictar ali seria desperdicio sem nenhuma mudanca de valor.",
       "dependencies": [
         "feat-004"
       ],
@@ -503,7 +503,7 @@
         {
           "id": "feat-005.2",
           "name": "Agregacao mensal + orquestracao cache-aside + invalidacao no consumo do evento",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-139",
           "detail": "FactBetRepository.aggregateByMonth() (mesmo padrao de join de feat-004) + GetDashboardMetricsUseCase (cache-aside real, chama CalculateMetricsUseCase no miss) + ProcessBetEventService evita o cache apos cada escrita real (RN08 - dashboard reflete apostas novas sem esperar o TTL).",
           "checklist": [
