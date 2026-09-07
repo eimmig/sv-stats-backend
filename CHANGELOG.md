@@ -40,3 +40,5 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-142](https://stakevault.atlassian.net/browse/SV-142) - StatisticsFilter + agregacao filtrada em FactBetRepository/CalculateMetricsUseCase
 - [SV-143](https://stakevault.atlassian.net/browse/SV-143) - Bundle de dashboard + endpoint GET /api/v1/statistics
 - [SV-144](https://stakevault.atlassian.net/browse/SV-144) - CHANGELOG e verificacao final
+- [SV-145](https://stakevault.atlassian.net/browse/SV-145) - Pipeline de CI (GitHub Actions + SonarCloud)
+- [SV-146](https://stakevault.atlassian.net/browse/SV-146) - Confirmar pipeline real e corrigir description desatualizada
