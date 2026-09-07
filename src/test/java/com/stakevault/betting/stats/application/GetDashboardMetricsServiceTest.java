@@ -121,4 +121,15 @@ class GetDashboardMetricsServiceTest {
 		assertThat(result.totalStaked()).isEqualByComparingTo(BigDecimal.ZERO);
 		assertThat(result.settledCount()).isZero();
 	}
+
+	@Test
+	void shouldCacheZeroMetricsForAMonthWithNoDataToAvoidRecomputingOnEveryRequest() {
+		when(cache.findMonthly(2026, 1)).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateMonthly()).thenReturn(List.of());
+
+		service.getMonthly(2026, 1);
+
+		verify(cache).saveMonthly(2026, 1, new BetMetrics(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+				BigDecimal.ZERO, 0));
+	}
 }
