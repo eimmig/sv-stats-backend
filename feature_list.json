@@ -583,7 +583,7 @@
         {
           "id": "feat-006.1",
           "name": "StatisticsFilter + agregacao filtrada em FactBetRepository/CalculateMetricsUseCase",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-142",
           "detail": "Migra as 5 assinaturas existentes (aggregateOverall/BySport/ByMarket/ByBettingHouse/ByMonth e os equivalentes em CalculateMetricsUseCase) pra aceitar StatisticsFilter, com predicados opcionais em JPQL. Filtro por data via FUNCTION('make_date', ...) contra DimDate.",
           "checklist": [
