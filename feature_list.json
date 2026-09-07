@@ -602,7 +602,7 @@
         {
           "id": "feat-006.2",
           "name": "Bundle de dashboard + endpoint GET /api/v1/statistics",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-143",
           "detail": "StatisticsDashboard (bundle) + GetStatisticsDashboardUseCase/Service (decide cache vs calculo direto conforme StatisticsFilter.isEmpty()) + StatisticsController.",
           "checklist": [
