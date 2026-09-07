@@ -3,7 +3,7 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-07
-**Feature ativa:** nenhuma (`feat-001`..`feat-004` `done`, `feat-005` liberada)
+**Feature ativa:** nenhuma (`feat-001`..`feat-005` `done`, `feat-006` liberada)
 
 ## Status
 
@@ -47,14 +47,28 @@
       `BigDecimal.ZERO`, não exceção. Sem endpoint HTTP (`feat-006`) nem cache (`feat-005`) ainda.
       Story SV-133, 3 subtasks (SV-134..136). Evidência completa em `feature_list.json`.
 
+- [x] **`feat-005` (Cache Redis cache-aside) — `done` em 2026-09-07.** Primeiro cache deste
+      serviço (e do projeto): `MetricsCacheRepository`/`RedisMetricsCacheRepository` — nenhum
+      método recebe o tenant como parâmetro, o adapter resolve o slug via `TenantContextHolder`,
+      mesma simetria que `TenantIdentifierResolver` já usa pro schema do Hibernate.
+      `FactBetRepository.aggregateByMonth()` estende o padrão de join explícito por condição
+      (feat-004) pra `DimDate.year/month`. `GetDashboardMetricsService` orquestra cache-aside
+      pras 5 chaves (`dashboard:consolidated`, `segment:{sport|market|house}`,
+      `stats:monthly:{year}_{month}`) — hit responde direto, miss calcula via
+      `CalculateMetricsUseCase` e grava. Invalidação real no consumo do evento: **só
+      `BetSettled` evicta** — `BetCreated` nunca evicta porque RN06 exclui `pending` de toda
+      agregação, então aquele insert é invisível pras métricas cacheadas (achado real, corrige a
+      premissa do plano original). TTL de segurança de 1h em toda gravação (rede de segurança,
+      não regra de negócio). Story SV-137, 3 subtasks (SV-138..140). Evidência completa em
+      `feature_list.json`.
+
 ### Em andamento
 
 - Nenhuma feature em andamento.
 
 ### Próximos passos (Next Steps)
 
-1. `feat-005` — cache Redis (cache-aside) das métricas calculadas.
-2. `feat-006` — endpoint `GET /api/v1/statistics`.
+1. `feat-006` — endpoint `GET /api/v1/statistics` com filtros dinâmicos (RN08).
 
 ## Bloqueios / Riscos
 
@@ -160,9 +174,35 @@
   fechamento, sem defeito de produção encontrado.
 - Detalhe completo no campo `evidence` de `feat-004` em `feature_list.json`.
 
+## Arquivos modificados nesta sessão (`feat-005`)
+
+- `domain/model/{MonthlyBetAggregate,MonthlyBetMetrics}.java`, `domain/port/out/
+  MetricsCacheRepository.java`, `domain/port/in/GetDashboardMetricsUseCase.java`.
+- `adapter/out/cache/RedisMetricsCacheRepository.java` (novo pacote), `adapter/out/persistence/
+  MonthlyAggregateProjection.java`, `FactBetSpringDataRepository`/`JpaFactBetRepository`
+  (método `aggregateByMonth`).
+- `application/{CalculateMetricsService,GetDashboardMetricsService,ProcessBetEventService}.java`.
+- `TestcontainersConfiguration` (bean `RedisContainer`), `application.yml`/`.env.example`
+  (`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`), `pom.xml` (`spring-boot-starter-data-redis`,
+  `com.redis:testcontainers-redis`).
+- Testes: `RedisMetricsCacheRepositoryIntegrationTest`, `CacheInvalidationOnEventIntegrationTest`,
+  `GetDashboardMetricsServiceTest` (novos), `ProcessBetEventServiceTest` atualizado.
+- `feature_list.json`, `CHANGELOG.md` deste serviço; `../../docs/services/stats-service.md`
+  (repositório raiz) documentando o mecanismo completo de cache.
+
+## Evidência de conclusão (`feat-005`)
+
+- `./init.sh` (`mvn verify`) verde com Docker ativo.
+- CI verde nas 3 PRs de subtask e na PR de story→develop (#25), incluindo SonarCloud.
+- 2 achados reais corrigidos antes do fechamento: (1) self-review — mês sem nenhuma aposta
+  liquidada nunca ficava em cache (`GROUP BY` não retorna grupo vazio), forçando recomputo da
+  série inteira a cada consulta a um mês vazio; (2) SonarCloud `java:S1192` — literais de chave
+  (`"sport"`/`"market"`/`"house"`/`"tenant:"`) duplicados, extraídos para constantes.
+- Detalhe completo no campo `evidence` de `feat-005` em `feature_list.json`.
+
 ## Notas para a próxima sessão
 
-`feat-005` (cache Redis cache-aside — chaves `tenant:{tenantId}:dashboard:consolidated`,
-`tenant:{tenantId}:stats:monthly:{year}_{month}`, `tenant:{tenantId}:segment:{sport|market}`, já
-documentadas em `../../docs/API-CONTRACTS.md` e `../../docs/services/stats-service.md`) é a
-próxima. Rodar `Plan Reviewer` antes de codificar.
+`feat-006` (`GET /api/v1/statistics`, filtros dinâmicos RN08 — período, casa de apostas, esporte,
+mercado, liga, tipster) é a próxima e última feature planejada deste serviço. Rodar
+`Plan Reviewer` antes de codificar; verificar se `docs/API-CONTRACTS.md`/`docs/REQUIREMENTS.md`
+já fixam o formato exato de resposta e nomes de query param antes de desenhar o plano.
