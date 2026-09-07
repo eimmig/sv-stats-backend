@@ -475,14 +475,63 @@
     {
       "id": "feat-005",
       "name": "Cache Redis cache-aside",
-      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market} (ingles, ver docs/API-CONTRACTS.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache hit responde direto; cache miss consulta FACT_BET e grava no Redis depois.",
+      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market|house} (ingles, ver docs/services/stats-service.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache-aside (hit responde direto, miss consulta FACT_BET e grava depois) COM invalidacao no consumo do evento (BetCreated/BetSettled evictam as 5 chaves do tenant, incluindo o mes especifico do evento) - decisao do usuario (2026-09-07) resolvendo uma divergencia real entre docs/ARCHITECTURE.md (fluxo dizia 'stats-service... atualiza o cache Redis' ao consumir evento) e esta description original (so mencionava cache-aside puro, sem invalidacao) - sem isso o dashboard mostraria metricas desatualizadas por todo o TTL apos uma aposta ser liquidada.",
       "dependencies": [
         "feat-004"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao das features anteriores). Veredito: READY WITH CONCERNS, 3 achados corrigidos no plano (1 MAJOR resolvido com o usuario via AskUserQuestion, 2 MINOR sem necessidade de decisao do usuario). (MAJOR, resolvido com o usuario) docs/ARCHITECTURE.md descreve o fluxo de BetCreated/BetSettled dizendo que stats-service 'atualiza o cache Redis' ao processar o evento, mas a description original desta feature (escrita na criacao do backlog) descrevia cache-aside puro (so grava no miss, ao consultar GET /api/v1/statistics, sem nenhuma invalidacao no consumo do evento) - sem invalidacao, uma aposta liquidada so refletiria no dashboard depois do TTL inteiro expirar, o que e uma lacuna de frescor de dados real, nao so uma escolha de performance. Usuario escolheu: cache-aside + invalidacao no consumo do evento (opcao recomendada) - ProcessBetEventService evita as chaves do tenant apos cada escrita real (nao nos ramos de no-op/idempotencia) em vez de confiar so no TTL. (MINOR) docs/services/stats-service.md documenta as chaves de segmento como '{sport|market}', omitindo 'house' - mas RN09 exige ROI por mercado/esporte/CASA e feat-004 ja implementou calculateByBettingHouse; sem motivo para deixar esse segmento sem cache enquanto os outros dois tem. Corrigido no plano: estendido para '{sport|market|house}', mesma simetria, sem decisao de arquitetura nova (RN09 ja exigia os 3). (MINOR) a chave 'stats:monthly:{year}_{month}' pressupoe uma agregacao mensal que feat-004 nao construiu (aquela feature foi escopada deliberadamente para overall+segmentado, sem serie temporal) - corrigido no plano: nova agregacao FactBetRepository.aggregateByMonth() (agrupada por DimDate.year/month, mesmo padrao de join explicito por condicao ja usado para as dimensoes) + CalculateMetricsUseCase.calculateMonthly(), mesma extensao natural do mecanismo de feat-004, sem logica de negocio nova alem do agrupamento. Design da camada de cache: porta MetricsCacheRepository (domain/port/out) SEM parametro de tenant nos metodos - resolvido internamente pelo adapter Redis via TenantContextHolder.current().slug() (config), o mesmo ThreadLocal que TenantIdentifierResolver ja usa pra rotear o schema do Hibernate - mesma simetria, nao um mecanismo novo. Novo caso de uso GetDashboardMetricsUseCase (application) orquestra cache-aside por chave (5 metodos: overall, 3 segmentos, mensal) chamando CalculateMetricsUseCase no miss. TTL de seguranca (Duration.ofHours(1), aplicado em toda gravacao) e um default de implementacao, nao uma regra de negocio - nenhum RNF define TTL, e a invalidacao explicita e o mecanismo primario de frescor; documentado como tal, ajustavel sem impacto de contrato (chave/valor no Redis nao e contrato externo). Redis: com.redis:testcontainers-redis:2.2.4 (RedisContainer, resolvido em Maven Central, @ServiceConnection via org.springframework.boot.data.redis.testcontainers.RedisContainerConnectionDetailsFactory ja presente em spring-boot-data-redis 4.1.1 - confirmado inspecionando o jar antes de escrever codigo, mesmo nivel de verificacao usado pras libs anteriores). Serializacao via tools.jackson.databind.ObjectMapper (bean ja injetado em outros adapters desta camada web, ver FilterProblemWriter) sobre StringRedisTemplate, nao GenericJackson2JsonRedisSerializer (evita depender de compatibilidade Jackson3/spring-data-redis nao verificada). Infra: infra/docker-compose.yml ja provisiona 'redis' (porta 6379, senha obrigatoria via REDIS_PASSWORD) desde epic-001 - sem mudanca de infra necessaria, so as variaveis REDIS_HOST/REDIS_PORT/REDIS_PASSWORD no application.yml/.env.example deste servico, mesmo padrao de DB_HOST/RABBITMQ_HOST. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-137",
+      "subtasks": [
+        {
+          "id": "feat-005.1",
+          "name": "Bootstrap Redis + porta/adapter de cache (sem invalidacao ainda)",
+          "status": "done",
+          "jira": "SV-138",
+          "detail": "spring-boot-starter-data-redis + Testcontainers (com.redis:testcontainers-redis) + MetricsCacheRepository (domain/port/out) com adapter Redis usando TenantContextHolder pra resolver a chave, sem ainda plugar no fluxo de consumo de evento.",
+          "checklist": [
+            "pom.xml: spring-boot-starter-data-redis (main) + spring-boot-starter-data-redis-test/com.redis:testcontainers-redis (test).",
+            "TestcontainersConfiguration ganha o bean RedisContainer com @ServiceConnection.",
+            "application.yml (dev/prod): spring.data.redis.host/port/password via REDIS_HOST/REDIS_PORT/REDIS_PASSWORD; management.health grupo readiness ganha 'redis'; .env.example documenta as 3 variaveis (default localhost:6379, mesmo container de infra/docker-compose.yml).",
+            "MetricsCacheRepository (domain/port/out): findOverall/saveOverall, findBySport/saveBySport, findByMarket/saveByMarket, findByBettingHouse/saveByBettingHouse, findMonthly/saveMonthly, evict(year, month) - todos sem parametro de tenant.",
+            "RedisMetricsCacheRepository (adapter/out/cache): StringRedisTemplate + ObjectMapper (tools.jackson, injetado), chaves tenant:{slug}:dashboard:consolidated / segment:{sport|market|house} / stats:monthly:{year}_{month}, TTL de 1h em toda gravacao.",
+            "Teste de integracao real (Testcontainers Redis): save+find (hit), find sem save antes (miss = Optional.empty), evict remove as 5 chaves do tenant, isolamento entre 2 tenants (mesma chave logica, tenants diferentes nao colidem)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova hit/miss/evict/isolamento contra Redis real.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-005.2",
+          "name": "Agregacao mensal + orquestracao cache-aside + invalidacao no consumo do evento",
+          "status": "not-started",
+          "jira": "SV-139",
+          "detail": "FactBetRepository.aggregateByMonth() (mesmo padrao de join de feat-004) + GetDashboardMetricsUseCase (cache-aside real, chama CalculateMetricsUseCase no miss) + ProcessBetEventService evita o cache apos cada escrita real (RN08 - dashboard reflete apostas novas sem esperar o TTL).",
+          "checklist": [
+            "MonthlyBetAggregate/MonthlyBetMetrics (domain/model); FactBetRepository.aggregateByMonth() (JPQL agrupado por DimDate.year/month, join explicito); CalculateMetricsUseCase.calculateMonthly().",
+            "GetDashboardMetricsUseCase (domain/port/in) + GetDashboardMetricsService (application): 5 metodos, cache-aside (find no cache; se ausente, calcula via CalculateMetricsUseCase e grava).",
+            "ProcessBetEventService ganha MetricsCacheRepository como dependencia; processCreated/processSettled chamam evict(year, month) SO nos ramos de escrita real (nao no early-return de evento ja processado, nao no no-op de BetCreated tardio sobre liquidacao ja aplicada).",
+            "Teste de integracao real (Testcontainers Postgres+Redis): consumir um BetSettled e provar que uma chave previamente cacheada (ex.: dashboard:consolidated) some do Redis apos o processamento.",
+            "Teste unitario: GetDashboardMetricsService (hit nao chama CalculateMetricsUseCase; miss chama e grava); ProcessBetEventServiceTest atualizado (verify evict chamado/nao chamado nos ramos certos)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova invalidacao real pos-consumo, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-005.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-140",
+          "detail": "Fecha a feature - primeiro cache deste servico (e do projeto).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: docs/services/stats-service.md secao 'Cache Redis' atualizada (chaves {sport|market|house}, invalidacao no consumo do evento, TTL de seguranca) - alguma outra descoberta desta feature sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {

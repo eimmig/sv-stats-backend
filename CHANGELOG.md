@@ -32,3 +32,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-134](https://stakevault.atlassian.net/browse/SV-134) - Agregacao real em FactBetRepository (overall + segmentado por sport/market/betting-house)
 - [SV-135](https://stakevault.atlassian.net/browse/SV-135) - Servico de calculo de metricas (ROI, taxa de acerto) a partir do agregado
 - [SV-136](https://stakevault.atlassian.net/browse/SV-136) - CHANGELOG e verificacao final
+- [SV-137](https://stakevault.atlassian.net/browse/SV-137) - Cache Redis cache-aside
+- [SV-138](https://stakevault.atlassian.net/browse/SV-138) - Bootstrap Redis + porta/adapter de cache (sem invalidacao ainda)
+- [SV-139](https://stakevault.atlassian.net/browse/SV-139) - Agregacao mensal + orquestracao cache-aside + invalidacao no consumo do evento
+- [SV-140](https://stakevault.atlassian.net/browse/SV-140) - CHANGELOG e verificacao final
