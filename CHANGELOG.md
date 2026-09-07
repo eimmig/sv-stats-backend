@@ -19,3 +19,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-118](https://stakevault.atlassian.net/browse/SV-118) - .env.example e logging estruturado
 - [SV-119](https://stakevault.atlassian.net/browse/SV-119) - Consumidor RabbitMQ BetCreated/BetSettled (adapter/in/messaging)
 - [SV-120](https://stakevault.atlassian.net/browse/SV-120) - CHANGELOG e verificacao final
+- [SV-124](https://stakevault.atlassian.net/browse/SV-124) - Modelo OLAP (esquema estrela) + idempotencia
+- [SV-125](https://stakevault.atlassian.net/browse/SV-125) - Migration Flyway do esquema estrela + PROCESSED_EVENT
+- [SV-126](https://stakevault.atlassian.net/browse/SV-126) - Multi-tenancy do Hibernate + enforcement de X-Tenant-Id
+- [SV-127](https://stakevault.atlassian.net/browse/SV-127) - Entidades JPA e persistencia (domain + adapter)
+- [SV-128](https://stakevault.atlassian.net/browse/SV-128) - CHANGELOG e verificacao final
