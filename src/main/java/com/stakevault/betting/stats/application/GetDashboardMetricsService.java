@@ -69,11 +69,18 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 			// ver plan_review) - aproveita pra aquecer o cache dos outros meses tambem.
 			List<MonthlyBetMetrics> series = calculateMetrics.calculateMonthly();
 			series.forEach(monthly -> cache.saveMonthly(monthly.year(), monthly.month(), monthly.metrics()));
-			return series.stream()
+			BetMetrics requested = series.stream()
 					.filter(monthly -> monthly.year() == year && monthly.month() == month)
 					.map(MonthlyBetMetrics::metrics)
 					.findFirst()
 					.orElse(ZERO_METRICS);
+			// Mes sem nenhuma aposta liquidada nunca aparece em aggregateByMonth() (GROUP BY so
+			// retorna grupo existente) - sem isso, toda consulta a um mes vazio recalcularia a
+			// serie inteira de novo, achado real do self-review (Delivery/Test Suite Auditor).
+			if (series.stream().noneMatch(monthly -> monthly.year() == year && monthly.month() == month)) {
+				cache.saveMonthly(year, month, ZERO_METRICS);
+			}
+			return requested;
 		});
 	}
 }
