@@ -3,7 +3,7 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-07
-**Feature ativa:** nenhuma (`feat-001`..`feat-005` `done`, `feat-006` liberada)
+**Feature ativa:** nenhuma — **backlog do serviço 100% concluído (`feat-001`..`feat-007` `done`)**
 
 ## Status
 
@@ -62,13 +62,38 @@
       não regra de negócio). Story SV-137, 3 subtasks (SV-138..140). Evidência completa em
       `feature_list.json`.
 
+- [x] **`feat-006` (RF11 — `GET /api/v1/statistics` com filtros dinâmicos) — `done` em
+      2026-09-07.** 7 filtros opcionais (`bettingHouseId`/`sportId`/`leagueId`/`marketId`/
+      `tipsterId`/`from`/`to`), resposta em **bundle único** (`StatisticsDashboard`: overall +
+      3 segmentos + série mensal) — decisão do usuário (2026-09-07, `AskUserQuestion`) entre
+      bundle único, resposta mínima com `groupBy` e endpoints separados por segmento.
+      `StatisticsFilter` substituiu as assinaturas sem parâmetro de `feat-004`/`feat-005` (uma
+      mecânica só). Sem nenhum filtro usa o cache-aside de `feat-005`; qualquer filtro presente
+      bypassa o cache e calcula direto. Dois achados reais corrigidos: Postgres não infere o tipo
+      de um parâmetro `null` usado só dentro de `CAST`/`FUNCTION` (limites-sentinela em vez de
+      outro `IS NULL OR`); SonarCloud `java:S107` (mais de 7 parâmetros nos métodos de agregação
+      filtrada, consolidados num único parâmetro via SpEL — `ResolvedStatisticsFilter`). Story
+      SV-141, 3 subtasks (SV-142..144). Evidência completa em `feature_list.json`.
+
+- [x] **`feat-007` (Pipeline de CI) — `done` em 2026-09-07.** Fechamento formal do backlog deste
+      serviço — sem código/workflow novo. O pipeline real (6 passos: CHANGELOG, i18n, build,
+      testes+cobertura, SonarCloud, gate de zero issues) já rodava em produção desde `feat-001.1`
+      e gateou com sucesso todas as PRs de `feat-001..006`. Único achado real: a `description` da
+      própria feature estava desatualizada (citava 5 passos e comandos Maven antigos) — corrigida
+      para bater com o `ci.yml` real. Achado tardio de planejamento: esta feature não estava no
+      escopo inicialmente previsto para fechar o backlog do serviço, só percebida ao reler o
+      `feature_list.json` completo antes de declarar o epic concluído. Story SV-145, 1 subtask
+      (SV-146). Evidência completa em `feature_list.json`.
+
 ### Em andamento
 
-- Nenhuma feature em andamento.
+- Nenhuma feature em andamento. **Backlog do serviço esgotado** (`feat-001`..`feat-007` `done`) —
+  fecha `epic-004` da raiz.
 
 ### Próximos passos (Next Steps)
 
-1. `feat-006` — endpoint `GET /api/v1/statistics` com filtros dinâmicos (RN08).
+Nenhum — não há mais features planejadas para este serviço. Eventual trabalho futuro (nova
+feature de negócio) exigiria uma nova entrada em `feature_list.json` antes de começar.
 
 ## Bloqueios / Riscos
 
@@ -200,9 +225,42 @@
   (`"sport"`/`"market"`/`"house"`/`"tenant:"`) duplicados, extraídos para constantes.
 - Detalhe completo no campo `evidence` de `feat-005` em `feature_list.json`.
 
+## Arquivos modificados nesta sessão (`feat-006`)
+
+- `domain/model/{StatisticsFilter,StatisticsDashboard}.java`, `domain/port/in/
+  GetStatisticsDashboardUseCase.java`.
+- `domain/port/out/FactBetRepository.java`/`domain/port/in/CalculateMetricsUseCase.java`
+  (assinaturas migradas pra aceitar `StatisticsFilter`).
+- `adapter/out/persistence/{ResolvedStatisticsFilter,FactBetSpringDataRepository,
+  JpaFactBetRepository}.java` (predicados opcionais + SpEL, limites-sentinela pra `from`/`to`).
+- `application/{CalculateMetricsService,GetDashboardMetricsService,
+  GetStatisticsDashboardService}.java`.
+- `adapter/in/web/StatisticsController.java` (novo, `GET /api/v1/statistics`).
+- Testes: `StatisticsControllerIntegrationTest` (novo, HTTP real com parse de JSON),
+  `FactBetAggregationIntegrationTest`/`CalculateMetricsServiceTest`/
+  `GetDashboardMetricsServiceTest` atualizados pras novas assinaturas.
+- `feature_list.json`, `CHANGELOG.md` deste serviço; `../../docs/API-CONTRACTS.md` (exemplo do
+  payload de resposta), `../../docs/services/{web,stats-service}.md` (repositório raiz —
+  correção do drift de query params em `web.md`, nota de fechamento em `stats-service.md`).
+
+## Evidência de conclusão (`feat-006`)
+
+- `./init.sh` (`mvn verify`) verde com Docker ativo.
+- CI verde nas 3 PRs de subtask e na PR de story→develop (#29 — 1 rerun por flake de timing do
+  Awaitility num teste pré-existente não relacionado, confirmado não recorrente), incluindo
+  SonarCloud (`java:S107`, métodos com mais de 7 parâmetros, corrigido antes do merge final).
+  Achado real separado, não do SonarCloud: erro de inferência de tipo do Postgres para parâmetro
+  `null` dentro de `CAST`/`FUNCTION`, corrigido com limites-sentinela (ver acima).
+- Detalhe completo no campo `evidence` de `feat-006` em `feature_list.json`.
+
+## Evidência de conclusão (`feat-007`)
+
+- `./init.sh` verde — nenhuma mudança de código.
+- CI verde na PR de subtask e na PR de story→develop (#31), incluindo SonarCloud.
+- Detalhe completo no campo `evidence` de `feat-007` em `feature_list.json`.
+
 ## Notas para a próxima sessão
 
-`feat-006` (`GET /api/v1/statistics`, filtros dinâmicos RN08 — período, casa de apostas, esporte,
-mercado, liga, tipster) é a próxima e última feature planejada deste serviço. Rodar
-`Plan Reviewer` antes de codificar; verificar se `docs/API-CONTRACTS.md`/`docs/REQUIREMENTS.md`
-já fixam o formato exato de resposta e nomes de query param antes de desenhar o plano.
+Nenhuma feature pendente. `epic-004` (stats-service) da raiz está `done` — próxima sessão que
+tocar este serviço deve começar por decidir com o usuário qual nova feature de negócio (fora do
+backlog original) entra no `feature_list.json` antes de qualquer código.
