@@ -670,15 +670,59 @@
     {
       "id": "feat-007",
       "name": "Pipeline de CI (GitHub Actions + SonarCloud)",
-      "description": "Workflow ja versionado em .github/workflows/ci.yml (dentro deste repositorio - este servico e seu proprio repositorio Git, nao um monorepo, ver docs/CI-CD.md) com 5 passos: validacao de CHANGELOG.md atualizado, validacao de chaves de traducao (messages_pt_BR/en_US/es.properties), build (mvn package), testes unitarios + cobertura (mvn test jacoco:report), qualidade/cobertura no SonarCloud (mvn sonar:sonar, projectKey sv-stats-backend). Scripts de validacao em .github/scripts/ (duplicados neste repositorio, nao compartilhados). Repositorio GitHub: https://github.com/eimmig/sv-stats-backend.git. So funciona de fato apos este repositorio existir no GitHub e o setup do SonarCloud (org, projeto, SONAR_TOKEN, SONAR_ORGANIZATION) estar feito - ver docs/CI-CD.md secao 'Setup pendente'.",
+      "description": "Workflow ja versionado em .github/workflows/ci.yml (dentro deste repositorio - este servico e seu proprio repositorio Git, nao um monorepo, ver docs/CI-CD.md) com 6 passos: validacao de CHANGELOG.md atualizado, validacao de chaves de traducao (messages_pt_BR/en_US/es.properties), build (mvn -B -DskipTests package), testes unitarios + cobertura (mvn -B verify), qualidade no SonarCloud (org.sonarsource.scanner.maven:sonar-maven-plugin, projectKey eimmig_sv-stats-backend, sonar.qualitygate.wait condicional), e validacao de zero issues/hotspots no SonarCloud (.github/scripts/validate-sonar-issues.py) - descricao corrigida contra o ci.yml real (a versao anterior citava so 5 passos, sem o gate de zero issues, e comandos Maven desatualizados; mesma desatualizacao ja encontrada e corrigida em bets-service feat-007). Scripts de validacao em .github/scripts/ (duplicados neste repositorio, nao compartilhados). Repositorio GitHub: https://github.com/eimmig/sv-stats-backend.git - ja existe e o pipeline ja roda de verdade em producao desde feat-001 (todas as PRs desta sessao, incluindo feat-002..006, passaram por ele). Feature de fechamento formal do backlog deste servico, sem codigo/workflow novo.",
       "dependencies": [
         "feat-001"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer mudanca (passe proprio, sem subagentes - independencia reduzida, declarada). Veredito: READY, sem achado que exigisse decisao do usuario ou correcao no plano. Escopo confirmado: esta feature nao introduz codigo/workflow novo - o pipeline real (.github/workflows/ci.yml, 6 passos: CHANGELOG, i18n, Build, Testes+cobertura, SonarCloud, Validar zero issues) ja roda em producao desde feat-001.1 (hardening do CI antes do bootstrap) e ja gateou com sucesso todas as PRs de feat-001..006 nesta sessao. Unico trabalho real: corrigir a description desatualizada da feature (citava 5 passos e comandos Maven antigos) pra bater com o ci.yml real - mesmo achado e mesmo fechamento formal ja feitos em bets-service feat-007. Sem rodada de desafio independente adicional - risco trivial, sem decisao de arquitetura.",
+      "jira": "SV-145",
+      "subtasks": [
+        {
+          "id": "feat-007.1",
+          "name": "Confirmar pipeline real e corrigir description desatualizada",
+          "status": "done",
+          "jira": "SV-146",
+          "detail": "Fecha o backlog planejado deste servico (feat-001..007) - sem codigo/workflow novo, so a description da propria feature estava desatualizada.",
+          "checklist": [
+            "Confirmar os 6 passos reais de .github/workflows/ci.yml batem com a description corrigida da feature.",
+            "feature_list.json deste servico atualizado com a description correta."
+          ],
+          "validation": "./init.sh sai 0 (nenhuma mudanca de codigo); feature_list.json atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-145, story SV-145 com 1 subtask SV-146). Fechamento formal do backlog deste servico - sem codigo/workflow novo. O pipeline real (.github/workflows/ci.yml, 6 passos: CHANGELOG, i18n, Build, Testes+cobertura, SonarCloud, Validar zero issues) ja rodava em producao desde feat-001.1 e gateou com sucesso todas as PRs de feat-001..006 desta sessao. Unico achado real: a description da propria feature estava desatualizada (citava 5 passos e comandos Maven antigos, sem o gate de zero issues) - corrigida pra bater com o ci.yml real, mesmo achado ja encontrado e corrigido em bets-service feat-007.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde com Docker ativo - nenhuma mudanca de codigo, so confirmacao do estado ja verde.",
+              "Historico de CI desta sessao (PRs de feat-001..006, todas as subtasks e stories) usado como evidencia de que o pipeline de 6 passos ja funciona de verdade em producao, incluindo o gate de zero issues do SonarCloud (que pegou achados reais em feat-001, feat-002, feat-004 e feat-006 nesta mesma sessao)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma - escopo era so corrigir a description, plan_review confirmou READY sem achado."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado de planejamento (nao de codigo): esta feature nao estava no escopo que a sessao tinha em mente ao planejar o fechamento do epic-004 (feat-001..006) - so percebida ao revisar o feature_list.json completo do servico antes de marcar o epic como done. Mesma categoria de descoberta que o achado de description desatualizada em si: nada substitui reler o backlog completo antes de declarar um epic fechado."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada) rodado antes da mudanca - READY, sem achado. Delivery Reviewer/Test Suite Auditor dispensados dado o escopo trivial (so texto de documentacao, sem codigo/teste novo).",
+              "tools/jira_story.py usado normalmente (criacao da story + 1 subtask, --sync-status a cada transicao real)."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
