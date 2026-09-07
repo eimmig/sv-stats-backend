@@ -681,7 +681,7 @@
         {
           "id": "feat-007.1",
           "name": "Confirmar pipeline real e corrigir description desatualizada",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-146",
           "detail": "Fecha o backlog planejado deste servico (feat-001..007) - sem codigo/workflow novo, so a description da propria feature estava desatualizada.",
           "checklist": [
