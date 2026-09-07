@@ -36,3 +36,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-138](https://stakevault.atlassian.net/browse/SV-138) - Bootstrap Redis + porta/adapter de cache (sem invalidacao ainda)
 - [SV-139](https://stakevault.atlassian.net/browse/SV-139) - Agregacao mensal + orquestracao cache-aside + invalidacao no consumo do evento
 - [SV-140](https://stakevault.atlassian.net/browse/SV-140) - CHANGELOG e verificacao final
+- [SV-141](https://stakevault.atlassian.net/browse/SV-141) - RF11 - Endpoint GET /api/v1/statistics com filtros dinamicos
+- [SV-142](https://stakevault.atlassian.net/browse/SV-142) - StatisticsFilter + agregacao filtrada em FactBetRepository/CalculateMetricsUseCase
+- [SV-143](https://stakevault.atlassian.net/browse/SV-143) - Bundle de dashboard + endpoint GET /api/v1/statistics
+- [SV-144](https://stakevault.atlassian.net/browse/SV-144) - CHANGELOG e verificacao final
