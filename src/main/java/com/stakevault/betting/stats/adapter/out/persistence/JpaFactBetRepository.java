@@ -1,6 +1,7 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,10 +13,17 @@ import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
 @Repository
 public class JpaFactBetRepository implements FactBetRepository {
+
+	// Limites-sentinela em vez de null: Postgres nao consegue inferir o tipo de um parametro
+	// null usado so dentro de CAST/FUNCTION (achado real, ver plan_review de feat-006) - fora de
+	// qualquer intervalo real de aposta, sem risco de overflow de driver como LocalDate.MIN/MAX.
+	private static final LocalDate MIN_DATE = LocalDate.of(1900, 1, 1);
+	private static final LocalDate MAX_DATE = LocalDate.of(2999, 12, 31);
 
 	private final FactBetSpringDataRepository jpaRepository;
 
@@ -40,34 +48,43 @@ public class JpaFactBetRepository implements FactBetRepository {
 	}
 
 	@Override
-	public BetAggregate aggregateOverall() {
-		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING));
+	public BetAggregate aggregateOverall(StatisticsFilter filter) {
+		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, filter.bettingHouseId(),
+				filter.sportId(), filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter),
+				to(filter)));
 	}
 
 	@Override
-	public List<SegmentedBetAggregate> aggregateBySport() {
-		return jpaRepository.aggregateBySport(BetStatus.PENDING).stream().map(JpaFactBetRepository::toSegment).toList();
-	}
-
-	@Override
-	public List<SegmentedBetAggregate> aggregateByMarket() {
-		return jpaRepository.aggregateByMarket(BetStatus.PENDING)
+	public List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter) {
+		return jpaRepository.aggregateBySport(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
+				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
 	}
 
 	@Override
-	public List<SegmentedBetAggregate> aggregateByBettingHouse() {
-		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING)
+	public List<SegmentedBetAggregate> aggregateByMarket(StatisticsFilter filter) {
+		return jpaRepository.aggregateByMarket(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
+				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
 	}
 
 	@Override
-	public List<MonthlyBetAggregate> aggregateByMonth() {
-		return jpaRepository.aggregateByMonth(BetStatus.PENDING)
+	public List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter) {
+		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
+				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
+				.stream()
+				.map(JpaFactBetRepository::toSegment)
+				.toList();
+	}
+
+	@Override
+	public List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter) {
+		return jpaRepository.aggregateByMonth(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
+				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
 				.stream()
 				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
 						toAggregate(projection)))
@@ -92,5 +109,13 @@ public class JpaFactBetRepository implements FactBetRepository {
 	private static SegmentedBetAggregate toSegment(SegmentedAggregateProjection projection) {
 		return new SegmentedBetAggregate(projection.getDimensionId(), projection.getDimensionName(),
 				toAggregate(projection));
+	}
+
+	private static LocalDate from(StatisticsFilter filter) {
+		return filter.from() != null ? filter.from() : MIN_DATE;
+	}
+
+	private static LocalDate to(StatisticsFilter filter) {
+		return filter.to() != null ? filter.to() : MAX_DATE;
 	}
 }

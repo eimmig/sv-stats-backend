@@ -572,14 +572,65 @@
     {
       "id": "feat-006",
       "name": "RF11 - Endpoint GET /api/v1/statistics com filtros dinamicos",
-      "description": "Filtros em ingles (sport, league, market, tipster - ver docs/API-CONTRACTS.md) recalculando as metricas dinamicamente (RN08). Meta de performance < 300ms com cache quente (RNF03).",
+      "description": "Query params bettingHouseId/sportId/leagueId/marketId/tipsterId (uuid) + from/to (intervalo de data) - nomenclatura corrigida contra docs/API-CONTRACTS.md (a description original desta feature usava 'sport/league/market/tipster' sem sufixo Id, o mesmo erro ja documentado e corrigido em API-CONTRACTS.md antes desta sessao, so nao propagado ate aqui). RN08: filtros recalculam as metricas dinamicamente - qualquer filtro presente bypassa o cache de feat-005 (chaves so cobrem a vista sem filtro nenhum por tenant) e consulta FACT_BET direto. Resposta e um bundle unico ({overall, bySport, byMarket, byBettingHouse, monthly}) - decisao do usuario (2026-09-07, AskUserQuestion) entre bundle unico/resposta minima+groupBy/endpoints separados por segmento. Meta de performance < 300ms com cache quente (RNF03) - so se aplica a requisicao sem filtro nenhum (unica que usa o cache).",
       "dependencies": [
         "feat-005"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada). Veredito: READY WITH CONCERNS, 1 achado BLOCKED resolvido com o usuario via AskUserQuestion, 2 achados MAJOR corrigidos no plano. (BLOCKED, resolvido com o usuario) Nenhuma nota do vault fixava o formato de resposta de GET /api/v1/statistics - RF11/RN08 definem os filtros (ja convencionados em API-CONTRACTS.md) mas nao a forma JSON do payload, e essa e uma decisao de contrato externo (apps/web ainda nao construido vai consumir esta rota) que nao da pra inferir com seguranca do resto do vault. 3 opcoes apresentadas (bundle unico / resposta minima+groupBy / endpoints separados por segmento) - usuario escolheu bundle unico: {overall, bySport, byMarket, byBettingHouse, monthly}, uma chamada por mudanca de filtro (coerente com docs/services/web.md 'cada mudanca de filtro e uma nova consulta a GET /api/v1/statistics', singular). (MAJOR #1) FactBet nao guarda um timestamp direto (so dateId, FK pra DimDate com day/month/year como inteiros separados) - filtrar por from/to (intervalo de data, RF11) exige comparar contra uma data reconstruida. Corrigido no plano: JPQL com FUNCTION('make_date', d.year, d.month, d.day) (Postgres, ja o unico banco alvo do projeto - flyway-database-postgresql, imagens postgres nos 3 servicos) comparado contra from/to truncados pra LocalDate na fronteira da aplicacao (mesmo padrao UTC ja usado em DimensionResolver.resolveDate). (MAJOR #2) FactBetRepository/CalculateMetricsUseCase (feat-004/005) foram desenhados sem parametro de filtro - bundle filtrado precisa dos mesmos 5 metodos de agregacao, mas com filtro opcional aplicado. Corrigido no plano: migrar as assinaturas existentes pra aceitar StatisticsFilter (todos os campos nullable, StatisticsFilter.none() = sem filtro nenhum) em vez de manter dois conjuntos paralelos de metodos (com/sem filtro) - GetDashboardMetricsService (cache-aside, feat-005) passa a chamar CalculateMetricsUseCase sempre com StatisticsFilter.none() internamente, sem mudar seu proprio contrato de porta (getOverall/getBySport/etc continuam sem parametro, cache continua so pra vista sem filtro). Predicados opcionais em JPQL via '(:param IS NULL OR campo = :param)', mesmo padrao usado em bets-service pra filtros de listagem (confirmado por analogia, nao reinventado). Serie mensal do bundle (campo 'monthly') e sempre calculada direto via CalculateMetricsUseCase.calculateMonthly(filter), nunca pelo cache de feat-005 (GetDashboardMetricsUseCase.getMonthly(year,month) - decisao de escopo, nao removida): decisao de implementacao (nao de contrato) - a serie e uma agregacao GROUP BY barata e de baixa cardinalidade (poucos meses com dado), enquanto overall/segmentos sao consultas mais pesadas e mais valiosas de cachear; sem essa distincao seria necessario descobrir quais meses existem antes de poder usar o cache por mes, complicando o mecanismo sem ganho real. Rota GET /api/v1/statistics: X-Tenant-Id ja exigido pelo TenantSchemaFilter existente (feat-001.4), sem middleware novo. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-141",
+      "subtasks": [
+        {
+          "id": "feat-006.1",
+          "name": "StatisticsFilter + agregacao filtrada em FactBetRepository/CalculateMetricsUseCase",
+          "status": "done",
+          "jira": "SV-142",
+          "detail": "Migra as 5 assinaturas existentes (aggregateOverall/BySport/ByMarket/ByBettingHouse/ByMonth e os equivalentes em CalculateMetricsUseCase) pra aceitar StatisticsFilter, com predicados opcionais em JPQL. Filtro por data via FUNCTION('make_date', ...) contra DimDate.",
+          "checklist": [
+            "StatisticsFilter (domain/model): bettingHouseId/sportId/leagueId/marketId/tipsterId (UUID nullable) + from/to (LocalDate nullable). StatisticsFilter.none() = todos null.",
+            "FactBetRepository (port out): os 5 metodos de agregacao passam a receber StatisticsFilter.",
+            "FactBetSpringDataRepository (@Query): predicados '(:param IS NULL OR ...)' pros 5 UUIDs + FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :from AND :to (so quando ambos presentes - se so um dos dois vier, aplicar so aquele lado do intervalo).",
+            "JpaFactBetRepository: repassa o filtro pros metodos do Spring Data repository.",
+            "CalculateMetricsUseCase/CalculateMetricsService: os 4 metodos de calculo (overall/sport/market/house) + calculateMonthly passam a receber StatisticsFilter, repassando pro FactBetRepository.",
+            "GetDashboardMetricsService (feat-005) atualizado pra chamar CalculateMetricsUseCase sempre com StatisticsFilter.none() - seu proprio contrato de porta (GetDashboardMetricsUseCase) NAO muda.",
+            "Testes existentes (FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) atualizados pras novas assinaturas.",
+            "Novo teste de integracao real: filtro por sportId exclui apostas de outro esporte da agregacao overall; filtro por from/to exclui apostas fora do intervalo (Testcontainers Postgres ja configurado)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova filtro real via SQL (nao mock), incluindo o caso de data.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-006.2",
+          "name": "Bundle de dashboard + endpoint GET /api/v1/statistics",
+          "status": "not-started",
+          "jira": "SV-143",
+          "detail": "StatisticsDashboard (bundle) + GetStatisticsDashboardUseCase/Service (decide cache vs calculo direto conforme StatisticsFilter.isEmpty()) + StatisticsController.",
+          "checklist": [
+            "StatisticsDashboard (domain/model): overall (BetMetrics), bySport/byMarket/byBettingHouse (List<SegmentedBetMetrics>), monthly (List<MonthlyBetMetrics>).",
+            "GetStatisticsDashboardUseCase (domain/port/in) + GetStatisticsDashboardService (application): se filter.isEmpty(), usa GetDashboardMetricsUseCase (cache-aside, feat-005) pros 4 primeiros campos; senao, chama CalculateMetricsUseCase(filter) direto pros 4. Campo monthly sempre via CalculateMetricsUseCase.calculateMonthly(filter) (ver plan_review).",
+            "StatisticsController (adapter/in/web): GET /api/v1/statistics, parseia os 7 query params opcionais pra StatisticsFilter, X-Tenant-Id ja exigido pelo TenantSchemaFilter existente, X-User-Id nao e necessario aqui (leitura, nao trilha de auditoria de escrita).",
+            "docs/API-CONTRACTS.md (repositorio raiz) ganha o exemplo concreto do payload de resposta.",
+            "Teste de integracao HTTP real (MockMvc ou WebTestClient): sem filtro (bate no cache - verificar via chave populada no Redis apos a chamada), com filtro (bypassa cache, resultado restrito), X-Tenant-Id ausente -> 400 (ja coberto pelo filtro existente, so confirmar que a rota nova respeita)."
+          ],
+          "validation": "./init.sh verde - teste HTTP real prova os dois caminhos (com/sem filtro) e o bundle completo.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-006.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-144",
+          "detail": "Fecha a feature - ultima planejada deste servico (feat-001..006).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: docs/services/web.md linha do RN08 ainda cita query params sem sufixo Id ('sport', 'league', 'market') - drift de documentacao pre-existente contra a correcao ja feita em API-CONTRACTS.md, corrigir no mesmo commit. Alguma outra descoberta desta feature sem nota correspondente? Se sim, atualizar/criar a nota do assunto."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {

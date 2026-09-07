@@ -11,6 +11,7 @@ import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
@@ -26,28 +27,28 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 	}
 
 	@Override
-	public BetMetrics calculateOverall() {
-		return toMetrics(factBetRepository.aggregateOverall());
+	public BetMetrics calculateOverall(StatisticsFilter filter) {
+		return toMetrics(factBetRepository.aggregateOverall(filter));
 	}
 
 	@Override
-	public List<SegmentedBetMetrics> calculateBySport() {
-		return toSegmentedMetrics(factBetRepository.aggregateBySport());
+	public List<SegmentedBetMetrics> calculateBySport(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateBySport(filter));
 	}
 
 	@Override
-	public List<SegmentedBetMetrics> calculateByMarket() {
-		return toSegmentedMetrics(factBetRepository.aggregateByMarket());
+	public List<SegmentedBetMetrics> calculateByMarket(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateByMarket(filter));
 	}
 
 	@Override
-	public List<SegmentedBetMetrics> calculateByBettingHouse() {
-		return toSegmentedMetrics(factBetRepository.aggregateByBettingHouse());
+	public List<SegmentedBetMetrics> calculateByBettingHouse(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateByBettingHouse(filter));
 	}
 
 	@Override
-	public List<MonthlyBetMetrics> calculateMonthly() {
-		return factBetRepository.aggregateByMonth()
+	public List<MonthlyBetMetrics> calculateMonthly(StatisticsFilter filter) {
+		return factBetRepository.aggregateByMonth(filter)
 				.stream()
 				.map(monthly -> new MonthlyBetMetrics(monthly.year(), monthly.month(), toMetrics(monthly.aggregate())))
 				.toList();
