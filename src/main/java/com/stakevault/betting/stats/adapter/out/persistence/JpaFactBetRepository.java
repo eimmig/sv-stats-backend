@@ -49,15 +49,12 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public BetAggregate aggregateOverall(StatisticsFilter filter) {
-		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, filter.bettingHouseId(),
-				filter.sportId(), filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter),
-				to(filter)));
+		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter) {
-		return jpaRepository.aggregateBySport(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
-				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
+		return jpaRepository.aggregateBySport(BetStatus.PENDING, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -65,8 +62,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByMarket(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMarket(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
-				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
+		return jpaRepository.aggregateByMarket(BetStatus.PENDING, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -74,8 +70,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter) {
-		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
-				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
+		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -83,8 +78,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMonth(BetStatus.PENDING, filter.bettingHouseId(), filter.sportId(),
-				filter.leagueId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter))
+		return jpaRepository.aggregateByMonth(BetStatus.PENDING, resolve(filter))
 				.stream()
 				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
 						toAggregate(projection)))
@@ -117,5 +111,12 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	private static LocalDate to(StatisticsFilter filter) {
 		return filter.to() != null ? filter.to() : MAX_DATE;
+	}
+
+	// Agrupa os 7 campos de filtro num unico parametro de @Query (SpEL) - achado real do
+	// SonarCloud (java:S107, mais de 7 parametros por metodo) quando cada campo era um @Param.
+	private static ResolvedStatisticsFilter resolve(StatisticsFilter filter) {
+		return new ResolvedStatisticsFilter(filter.bettingHouseId(), filter.sportId(), filter.leagueId(),
+				filter.marketId(), filter.tipsterId(), from(filter), to(filter));
 	}
 }
