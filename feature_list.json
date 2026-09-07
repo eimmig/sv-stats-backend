@@ -301,7 +301,7 @@
         {
           "id": "feat-003.1",
           "name": "Upsert real em FactBetRepository + resolucao de dimensoes",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-130",
           "detail": "Achado MAJOR do Plan Reviewer: JpaFactBetRepository.save() precisa carregar a entidade existente (nao construir sempre nova) para o upsert de BetSettled funcionar como UPDATE, nao um INSERT que falha por chave duplicada.",
           "checklist": [
@@ -316,7 +316,7 @@
         {
           "id": "feat-003.2",
           "name": "Plugar BetCreated/BetSettled no BetEventListener com idempotencia real",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-131",
           "detail": "Substitui o log.info do BetEventListener (feat-001.9) por processamento real: idempotencia (existsByEventId antes, insere ProcessedEvent na mesma transacao), insert em BetCreated (so quando FACT_BET ainda nao existe - nao sobrescreve liquidacao ja processada fora de ordem, ver plan_review), upsert em BetSettled.",
           "checklist": [
