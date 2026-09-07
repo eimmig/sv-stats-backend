@@ -11,10 +11,17 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+// Unica entidade deste servico com setters - upsert real (BetSettled sobre uma linha ja
+// inserida por BetCreated, ou o inverso) exige mutar a instancia JA RASTREADA pelo Hibernate
+// (isNew=false via @PostLoad), nao construir uma nova a cada save (AbstractJpaEntity sempre
+// marca isNew=true numa instancia recem-construida, o que faria Hibernate tentar INSERT de
+// novo e falhar por chave duplicada) - ver JpaFactBetRepository e docs/CONVENTIONS.md.
 @Entity
 @Table(name = "fact_bet")
 @Getter
+@Setter
 @NoArgsConstructor
 public class FactBetJpaEntity extends AbstractJpaEntity {
 
