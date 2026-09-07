@@ -519,7 +519,7 @@
         {
           "id": "feat-005.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-140",
           "detail": "Fecha a feature - primeiro cache deste servico (e do projeto).",
           "checklist": [
