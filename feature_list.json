@@ -731,18 +731,18 @@
       "dependencies": [
         "feat-001"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado antes da mudanca - passe proprio, sem subagentes (risco baixo, mudanca de configuracao unica linha, independencia reduzida declarada). Veredito: READY. Verificado: os testes de integracao HTTP do servico usam @SpringBootTest(webEnvironment = RANDOM_PORT) + @LocalServerPort - RANDOM_PORT sobrescreve server.port em runtime de teste independente do valor configurado, confirmado rodando ./init.sh do servico apos a mudanca (verde, exit 0, nenhuma regressao, incluindo os testes de RabbitMQ/Redis/Testcontainers). Sem mudanca de codigo Java, sem teste novo (nao ha comportamento novo a testar, so um valor de configuracao ja usado por nenhum caminho de codigo do proprio servico). Unica subtask.",
       "jira": "SV-163",
       "subtasks": [
         {
           "id": "feat-008.1",
           "name": "server.port fixo, CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-164"
         }
       ],
-      "evidence": ""
+      "evidence": "Fechada em 2026-09-07 - server.port=8083 fixado no bloco base de application.yml (sem profile, aplica dev/test/prod), destravando api-gateway feat-003. Delivery Reviewer (passe proprio, sem subagentes - risco baixo, independencia reduzida declarada): PASS, sem achado - nenhum teste hardcoda porta, sem referencia a 8080/porta em .github/workflows/ci.yml. Test Suite Auditor/Persistence Auditor dispensados (zero codigo/teste/persistencia tocado). ./init.sh do servico verde (exit 0) na branch feature/SV-163 apos merge da subtask (PR #32, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
     }
   ]
 }
