@@ -387,7 +387,7 @@
       "dependencies": [
         "feat-003"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado em feat-002/003 deste servico). Veredito: READY WITH CONCERNS, 2 achados MINOR corrigidos no plano, nenhum exigia decisao do usuario. Escopo confirmado: feat-004 entrega o calculo (repositorio + servico de dominio), sem endpoint HTTP (feat-006) nem cache (feat-005) - metricas verificadas por teste direto (integracao no repositorio, unitario no calculo), nao por chamada HTTP. (MINOR) FactBetJpaEntity nao tem @ManyToOne para as dimensoes (colunas UUID simples, ver adapter/out/persistence/FactBetJpaEntity.java) - a query segmentada (por sportId/marketId/bettingHouseId) precisa de JOIN explicito por condicao (JPQL 'FROM FactBetJpaEntity f, DimSportJpaEntity s WHERE f.sportId = s.id'), nao um path de associacao; confirmado que JPQL suporta essa forma (cross join + WHERE), sem necessidade de query nativa. (MINOR) ROI/taxa de acerto sao razoes computadas em memoria (nao persistidas), RN04='lucro liquido acumulado / valor total investido' nao define o que fazer quando total investido=0 (nenhuma aposta liquidada ainda) - corrigido no plano: retorna BigDecimal.ZERO nesse caso (nao lanca excecao, nao retorna null), decisao de implementacao sem impacto de contrato ainda (endpoint so existe em feat-006, onde o formato de resposta sera revisado). Agregacao bruta (soma de stake/profit, contagem de vitorias/liquidadas) calculada em SQL (SUM/COUNT via JPQL) filtrando status <> PENDING (RN06) - ROI/taxa de acerto computados no dominio a partir do agregado bruto (formula testavel sem banco). Multi-tenancy: nenhum mecanismo novo - a mesma conexao com schema do tenant ja resolvida por TenantContextScope/TenantIdentifierResolver (feat-002.2) escopa a query automaticamente, sem where clause manual de tenant. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
       "jira": "SV-133",
       "subtasks": [
@@ -438,7 +438,39 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-133, story SV-133 com 3 subtasks SV-134..136, 3 PRs de subtask mergeadas). Primeiro calculo de metrica de negocio deste servico (RF09): FactBetRepository ganha 4 metodos de agregacao bruta (overall + segmentado por sport/market/betting-house) via JPQL, filtrando status<>pending (RN06) e agrupando por dimensao com join explicito por condicao (RN09); CalculateMetricsService transforma o agregado bruto em ROI/taxa de acerto (RN04), com divisao por zero retornando ZERO em vez de excecao. Sem endpoint HTTP (feat-006) nem cache (feat-005) ainda - escopo confirmado no plan_review.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-134..136 -> feature/SV-133).",
+              "Teste de integracao real (Testcontainers Postgres): overall exclui pending e inclui won/lost/void na soma (RN06), agregado zerado sem nenhuma aposta liquidada, isolamento entre 2 esportes (RN09), agregacao por market e por betting-house.",
+              "Teste unitario parametrizado (tabela de casos) para ROI/taxa de acerto: caso normal, total investido zero, 100% de acerto, 0% de acerto; teste de mapeamento de segmentos preservando id/nome da dimensao."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review (2 achados MINOR corrigidos antes de codificar: join explicito por condicao para as dimensoes sem @ManyToOne, e divisao por zero retornando ZERO)."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real do self-review (Delivery Reviewer/Test Suite Auditor, feat-004.3): a suite de feat-004.1 cobria won/lost e pending, mas nenhum teste exercitava explicitamente o status void - RN06 o inclui na agregacao lado a lado com won/lost, e a query usa 'status <> pending' (equivalente por o enum so ter 4 valores), entao um erro que excluisse void especificamente nao teria sido pego. Corrigido adicionando um caso void ao teste de agregacao overall (stake entra na soma, nao conta como vitoria) antes de fechar a feature - nenhum defeito de producao encontrado, a implementacao ja estava correta (isWin=false para void, feat-003), mas a lacuna de teste era real."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (2 MINOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (15 arquivos) - 1 achado real de cobertura de teste (void nao exercitado), corrigido antes do fechamento.",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-005",
