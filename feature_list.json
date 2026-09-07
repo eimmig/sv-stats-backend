@@ -618,7 +618,7 @@
         {
           "id": "feat-006.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-144",
           "detail": "Fecha a feature - ultima planejada deste servico (feat-001..006).",
           "checklist": [
@@ -631,7 +631,41 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-141, story SV-141 com 3 subtasks SV-142..144, 3 PRs de subtask mergeadas). RF11/RN08 completos: GET /api/v1/statistics aceita 7 filtros opcionais (bettingHouseId/sportId/leagueId/marketId/tipsterId/from/to) e responde um bundle unico (overall/bySport/byMarket/byBettingHouse/monthly) - decisao do usuario. StatisticsFilter substituiu as assinaturas sem parametro de feat-004/005 (uma mecanica so, nao dois conjuntos paralelos). Sem filtro usa o cache-aside de feat-005; com filtro bypassa e calcula direto contra FACT_BET. Fecha o backlog de RF/RN deste servico (feat-001..006) - falta so feat-007 (fechamento formal do pipeline de CI, ja rodando de verdade desde feat-001).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-142..144 -> feature/SV-141) e na PR de story->develop.",
+              "Teste de integracao real (Testcontainers Postgres): filtro por sportId exclui outro esporte da agregacao overall; filtro por from/to exclui apostas fora do intervalo de data.",
+              "Teste HTTP real (SpringBootTest RANDOM_PORT, java.net.http.HttpClient): sem filtro (200, bundle completo, parse real do JSON confirmando overall/segmentos/mensal com os valores certos, chave aparece no Redis apos a chamada), com filtro sportId (resultado restrito, so o esporte filtrado aparece), sem X-Tenant-Id (400, ja coberto pelo TenantSchemaFilter existente)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review (achado BLOCKED resolvido com o usuario via AskUserQuestion sobre o formato de resposta, e 2 achados MAJOR corrigidos no plano antes de codificar - ver campo plan_review desta feature)."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real durante feat-006.1: Postgres nao consegue inferir o tipo de um parametro null usado so dentro de CAST/FUNCTION ('could not determine data type of parameter') - a abordagem original do plano (predicado '(:from IS NULL OR CAST(:from AS date) ...)') falhava; corrigido substituindo from/to ausentes por limites-sentinela (1900-01-01/2999-12-31) antes de montar a query, removendo a necessidade do IS NULL para as datas.",
+              "Achado do self-review (Delivery Reviewer/Test Suite Auditor, feat-006.3): a resposta real do bundle aninha as metricas de cada segmento/mes sob uma chave 'metrics' (reaproveitando SegmentedBetMetrics/MonthlyBetMetrics ja existentes desde feat-004/005), diferente do exemplo achatado mostrado ao usuario durante a decisao do formato (AskUserQuestion) - o exemplo servia so para ilustrar a escolha bundle-unico-vs-endpoints-separados, nao o formato exato de cada item; corrigido a documentacao (API-CONTRACTS.md) pra bater com a resposta real, e o teste HTTP fortalecido pra fazer parse de verdade do JSON (antes so checava substring) em vez de so provar que a chave aparecia na resposta.",
+              "Achado do self-review (mesmo passe): docs/services/web.md ainda citava os query params antigos sem sufixo Id ('sport', 'league', 'market'), drift pre-existente contra a correcao ja feita em API-CONTRACTS.md antes desta sessao - corrigido no mesmo commit, junto com a omissao de 'casa de apostas' na lista de filtros em prosa daquela nota."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 BLOCKED resolvido com o usuario, 2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (feature/SV-141 vs develop) - 2 achados reais corrigidos antes do fechamento (formato de resposta na documentacao, drift em web.md).",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-007",
