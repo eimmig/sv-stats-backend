@@ -410,7 +410,7 @@
         {
           "id": "feat-004.2",
           "name": "Servico de calculo de metricas (ROI, taxa de acerto) a partir do agregado",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-135",
           "detail": "Transforma BetAggregate/SegmentedBetAggregate em BetMetrics (RN04 ROI = lucro liquido / total investido, taxa de acerto = vitorias / liquidadas) - formula pura, testavel sem banco.",
           "checklist": [
