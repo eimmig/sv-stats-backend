@@ -1,6 +1,7 @@
 package com.stakevault.betting.stats.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
@@ -49,13 +51,13 @@ class GetDashboardMetricsServiceTest {
 		BetMetrics result = service.getOverall();
 
 		assertThat(result).isEqualTo(sampleMetrics());
-		verify(calculateMetrics, never()).calculateOverall();
+		verify(calculateMetrics, never()).calculateOverall(any());
 	}
 
 	@Test
 	void shouldCalculateAndSaveOverallOnMiss() {
 		when(cache.findOverall()).thenReturn(Optional.empty());
-		when(calculateMetrics.calculateOverall()).thenReturn(sampleMetrics());
+		when(calculateMetrics.calculateOverall(StatisticsFilter.none())).thenReturn(sampleMetrics());
 
 		BetMetrics result = service.getOverall();
 
@@ -72,7 +74,7 @@ class GetDashboardMetricsServiceTest {
 		List<SegmentedBetMetrics> result = service.getBySport();
 
 		assertThat(result).isEqualTo(segments);
-		verify(calculateMetrics, never()).calculateBySport();
+		verify(calculateMetrics, never()).calculateBySport(any());
 	}
 
 	@Test
@@ -80,7 +82,7 @@ class GetDashboardMetricsServiceTest {
 		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID(), "Soccer",
 				sampleMetrics()));
 		when(cache.findBySport()).thenReturn(Optional.empty());
-		when(calculateMetrics.calculateBySport()).thenReturn(segments);
+		when(calculateMetrics.calculateBySport(StatisticsFilter.none())).thenReturn(segments);
 
 		List<SegmentedBetMetrics> result = service.getBySport();
 
@@ -95,13 +97,13 @@ class GetDashboardMetricsServiceTest {
 		BetMetrics result = service.getMonthly(2026, 9);
 
 		assertThat(result).isEqualTo(sampleMetrics());
-		verify(calculateMetrics, never()).calculateMonthly();
+		verify(calculateMetrics, never()).calculateMonthly(any());
 	}
 
 	@Test
 	void shouldCalculateWholeSeriesAndSaveEachMonthOnMonthlyMiss() {
 		when(cache.findMonthly(2026, 9)).thenReturn(Optional.empty());
-		when(calculateMetrics.calculateMonthly()).thenReturn(
+		when(calculateMetrics.calculateMonthly(StatisticsFilter.none())).thenReturn(
 				List.of(new MonthlyBetMetrics(2026, 8, sampleMetrics()), new MonthlyBetMetrics(2026, 9, sampleMetrics())));
 
 		BetMetrics result = service.getMonthly(2026, 9);
@@ -114,7 +116,7 @@ class GetDashboardMetricsServiceTest {
 	@Test
 	void shouldReturnZeroMetricsWhenRequestedMonthHasNoData() {
 		when(cache.findMonthly(2026, 1)).thenReturn(Optional.empty());
-		when(calculateMetrics.calculateMonthly()).thenReturn(List.of());
+		when(calculateMetrics.calculateMonthly(StatisticsFilter.none())).thenReturn(List.of());
 
 		BetMetrics result = service.getMonthly(2026, 1);
 
@@ -125,7 +127,7 @@ class GetDashboardMetricsServiceTest {
 	@Test
 	void shouldCacheZeroMetricsForAMonthWithNoDataToAvoidRecomputingOnEveryRequest() {
 		when(cache.findMonthly(2026, 1)).thenReturn(Optional.empty());
-		when(calculateMetrics.calculateMonthly()).thenReturn(List.of());
+		when(calculateMetrics.calculateMonthly(StatisticsFilter.none())).thenReturn(List.of());
 
 		service.getMonthly(2026, 1);
 

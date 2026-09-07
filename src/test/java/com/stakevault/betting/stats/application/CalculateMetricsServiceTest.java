@@ -19,6 +19,7 @@ import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,10 +48,10 @@ class CalculateMetricsServiceTest {
 			"100, -100, 0, 1, -1.0000, 0.0000" })
 	void shouldComputeRoiAndWinRateFromAggregate(String staked, String profit, long won, long settled, String roi,
 			String winRate) {
-		when(factBetRepository.aggregateOverall()).thenReturn(
+		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
 				new BetAggregate(new BigDecimal(staked), new BigDecimal(profit), won, settled));
 
-		BetMetrics metrics = service.calculateOverall();
+		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 
 		assertThat(metrics.roi()).isEqualByComparingTo(new BigDecimal(roi));
 		assertThat(metrics.winRate()).isEqualByComparingTo(new BigDecimal(winRate));
@@ -60,10 +61,11 @@ class CalculateMetricsServiceTest {
 	@Test
 	void shouldMapSegmentedAggregatesPreservingDimensionIdentity() {
 		UUID sportId = UUID.randomUUID();
-		when(factBetRepository.aggregateBySport()).thenReturn(List.of(new SegmentedBetAggregate(sportId, "Soccer",
-				new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 1))));
+		when(factBetRepository.aggregateBySport(StatisticsFilter.none())).thenReturn(
+				List.of(new SegmentedBetAggregate(sportId, "Soccer",
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 1))));
 
-		List<SegmentedBetMetrics> result = service.calculateBySport();
+		List<SegmentedBetMetrics> result = service.calculateBySport(StatisticsFilter.none());
 
 		assertThat(result).hasSize(1);
 		SegmentedBetMetrics segment = result.get(0);
