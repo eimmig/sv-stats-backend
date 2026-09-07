@@ -425,7 +425,7 @@
         {
           "id": "feat-004.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-136",
           "detail": "Fecha a feature - primeiro calculo de metrica de negocio deste servico (RF09).",
           "checklist": [
