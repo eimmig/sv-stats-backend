@@ -387,10 +387,57 @@
       "dependencies": [
         "feat-003"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado em feat-002/003 deste servico). Veredito: READY WITH CONCERNS, 2 achados MINOR corrigidos no plano, nenhum exigia decisao do usuario. Escopo confirmado: feat-004 entrega o calculo (repositorio + servico de dominio), sem endpoint HTTP (feat-006) nem cache (feat-005) - metricas verificadas por teste direto (integracao no repositorio, unitario no calculo), nao por chamada HTTP. (MINOR) FactBetJpaEntity nao tem @ManyToOne para as dimensoes (colunas UUID simples, ver adapter/out/persistence/FactBetJpaEntity.java) - a query segmentada (por sportId/marketId/bettingHouseId) precisa de JOIN explicito por condicao (JPQL 'FROM FactBetJpaEntity f, DimSportJpaEntity s WHERE f.sportId = s.id'), nao um path de associacao; confirmado que JPQL suporta essa forma (cross join + WHERE), sem necessidade de query nativa. (MINOR) ROI/taxa de acerto sao razoes computadas em memoria (nao persistidas), RN04='lucro liquido acumulado / valor total investido' nao define o que fazer quando total investido=0 (nenhuma aposta liquidada ainda) - corrigido no plano: retorna BigDecimal.ZERO nesse caso (nao lanca excecao, nao retorna null), decisao de implementacao sem impacto de contrato ainda (endpoint so existe em feat-006, onde o formato de resposta sera revisado). Agregacao bruta (soma de stake/profit, contagem de vitorias/liquidadas) calculada em SQL (SUM/COUNT via JPQL) filtrando status <> PENDING (RN06) - ROI/taxa de acerto computados no dominio a partir do agregado bruto (formula testavel sem banco). Multi-tenancy: nenhum mecanismo novo - a mesma conexao com schema do tenant ja resolvida por TenantContextScope/TenantIdentifierResolver (feat-002.2) escopa a query automaticamente, sem where clause manual de tenant. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-133",
+      "subtasks": [
+        {
+          "id": "feat-004.1",
+          "name": "Agregacao real em FactBetRepository (overall + segmentado por sport/market/betting-house)",
+          "status": "done",
+          "jira": "SV-134",
+          "detail": "Query JPQL com SUM(stake)/SUM(profit)/COUNT filtrando status <> PENDING (RN06); segmentada faz join explicito por condicao com a dimensao correspondente para trazer o nome (RN09 - cada grupo considera exclusivamente suas proprias apostas).",
+          "checklist": [
+            "Novo record de dominio BetAggregate (totalStaked, netProfit, wonCount, settledCount) - agregado bruto, sem ROI/taxa ainda calculados.",
+            "Novo record SegmentedBetAggregate (dimensionId, dimensionName, BetAggregate).",
+            "FactBetRepository (port out) ganha aggregateOverall(), aggregateBySport(), aggregateByMarket(), aggregateByBettingHouse().",
+            "Implementacao via JPQL no FactBetSpringDataRepository (@Query), filtrando f.status <> com.stakevault.betting.stats.domain.model.BetStatus.PENDING.",
+            "Teste de integracao (Testcontainers Postgres ja configurado): insere apostas won/lost/void/pending nos 3 grupos e prova que pending e excluida da soma e que cada segmento so agrega suas proprias apostas."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova a agregacao real via SQL, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-004.2",
+          "name": "Servico de calculo de metricas (ROI, taxa de acerto) a partir do agregado",
+          "status": "not-started",
+          "jira": "SV-135",
+          "detail": "Transforma BetAggregate/SegmentedBetAggregate em BetMetrics (RN04 ROI = lucro liquido / total investido, taxa de acerto = vitorias / liquidadas) - formula pura, testavel sem banco.",
+          "checklist": [
+            "Novo record de dominio BetMetrics (totalStaked, netProfit, roi, winRate, settledCount).",
+            "Novo port in CalculateMetricsUseCase (calculateOverall, calculateBySport, calculateByMarket, calculateByBettingHouse) implementado em application/CalculateMetricsService.",
+            "Divisao por zero (total investido=0 ou liquidadas=0) retorna BigDecimal.ZERO, nao excecao.",
+            "Teste unitario cobrindo: caso normal, total investido=0, liquidadas=0, segmento sem nenhuma aposta liquidada."
+          ],
+          "validation": "./init.sh verde - teste unitario prova a formula (RN04/RN09) com tabela de casos, incluindo bordas.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-004.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-136",
+          "detail": "Fecha a feature - primeiro calculo de metrica de negocio deste servico (RF09).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {
