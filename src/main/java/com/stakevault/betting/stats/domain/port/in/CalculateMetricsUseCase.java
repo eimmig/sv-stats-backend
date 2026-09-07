@@ -5,16 +5,17 @@ import java.util.List;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 
 public interface CalculateMetricsUseCase {
 
-	BetMetrics calculateOverall();
+	BetMetrics calculateOverall(StatisticsFilter filter);
 
-	List<SegmentedBetMetrics> calculateBySport();
+	List<SegmentedBetMetrics> calculateBySport(StatisticsFilter filter);
 
-	List<SegmentedBetMetrics> calculateByMarket();
+	List<SegmentedBetMetrics> calculateByMarket(StatisticsFilter filter);
 
-	List<SegmentedBetMetrics> calculateByBettingHouse();
+	List<SegmentedBetMetrics> calculateByBettingHouse(StatisticsFilter filter);
 
-	List<MonthlyBetMetrics> calculateMonthly();
+	List<MonthlyBetMetrics> calculateMonthly(StatisticsFilter filter);
 }

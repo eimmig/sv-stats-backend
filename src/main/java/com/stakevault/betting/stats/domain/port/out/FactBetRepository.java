@@ -8,6 +8,7 @@ import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 
 public interface FactBetRepository {
 
@@ -15,14 +16,15 @@ public interface FactBetRepository {
 
 	Optional<FactBet> findById(UUID id);
 
-	// RN06: as 4 agregacoes abaixo ja excluem status=pending.
-	BetAggregate aggregateOverall();
+	// RN06: as 4 agregacoes abaixo ja excluem status=pending. RF11/RN08: filter aplica os
+	// predicados opcionais - StatisticsFilter.none() equivale a nenhum filtro.
+	BetAggregate aggregateOverall(StatisticsFilter filter);
 
-	List<SegmentedBetAggregate> aggregateBySport();
+	List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter);
 
-	List<SegmentedBetAggregate> aggregateByMarket();
+	List<SegmentedBetAggregate> aggregateByMarket(StatisticsFilter filter);
 
-	List<SegmentedBetAggregate> aggregateByBettingHouse();
+	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
-	List<MonthlyBetAggregate> aggregateByMonth();
+	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 }

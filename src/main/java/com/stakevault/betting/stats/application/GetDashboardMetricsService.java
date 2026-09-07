@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetDashboardMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
@@ -29,7 +30,7 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	@Override
 	public BetMetrics getOverall() {
 		return cache.findOverall().orElseGet(() -> {
-			BetMetrics metrics = calculateMetrics.calculateOverall();
+			BetMetrics metrics = calculateMetrics.calculateOverall(StatisticsFilter.none());
 			cache.saveOverall(metrics);
 			return metrics;
 		});
@@ -38,7 +39,7 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	@Override
 	public List<SegmentedBetMetrics> getBySport() {
 		return cache.findBySport().orElseGet(() -> {
-			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateBySport();
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateBySport(StatisticsFilter.none());
 			cache.saveBySport(metrics);
 			return metrics;
 		});
@@ -47,7 +48,7 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	@Override
 	public List<SegmentedBetMetrics> getByMarket() {
 		return cache.findByMarket().orElseGet(() -> {
-			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByMarket();
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByMarket(StatisticsFilter.none());
 			cache.saveByMarket(metrics);
 			return metrics;
 		});
@@ -56,7 +57,7 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	@Override
 	public List<SegmentedBetMetrics> getByBettingHouse() {
 		return cache.findByBettingHouse().orElseGet(() -> {
-			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBettingHouse();
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBettingHouse(StatisticsFilter.none());
 			cache.saveByBettingHouse(metrics);
 			return metrics;
 		});
@@ -67,7 +68,7 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 		return cache.findMonthly(year, month).orElseGet(() -> {
 			// Um miss recalcula e cacheia a serie inteira de uma vez (poucos meses com dados,
 			// ver plan_review) - aproveita pra aquecer o cache dos outros meses tambem.
-			List<MonthlyBetMetrics> series = calculateMetrics.calculateMonthly();
+			List<MonthlyBetMetrics> series = calculateMetrics.calculateMonthly(StatisticsFilter.none());
 			series.forEach(monthly -> cache.saveMonthly(monthly.year(), monthly.month(), monthly.metrics()));
 			BetMetrics requested = series.stream()
 					.filter(monthly -> monthly.year() == year && monthly.month() == month)
