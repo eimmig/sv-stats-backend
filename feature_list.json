@@ -223,7 +223,7 @@
         {
           "id": "feat-002.3",
           "name": "Entidades JPA e persistencia (domain + adapter)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-127",
           "detail": "FactBet, DimDate/DimBettingHouse/DimSport/DimLeague/DimMarket/DimTipster, ProcessedEvent como records de dominio + entidades JPA (AbstractJpaEntity, mesmo padrao de bets-service) + ports/adapters minimos provados por teste de integracao real - sem wiring no BetEventListener ainda (feat-003).",
           "checklist": [
@@ -238,7 +238,7 @@
         {
           "id": "feat-002.4",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-128",
           "detail": "Fecha a feature - primeiro schema OLAP deste servico.",
           "checklist": [
