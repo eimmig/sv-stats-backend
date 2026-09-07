@@ -52,6 +52,15 @@ public class FactBetJpaEntity extends AbstractJpaEntity {
 
 	public FactBetJpaEntity(FactBet factBet) {
 		super(factBet.id());
+		applyFrom(factBet);
+	}
+
+	// Upsert real (BetSettled sobre uma linha ja inserida por BetCreated, ou o inverso) exige
+	// mutar a instancia JA RASTREADA pelo Hibernate (isNew=false via @PostLoad), nao construir
+	// uma nova a cada save (AbstractJpaEntity sempre marca isNew=true numa instancia recem-
+	// construida, o que faria Hibernate tentar INSERT de novo e falhar por chave duplicada) -
+	// metodo da propria entidade em vez de @Setter amplo, ver docs/CONVENTIONS.md.
+	void applyFrom(FactBet factBet) {
 		this.dateId = factBet.dateId();
 		this.bettingHouseId = factBet.bettingHouseId();
 		this.sportId = factBet.sportId();

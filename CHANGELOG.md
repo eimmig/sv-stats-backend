@@ -24,3 +24,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-126](https://stakevault.atlassian.net/browse/SV-126) - Multi-tenancy do Hibernate + enforcement de X-Tenant-Id
 - [SV-127](https://stakevault.atlassian.net/browse/SV-127) - Entidades JPA e persistencia (domain + adapter)
 - [SV-128](https://stakevault.atlassian.net/browse/SV-128) - CHANGELOG e verificacao final
+- [SV-129](https://stakevault.atlassian.net/browse/SV-129) - Consumo dos eventos - insert em BetCreated, upsert em BetSettled
+- [SV-130](https://stakevault.atlassian.net/browse/SV-130) - Upsert real em FactBetRepository + resolucao de dimensoes
+- [SV-131](https://stakevault.atlassian.net/browse/SV-131) - Plugar BetCreated/BetSettled no BetEventListener com idempotencia real
+- [SV-132](https://stakevault.atlassian.net/browse/SV-132) - CHANGELOG e verificacao final

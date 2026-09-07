@@ -19,7 +19,13 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public FactBet save(FactBet factBet) {
-		return toDomain(jpaRepository.save(new FactBetJpaEntity(factBet)));
+		FactBetJpaEntity entity = jpaRepository.findById(factBet.id())
+				.map(existing -> {
+					existing.applyFrom(factBet);
+					return existing;
+				})
+				.orElseGet(() -> new FactBetJpaEntity(factBet));
+		return toDomain(jpaRepository.save(entity));
 	}
 
 	@Override

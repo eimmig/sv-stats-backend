@@ -290,15 +290,95 @@
     {
       "id": "feat-003",
       "name": "Consumo dos eventos - insert em BetCreated, upsert em BetSettled",
-      "description": "BetCreated: insert em FACT_BET com dados dimensionais, status='pending', profit/isWin null. BetSettled: upsert na mesma linha por betId, atualizando status/profit/isWin - nao deve falhar se o BetCreated correspondente ainda nao foi processado (mensagens fora de ordem). RN06: linhas com status='pending' nunca entram em agregacoes.",
+      "description": "BetCreated: insert em FACT_BET com dados dimensionais, status='pending', profit/isWin null. BetSettled: upsert na mesma linha por betId, atualizando status/profit/isWin - nao deve falhar se o BetCreated correspondente ainda nao foi processado (mensagens fora de ordem). RN06: linhas com status='pending' nunca entram em agregacoes. Plugado no BetEventListener ja existente (feat-001.9), substituindo o log.info por processamento real. Idempotencia via PROCESSED_EVENT (feat-002): verificar existsByEventId antes de processar, inserir na mesma transacao.",
       "dependencies": [
         "feat-002"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: READY WITH CONCERNS, 1 achado MAJOR corrigido no plano (nao exigia decisao do usuario). (MAJOR) FactBet.id = mesmo uuid do betId (decisao natural, ja que o upsert e 'por betId'), mas JpaFactBetRepository.save(FactBet) tal como desenhado em feat-002.3 SEMPRE constroi uma FactBetJpaEntity nova (new FactBetJpaEntity(factBet)), e AbstractJpaEntity marca isNew=true em qualquer instancia recem-construida (independente de a linha ja existir no banco) - Hibernate tentaria INSERT sempre, falhando com chave duplicada no caso de upsert real (BetSettled sobre uma linha ja inserida por BetCreated). Corrigido no plano: JpaFactBetRepository.save() passa a fazer findById(factBet.id()) primeiro - se existir, carrega a MESMA instancia rastreada (isNew=false via @PostLoad) e muta os campos (setters adicionados a FactBetJpaEntity, justificados agora que ha upsert de verdade, diferente de bets-service onde nenhuma entidade e mutada in-place); se nao existir, constroi nova (insert). Sem race de concorrencia a proteger aqui (diferente do PATCH de bets-service) - RabbitMQ entrega mensagens da mesma fila sequencialmente a um consumidor, sem paralelismo entre eventos do mesmo bet. Escopo confirmado (sem decisao do usuario): BetSettled chegando antes de BetCreated processado (RN, mensagens fora de ordem) cria a linha FACT_BET direto com os dados de liquidacao (nao falha) - a proxima vez que BetCreated for consumido (se ainda nao tiver sido idempotentemente descartado) faria upsert por cima, mas como BetCreated so grava campos que BetSettled ja preencheu com os mesmos valores (dados dimensionais identicos nos dois payloads) e sempre status=pending, upsert de BetCreated DEPOIS de BetSettled sobrescreveria erroneamente o status/profit ja liquidados - corrigido no plano: BetCreated so faz INSERT quando a linha ainda nao existe (nao upsert); se a linha ja existe (BetSettled processado primeiro), BetCreated e um no-op alem de marcar o evento como processado (idempotencia), preservando o resultado da liquidacao. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-129",
+      "subtasks": [
+        {
+          "id": "feat-003.1",
+          "name": "Upsert real em FactBetRepository + resolucao de dimensoes",
+          "status": "done",
+          "jira": "SV-130",
+          "detail": "Achado MAJOR do Plan Reviewer: JpaFactBetRepository.save() precisa carregar a entidade existente (nao construir sempre nova) para o upsert de BetSettled funcionar como UPDATE, nao um INSERT que falha por chave duplicada.",
+          "checklist": [
+            "FactBetJpaEntity ganha setters (justificado agora - upsert real, diferente do resto do codebase onde nenhuma entidade e mutada in-place).",
+            "JpaFactBetRepository.save() faz findById primeiro - atualiza a instancia rastreada se existir, cria nova se nao.",
+            "Metodo de resolucao de dimensoes (por eventType generico, reaproveitado por BetCreated/BetSettled): resolve/cria DimBettingHouse/DimSport/DimLeague/DimMarket (existsById + save se ausente) e DimTipster (mesmo padrao, so se tipsterId presente no payload); resolve/cria DimDate a partir de uma data (extrai day/month/year/quarter/dayOfWeek, busca por chave natural, cria se ausente).",
+            "Teste de integracao: upsert real (insert seguido de update na mesma linha) prova UPDATE via SQL/contagem de linhas, nao so ausencia de excecao."
+          ],
+          "validation": "./init.sh verde - teste de upsert prova update de verdade (profit muda de null para um valor na mesma linha, count(*) continua 1).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-003.2",
+          "name": "Plugar BetCreated/BetSettled no BetEventListener com idempotencia real",
+          "status": "done",
+          "jira": "SV-131",
+          "detail": "Substitui o log.info do BetEventListener (feat-001.9) por processamento real: idempotencia (existsByEventId antes, insere ProcessedEvent na mesma transacao), insert em BetCreated (so quando FACT_BET ainda nao existe - nao sobrescreve liquidacao ja processada fora de ordem, ver plan_review), upsert em BetSettled.",
+          "checklist": [
+            "Novo port/in (ex.: ProcessBetEventUseCase) com metodos processCreated/processSettled, implementado em application/.",
+            "BetEventListener chama o use case apos validar schema, dentro de uma transacao (idempotencia + escrita atomicas).",
+            "BetCreated: se FACT_BET(betId) ja existe, no-op alem de marcar evento processado (preserva liquidacao ja aplicada fora de ordem).",
+            "BetSettled: upsert por betId, dimensoes resolvidas/criadas se ainda nao existirem (mensagem pode chegar antes do BetCreated correspondente).",
+            "Teste de integracao real publicando BetCreated/BetSettled via RabbitMQ (Testcontainers ja configurado) e verificando FACT_BET/PROCESSED_EVENT no banco - incluindo redelivery do mesmo eventId nao duplicar nem reprocessar, e BetSettled chegando antes do BetCreated correspondente."
+          ],
+          "validation": "Teste de integracao real (RabbitMQ + Postgres via Testcontainers) prova insert/upsert/idempotencia/fora-de-ordem, nao so unitario com mocks.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-003.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-132",
+          "detail": "Fecha a feature - primeiro consumo real de evento com efeito persistente deste servico.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-129, story SV-129 com 3 subtasks SV-130..132, 2 PRs de subtask mergeadas). Primeiro consumo real de evento com efeito persistente deste servico: BetCreated insere FACT_BET pending, BetSettled faz upsert real (status/profit/isWin), idempotencia real via PROCESSED_EVENT (existsByEventId + insert na mesma transacao), mensagens fora de ordem tratadas sem reverter liquidacao ja aplicada, tenant nao resolvivel vai direto pra DLQ.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo - 66 testes.",
+              "CI verde nas 2 PRs de subtask (subtask/SV-130/131 -> feature/SV-129).",
+              "Teste de integracao real (RabbitMQ + Postgres via Testcontainers): insert em BetCreated, upsert real em BetSettled (linha unica, campos mutados de verdade), BetSettled chegando antes do BetCreated correspondente (nao reverte liquidacao), redelivery do mesmo eventId nao reprocessa, tenant nao provisionado vai para DLQ.",
+              "Teste unitario complementar (ProcessBetEventServiceTest, DimensionResolverTest) prova os mesmos ramos com mocks - falha rapida e localizada."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 1 MAJOR corrigido no plano - JpaFactBetRepository.save() (feat-002.3) sempre construia uma entidade nova, que Hibernate sempre tentaria INSERT (isNew=true numa instancia recem-construida, independente de a linha ja existir) - um upsert real (BetSettled sobre BetCreated ja inserido) falharia por chave duplicada. Corrigido carregando a instancia existente via findById antes de mutar.",
+              "Achado real durante a implementacao (nao pego pelo Plan Reviewer): a primeira versao do fix acima usou @Setter do Lombok na classe inteira - docs/CONVENTIONS.md ja documentava (de bets-service feat-004/005) que a mutacao deve ser feita por um metodo da propria entidade, nao um @Setter amplo. Corrigido consolidando os campos mutaveis em FactBetJpaEntity.applyFrom(FactBet), reaproveitado pelo construtor e pelo caminho de update - nota do vault atualizada confirmando o reaproveitamento."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 MAJOR corrigido) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (14 arquivos) sem achado residual alem do ja corrigido e documentado.",
+              "docs/services/stats-service.md (repositorio raiz) atualizado para refletir consumo real (insert/upsert/idempotencia), substituindo a nota de 'ainda sem persistencia' de feat-001.9."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-004",
