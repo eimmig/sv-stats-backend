@@ -316,7 +316,7 @@
         {
           "id": "feat-003.2",
           "name": "Plugar BetCreated/BetSettled no BetEventListener com idempotencia real",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-131",
           "detail": "Substitui o log.info do BetEventListener (feat-001.9) por processamento real: idempotencia (existsByEventId antes, insere ProcessedEvent na mesma transacao), insert em BetCreated (so quando FACT_BET ainda nao existe - nao sobrescreve liquidacao ja processada fora de ordem, ver plan_review), upsert em BetSettled.",
           "checklist": [
@@ -332,7 +332,7 @@
         {
           "id": "feat-003.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-132",
           "detail": "Fecha a feature - primeiro consumo real de evento com efeito persistente deste servico.",
           "checklist": [
