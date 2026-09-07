@@ -48,4 +48,13 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			GROUP BY h.id, h.name
 			""")
 	List<SegmentedAggregateProjection> aggregateByBettingHouse(@Param("pending") BetStatus pending);
+
+	@Query("""
+			SELECT d.year AS year, d.month AS month, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
+			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount, COUNT(f) AS settledCount
+			FROM FactBetJpaEntity f, DimDateJpaEntity d
+			WHERE f.dateId = d.id AND f.status <> :pending
+			GROUP BY d.year, d.month
+			""")
+	List<MonthlyAggregateProjection> aggregateByMonth(@Param("pending") BetStatus pending);
 }

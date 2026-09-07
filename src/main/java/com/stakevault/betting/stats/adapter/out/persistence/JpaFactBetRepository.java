@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.FactBet;
+import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
@@ -61,6 +62,15 @@ public class JpaFactBetRepository implements FactBetRepository {
 		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING)
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
+				.toList();
+	}
+
+	@Override
+	public List<MonthlyBetAggregate> aggregateByMonth() {
+		return jpaRepository.aggregateByMonth(BetStatus.PENDING)
+				.stream()
+				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
+						toAggregate(projection)))
 				.toList();
 	}
 
