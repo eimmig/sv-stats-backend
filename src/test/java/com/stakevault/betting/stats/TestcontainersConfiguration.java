@@ -13,6 +13,8 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import com.redis.testcontainers.RedisContainer;
+
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
@@ -35,6 +37,12 @@ public class TestcontainersConfiguration {
 	@ServiceConnection
 	RabbitMQContainer rabbitMQContainer() {
 		return new RabbitMQContainer(DockerImageName.parse("rabbitmq:4-management-alpine"));
+	}
+
+	@Bean
+	@ServiceConnection
+	RedisContainer redisContainer() {
+		return new RedisContainer(DockerImageName.parse("redis:7-alpine"));
 	}
 
 	@Bean
