@@ -22,6 +22,11 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	// primario de frescor (ver plan_review de feat-005).
 	private static final Duration SAFETY_NET_TTL = Duration.ofHours(1);
 
+	private static final String KEY_PREFIX = "tenant:";
+	private static final String SPORT_SEGMENT = "sport";
+	private static final String MARKET_SEGMENT = "market";
+	private static final String HOUSE_SEGMENT = "house";
+
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
 
@@ -42,32 +47,32 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
 	@Override
 	public Optional<List<SegmentedBetMetrics>> findBySport() {
-		return findSegmentList(segmentKey("sport"));
+		return findSegmentList(segmentKey(SPORT_SEGMENT));
 	}
 
 	@Override
 	public void saveBySport(List<SegmentedBetMetrics> metrics) {
-		save(segmentKey("sport"), metrics);
+		save(segmentKey(SPORT_SEGMENT), metrics);
 	}
 
 	@Override
 	public Optional<List<SegmentedBetMetrics>> findByMarket() {
-		return findSegmentList(segmentKey("market"));
+		return findSegmentList(segmentKey(MARKET_SEGMENT));
 	}
 
 	@Override
 	public void saveByMarket(List<SegmentedBetMetrics> metrics) {
-		save(segmentKey("market"), metrics);
+		save(segmentKey(MARKET_SEGMENT), metrics);
 	}
 
 	@Override
 	public Optional<List<SegmentedBetMetrics>> findByBettingHouse() {
-		return findSegmentList(segmentKey("house"));
+		return findSegmentList(segmentKey(HOUSE_SEGMENT));
 	}
 
 	@Override
 	public void saveByBettingHouse(List<SegmentedBetMetrics> metrics) {
-		save(segmentKey("house"), metrics);
+		save(segmentKey(HOUSE_SEGMENT), metrics);
 	}
 
 	@Override
@@ -83,7 +88,7 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	@Override
 	public void evict(int year, int month) {
 		redisTemplate.delete(
-				List.of(overallKey(), segmentKey("sport"), segmentKey("market"), segmentKey("house"),
+				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
 						monthlyKey(year, month)));
 	}
 
@@ -110,14 +115,14 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	private static String overallKey() {
-		return "tenant:" + tenantSlug() + ":dashboard:consolidated";
+		return KEY_PREFIX + tenantSlug() + ":dashboard:consolidated";
 	}
 
 	private static String segmentKey(String segment) {
-		return "tenant:" + tenantSlug() + ":segment:" + segment;
+		return KEY_PREFIX + tenantSlug() + ":segment:" + segment;
 	}
 
 	private static String monthlyKey(int year, int month) {
-		return "tenant:" + tenantSlug() + ":stats:monthly:" + year + "_" + month;
+		return KEY_PREFIX + tenantSlug() + ":stats:monthly:" + year + "_" + month;
 	}
 }
