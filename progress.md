@@ -3,7 +3,7 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-07
-**Feature ativa:** nenhuma (`feat-001`/`feat-002`/`feat-003` `done`, `feat-004` liberada)
+**Feature ativa:** nenhuma (`feat-001`..`feat-004` `done`, `feat-005` liberada)
 
 ## Status
 
@@ -38,15 +38,23 @@
       natural). Story SV-129, 3 subtasks (SV-130..132). Evidência completa em
       `feature_list.json`.
 
+- [x] **`feat-004` (RF09 — cálculo de métricas) — `done` em 2026-09-07.** Primeiro cálculo de
+      métrica de negócio deste serviço: `FactBetRepository` ganha 4 métodos de agregação bruta
+      via JPQL (overall + segmentado por sport/market/betting-house), filtrando `status <>
+      pending` (RN06 — equivalente por o enum só ter 4 valores) e agrupando com join explícito
+      por condição (dimensões não têm `@ManyToOne`, colunas UUID simples). `CalculateMetricsService`
+      transforma o agregado em ROI/taxa de acerto (RN04/RN09) — divisão por zero retorna
+      `BigDecimal.ZERO`, não exceção. Sem endpoint HTTP (`feat-006`) nem cache (`feat-005`) ainda.
+      Story SV-133, 3 subtasks (SV-134..136). Evidência completa em `feature_list.json`.
+
 ### Em andamento
 
 - Nenhuma feature em andamento.
 
 ### Próximos passos (Next Steps)
 
-1. `feat-004` — RF09, cálculo de métricas (ROI, taxa de acerto) a partir de `FACT_BET`.
-2. `feat-005` — cache Redis (cache-aside) das métricas calculadas.
-3. `feat-006` — endpoint `GET /api/v1/statistics`.
+1. `feat-005` — cache Redis (cache-aside) das métricas calculadas.
+2. `feat-006` — endpoint `GET /api/v1/statistics`.
 
 ## Bloqueios / Riscos
 
@@ -129,9 +137,32 @@
 - CI verde nas 2 PRs de subtask e na PR de story→develop (#17), incluindo SonarCloud.
 - Detalhe completo no campo `evidence` de `feat-003` em `feature_list.json`.
 
+## Arquivos modificados nesta sessão (`feat-004`)
+
+- `domain/model/{BetAggregate,SegmentedBetAggregate,BetMetrics,SegmentedBetMetrics}.java`.
+- `domain/port/out/FactBetRepository.java` (4 métodos de agregação), `domain/port/in/
+  CalculateMetricsUseCase.java`.
+- `adapter/out/persistence/{AggregateProjection,SegmentedAggregateProjection,
+  FactBetSpringDataRepository,JpaFactBetRepository}.java`.
+- `application/CalculateMetricsService.java`.
+- Testes: `FactBetAggregationIntegrationTest` (novo), `CalculateMetricsServiceTest` (novo,
+  parametrizado).
+- `feature_list.json`, `CHANGELOG.md` deste serviço; `../../docs/services/stats-service.md`
+  (repositório raiz) documentando o mecanismo e a decisão de `settledCount` incluir `void`.
+
+## Evidência de conclusão (`feat-004`)
+
+- `./init.sh` (`mvn verify`) verde com Docker ativo.
+- CI verde nas 3 PRs de subtask e na PR de story→develop (#21), incluindo SonarCloud (sem
+  achados).
+- Achado real do self-review (Delivery Reviewer/Test Suite Auditor): teste de agregação não
+  cobria `void` explicitamente (RN06 o inclui ao lado de `won`/`lost`) — corrigido antes do
+  fechamento, sem defeito de produção encontrado.
+- Detalhe completo no campo `evidence` de `feat-004` em `feature_list.json`.
+
 ## Notas para a próxima sessão
 
-`feat-004` (RF09, cálculo de métricas — ROI agregado RN04, filtragem RN06 por
-`status IN ('won','lost','void')`, segmentação por mercado/esporte/casa RN09) é a próxima. Rodar
-`Plan Reviewer` antes de codificar. Ver `../../docs/services/stats-service.md` seção "Regras de
-negócio" e `../../docs/REQUIREMENTS.md` para RF09/RN04/RN06/RN08/RN09 completos.
+`feat-005` (cache Redis cache-aside — chaves `tenant:{tenantId}:dashboard:consolidated`,
+`tenant:{tenantId}:stats:monthly:{year}_{month}`, `tenant:{tenantId}:segment:{sport|market}`, já
+documentadas em `../../docs/API-CONTRACTS.md` e `../../docs/services/stats-service.md`) é a
+próxima. Rodar `Plan Reviewer` antes de codificar.
