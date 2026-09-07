@@ -2,8 +2,8 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-06
-**Feature ativa:** nenhuma (`feat-001`/`feat-002` `done`, `feat-003` liberada)
+**Última atualização:** 2026-09-07
+**Feature ativa:** nenhuma (`feat-001`/`feat-002`/`feat-003` `done`, `feat-004` liberada)
 
 ## Status
 
@@ -28,14 +28,25 @@
       wiring no `BetEventListener` (`feat-003`). Story SV-124, 4 subtasks (SV-125..128).
       Evidência completa em `feature_list.json`.
 
+- [x] **`feat-003` (Consumo dos eventos) — `done` em 2026-09-07.** Primeiro consumo real de
+      evento com efeito persistente: `BetCreated` insere `FACT_BET` `pending`, `BetSettled` faz
+      upsert real (`FactBetJpaEntity.applyFrom`, carrega a instância rastreada em vez de
+      construir nova), idempotência real via `PROCESSED_EVENT` (`existsByEventId` + insert na
+      mesma transação), mensagens fora de ordem tratadas sem reverter liquidação já aplicada
+      (`BetCreated` vira no-op se `FACT_BET` já existe), tenant não resolvível vai direto pra
+      DLQ. `DimensionResolver` resolve/cria as 6 dimensões (5 por id, `DimDate` por chave
+      natural). Story SV-129, 3 subtasks (SV-130..132). Evidência completa em
+      `feature_list.json`.
+
 ### Em andamento
 
 - Nenhuma feature em andamento.
 
 ### Próximos passos (Next Steps)
 
-1. `feat-003` — consumo dos eventos: *insert* em `BetCreated`, *upsert* em `BetSettled`, check de
-   `PROCESSED_EVENT` antes de processar. Plugar no `BetEventListener` (`feat-001.9`) já existente.
+1. `feat-004` — RF09, cálculo de métricas (ROI, taxa de acerto) a partir de `FACT_BET`.
+2. `feat-005` — cache Redis (cache-aside) das métricas calculadas.
+3. `feat-006` — endpoint `GET /api/v1/statistics`.
 
 ## Bloqueios / Riscos
 
@@ -100,12 +111,27 @@
   `git reset --hard` usado para corrigir um erro de branch não relacionado — e `java:S5778`).
 - Detalhe completo no campo `evidence` de `feat-002` em `feature_list.json`.
 
+## Arquivos modificados nesta sessão (`feat-003`)
+
+- `application/{DimensionResolver,ProcessBetEventService}.java`.
+- `domain/port/in/{BetCreatedEvent,BetSettledEvent,ProcessBetEventUseCase}.java`.
+- `adapter/in/messaging/BetEventListener.java` (reescrito — parsing de payload + delegação ao
+  use case, em vez de log.info).
+- `adapter/out/persistence/{FactBetJpaEntity,JpaFactBetRepository}.java` (upsert real via
+  `applyFrom`, não reconstrói a entidade).
+- Testes: `BetEventListenerIntegrationTest` (reescrito, `TenantSchemaIntegrationSupport`),
+  `ProcessBetEventServiceTest`, `DimensionResolverTest`.
+- `feature_list.json`, `CHANGELOG.md` deste serviço.
+
+## Evidência de conclusão (`feat-003`)
+
+- `./init.sh` (`mvn verify`) verde com Docker ativo — 66 testes.
+- CI verde nas 2 PRs de subtask e na PR de story→develop (#17), incluindo SonarCloud.
+- Detalhe completo no campo `evidence` de `feat-003` em `feature_list.json`.
+
 ## Notas para a próxima sessão
 
-`feat-003` (consumo dos eventos) é a próxima. O `BetEventListener` (`feat-001.9`) já valida
-schema e loga — falta plugar a lógica real: resolver/criar as 6 dimensões (upsert-if-missing por
-id, exceto `DimDate` por chave natural), checar `PROCESSED_EVENT` antes de processar (idempotência
-real via `existsByEventId`, inserir na mesma transação), *insert* em `FACT_BET` no `BetCreated`
-(`status=pending`) e *upsert* por `betId` no `BetSettled` — sem falhar se o `BetCreated`
-correspondente ainda não foi processado (mensagens fora de ordem, RN06 nunca inclui `pending` em
-agregação). Ver `../../docs/services/stats-service.md` para o desenho completo.
+`feat-004` (RF09, cálculo de métricas — ROI agregado RN04, filtragem RN06 por
+`status IN ('won','lost','void')`, segmentação por mercado/esporte/casa RN09) é a próxima. Rodar
+`Plan Reviewer` antes de codificar. Ver `../../docs/services/stats-service.md` seção "Regras de
+negócio" e `../../docs/REQUIREMENTS.md` para RF09/RN04/RN06/RN08/RN09 completos.
