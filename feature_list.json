@@ -394,7 +394,7 @@
         {
           "id": "feat-004.1",
           "name": "Agregacao real em FactBetRepository (overall + segmentado por sport/market/betting-house)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-134",
           "detail": "Query JPQL com SUM(stake)/SUM(profit)/COUNT filtrando status <> PENDING (RN06); segmentada faz join explicito por condicao com a dimensao correspondente para trazer o nome (RN09 - cada grupo considera exclusivamente suas proprias apostas).",
           "checklist": [
