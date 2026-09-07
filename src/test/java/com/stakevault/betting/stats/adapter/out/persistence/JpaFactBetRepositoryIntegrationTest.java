@@ -80,6 +80,27 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	@Test
+	void shouldUpdateExistingRowInsteadOfInsertingADuplicate() {
+		try (var _ = TenantContextScope.open(schema)) {
+			FactBet inserted = factBetRepository.save(newFactBet());
+			FactBet settled = new FactBet(inserted.id(), inserted.dateId(), inserted.bettingHouseId(),
+					inserted.sportId(), inserted.leagueId(), inserted.marketId(), inserted.tipsterId(),
+					inserted.stake(), BigDecimal.valueOf(150), true, BetStatus.WON, 1);
+
+			factBetRepository.save(settled);
+
+			Integer rowCount = jdbcTemplate.queryForObject(
+					"SELECT count(*) FROM \"" + schema.value() + "\".fact_bet WHERE id = ?", Integer.class,
+					inserted.id());
+			assertThat(rowCount).isEqualTo(1);
+			FactBet found = factBetRepository.findById(inserted.id()).orElseThrow();
+			assertThat(found.status()).isEqualTo(BetStatus.WON);
+			assertThat(found.profit()).isEqualByComparingTo(BigDecimal.valueOf(150));
+			assertThat(found.isWin()).isTrue();
+		}
+	}
+
+	@Test
 	void shouldIsolateRowsBetweenTenantSchemas() {
 		String otherSlug = "test-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 		TenantSchemaName otherSchema = TenantSchemaName.fromSlug(otherSlug);
