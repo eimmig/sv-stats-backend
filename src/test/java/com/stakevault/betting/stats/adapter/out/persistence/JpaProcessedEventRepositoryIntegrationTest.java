@@ -45,9 +45,9 @@ class JpaProcessedEventRepositoryIntegrationTest extends TenantSchemaIntegration
 
 		try (var _ = TenantContextScope.open(schema)) {
 			processedEventRepository.save(new ProcessedEvent(UUID.randomUUID(), eventId, Instant.now()));
+			ProcessedEvent duplicate = new ProcessedEvent(UUID.randomUUID(), eventId, Instant.now());
 
-			assertThatThrownBy(
-					() -> processedEventRepository.save(new ProcessedEvent(UUID.randomUUID(), eventId, Instant.now())))
+			assertThatThrownBy(() -> processedEventRepository.save(duplicate))
 					.isInstanceOf(DataIntegrityViolationException.class);
 		}
 	}
