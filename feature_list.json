@@ -519,7 +519,7 @@
         {
           "id": "feat-005.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-140",
           "detail": "Fecha a feature - primeiro cache deste servico (e do projeto).",
           "checklist": [
@@ -532,7 +532,42 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-137, story SV-137 com 3 subtasks SV-138..140, 3 PRs de subtask mergeadas). Primeiro cache deste servico (e do projeto): MetricsCacheRepository/RedisMetricsCacheRepository (cache-aside, tenant resolvido via TenantContextHolder, TTL de seguranca 1h), agregacao mensal (FactBetRepository.aggregateByMonth), GetDashboardMetricsService orquestrando cache-aside pras 5 chaves, e invalidacao real no consumo do evento - so BetSettled evicta (RN06 exclui pending de toda agregacao, entao BetCreated e invisivel pras metricas e nao precisa evictar).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-138..140 -> feature/SV-137).",
+              "Teste de integracao real (Testcontainers Redis): hit/miss, round-trip de lista segmentada, evict (overall+3 segmentos+mes especifico) sem afetar outros meses, isolamento entre 2 tenants, padrao de chave documentado.",
+              "Teste de integracao real (Testcontainers Postgres+RabbitMQ+Redis): publica BetSettled via RabbitMQ, confirma que uma chave previamente cacheada some do Redis apos o processamento.",
+              "Teste unitario GetDashboardMetricsServiceTest (hit nao chama CalculateMetricsUseCase; miss chama e salva, incluindo mes sem dado); ProcessBetEventServiceTest atualizado (evict chamado so no BetSettled real, nunca no BetCreated nem nos ramos de no-op/idempotencia, com o ano/mes corretos derivados de settledAt)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "O plan_review original presumia que tanto BetCreated quanto BetSettled evictariam o cache - corrigido durante a implementacao de feat-005.2: RN06 exclui status=pending de toda agregacao, entao o insert de BetCreated (sempre pending) e invisivel pras metricas cacheadas: evictar ali seria desperdicio sem nenhuma mudanca de valor. So BetSettled evicta de verdade."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real do self-review (Delivery Reviewer/Test Suite Auditor, feat-005.3): a serie mensal so cacheava os meses presentes em aggregateByMonth() (GROUP BY nunca retorna grupo vazio) - uma consulta a um mes sem nenhuma aposta liquidada nunca batia no cache, recalculando a serie inteira via Postgres a cada chamada, mesmo sem nenhuma mudanca de dado entre elas. Corrigido cacheando BetMetrics ZERO explicitamente para o mes pedido quando ausente da serie, antes de fechar a feature - nenhum defeito de producao (o valor retornado sempre esteve correto), mas um problema real de eficiencia que so apareceria sob uso repetido de um periodo sem apostas.",
+              "Achado do Plan Reviewer (antes do codigo): a chave de segmento documentada originalmente ('{sport|market}') omitia 'house', apesar de RN09 exigir ROI por casa de apostas e feat-004 ja ter implementado calculateByBettingHouse - estendido pra '{sport|market|house}' no plano antes de codificar, evitando deixar aquele segmento sem cache por omissao de documentacao.",
+              "Nenhum outro ponto de escrita em FACT_BET alem de ProcessBetEventService.processCreated/processSettled foi encontrado (confirmado por busca no codebase) - nao ha invalidacao faltando em nenhum caminho paralelo."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (3 achados corrigidos no plano, 1 MAJOR resolvido com o usuario via AskUserQuestion sobre invalidacao vs TTL puro) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (feature/SV-137 vs develop) - 1 achado real de eficiencia (mes sem dado nunca cacheado) corrigido antes do fechamento.",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-006",
