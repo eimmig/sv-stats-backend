@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
@@ -42,6 +43,14 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 	@Override
 	public List<SegmentedBetMetrics> calculateByBettingHouse() {
 		return toSegmentedMetrics(factBetRepository.aggregateByBettingHouse());
+	}
+
+	@Override
+	public List<MonthlyBetMetrics> calculateMonthly() {
+		return factBetRepository.aggregateByMonth()
+				.stream()
+				.map(monthly -> new MonthlyBetMetrics(monthly.year(), monthly.month(), toMetrics(monthly.aggregate())))
+				.toList();
 	}
 
 	private static List<SegmentedBetMetrics> toSegmentedMetrics(List<SegmentedBetAggregate> segments) {

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.FactBet;
+import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 
 public interface FactBetRepository {
@@ -22,4 +23,6 @@ public interface FactBetRepository {
 	List<SegmentedBetAggregate> aggregateByMarket();
 
 	List<SegmentedBetAggregate> aggregateByBettingHouse();
+
+	List<MonthlyBetAggregate> aggregateByMonth();
 }
