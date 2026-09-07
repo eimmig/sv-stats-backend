@@ -28,3 +28,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-130](https://stakevault.atlassian.net/browse/SV-130) - Upsert real em FactBetRepository + resolucao de dimensoes
 - [SV-131](https://stakevault.atlassian.net/browse/SV-131) - Plugar BetCreated/BetSettled no BetEventListener com idempotencia real
 - [SV-132](https://stakevault.atlassian.net/browse/SV-132) - CHANGELOG e verificacao final
+- [SV-133](https://stakevault.atlassian.net/browse/SV-133) - RF09 - Calculo de metricas
+- [SV-134](https://stakevault.atlassian.net/browse/SV-134) - Agregacao real em FactBetRepository (overall + segmentado por sport/market/betting-house)
+- [SV-135](https://stakevault.atlassian.net/browse/SV-135) - Servico de calculo de metricas (ROI, taxa de acerto) a partir do agregado
+- [SV-136](https://stakevault.atlassian.net/browse/SV-136) - CHANGELOG e verificacao final
