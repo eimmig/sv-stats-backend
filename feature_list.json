@@ -743,6 +743,24 @@
         }
       ],
       "evidence": "Fechada em 2026-09-07 - server.port=8083 fixado no bloco base de application.yml (sem profile, aplica dev/test/prod), destravando api-gateway feat-003. Delivery Reviewer (passe proprio, sem subagentes - risco baixo, independencia reduzida declarada): PASS, sem achado - nenhum teste hardcoda porta, sem referencia a 8080/porta em .github/workflows/ci.yml. Test Suite Auditor/Persistence Auditor dispensados (zero codigo/teste/persistencia tocado). ./init.sh do servico verde (exit 0) na branch feature/SV-163 apos merge da subtask (PR #32, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
+    },
+    {
+      "id": "feat-009",
+      "name": "Corrigir aviso do compilador/IDE (RabbitMQContainer deprecado)",
+      "description": "Limpeza de aviso real encontrado no painel Problems do VSCode (nao bloqueava ./init.sh nem o gate do SonarCloud, mas e defeito real de codigo, nao ruido de IDE): TestcontainersConfiguration usava org.testcontainers.containers.RabbitMQContainer, deprecado desde que o modulo dedicado org.testcontainers.rabbitmq (ja presente como dependencia testcontainers-rabbitmq no pom.xml) introduziu org.testcontainers.rabbitmq.RabbitMQContainer com o mesmo construtor - mesmo padrao ja seguido para PostgreSQLContainer (org.testcontainers.postgresql) no mesmo arquivo.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-09-08, Plan Reviewer rodado antes da mudanca - passe proprio, sem subagentes (risco baixo, troca de import, independencia reduzida declarada). Veredito: READY. Verificado via javap contra o jar real (testcontainers-rabbitmq 2.0.5, ja presente no pom.xml): org.testcontainers.rabbitmq.RabbitMQContainer tem o mesmo construtor publico RabbitMQContainer(DockerImageName) da classe deprecada - troca de import segura, sem mudanca de comportamento. ./init.sh do servico rodado apos a troca (verde, exit 0, Testcontainers sobe RabbitMQ e Redis normalmente). Unica subtask.",
+      "jira": "SV-174",
+      "subtasks": [
+        {
+          "id": "feat-009.1",
+          "name": "Trocar import de RabbitMQContainer, CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-175"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-08 - RabbitMQContainer migrado para org.testcontainers.rabbitmq (mesmo construtor, confirmado via javap). Delivery Reviewer (passe proprio, sem subagentes, risco baixo - grep confirmou zero referencia remanescente ao pacote antigo org.testcontainers.containers.RabbitMQContainer): PASS. Test Suite Auditor/Persistence Auditor dispensados (mudanca cosmetica de import, zero comportamento novo). ./init.sh do servico verde (exit 0) na branch feature/SV-174 apos merge da subtask (PR #34, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
     }
   ]
 }
