@@ -2,8 +2,17 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-07
-**Feature ativa:** nenhuma — **backlog do serviço 100% concluído (`feat-001`..`feat-007` `done`)**
+**Última atualização:** 2026-09-08
+**Feature ativa:** nenhuma — backlog do serviço 100% concluído (`feat-001`..`feat-009` `done`)
+
+## `feat-009` fechada — aviso do painel Problems do VSCode (2026-09-08)
+
+Achado durante sessão de `api-gateway`: `org.testcontainers.containers.RabbitMQContainer`
+deprecado (módulo dedicado `org.testcontainers.rabbitmq`, já dependência do `pom.xml`, mesmo
+construtor — mesma migração que `PostgreSQLContainer` já tinha feito). Zero mudança de
+comportamento — `Delivery Reviewer` (passe próprio): PASS, `grep` confirmou zero referência
+remanescente ao pacote antigo. `./init.sh` verde. PR `feature/SV-174` → `develop`, CI/SonarCloud
+verde.
 
 ## Status
 
