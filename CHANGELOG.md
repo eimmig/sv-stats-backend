@@ -44,3 +44,5 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-146](https://stakevault.atlassian.net/browse/SV-146) - Confirmar pipeline real e corrigir description desatualizada
 - [SV-163](https://stakevault.atlassian.net/browse/SV-163) - Porta HTTP fixa (8083)
 - [SV-164](https://stakevault.atlassian.net/browse/SV-164) - server.port fixo, CHANGELOG e verificacao final
+- [SV-174](https://stakevault.atlassian.net/browse/SV-174) - Corrigir aviso do compilador/IDE (RabbitMQContainer deprecado)
+- [SV-175](https://stakevault.atlassian.net/browse/SV-175) - Trocar import de RabbitMQContainer, CHANGELOG e verificacao final
