@@ -118,34 +118,56 @@ class DimensionResolverTest {
 
 	@Test
 	void shouldReturnNullForTeamWhenNameIsNull() {
-		UUID resolved = resolver.resolveTeam(null);
+		UUID sportId = UUID.randomUUID();
+
+		UUID resolved = resolver.resolveTeam(null, sportId);
 
 		assertThat(resolved).isNull();
-		verify(teamRepository, never()).findByName(any());
+		verify(teamRepository, never()).findByNameAndSportId(any(), any());
 	}
 
 	@Test
-	void shouldReuseExistingTeamByName() {
+	void shouldReuseExistingTeamByNameAndSport() {
 		UUID existingId = UUID.randomUUID();
-		when(teamRepository.findByName("Flamengo")).thenReturn(Optional.of(new DimTeam(existingId, "Flamengo")));
+		UUID sportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId))
+				.thenReturn(Optional.of(new DimTeam(existingId, "Flamengo", sportId)));
 
-		UUID resolved = resolver.resolveTeam("Flamengo");
+		UUID resolved = resolver.resolveTeam("Flamengo", sportId);
 
 		assertThat(resolved).isEqualTo(existingId);
 		verify(teamRepository, never()).save(any());
 	}
 
 	@Test
-	void shouldCreateTeamRowWhenNameIsMissing() {
-		when(teamRepository.findByName("Flamengo")).thenReturn(Optional.empty());
+	void shouldCreateTeamRowWhenNameAndSportCombinationIsMissing() {
+		UUID sportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty());
 		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		UUID resolved = resolver.resolveTeam("Flamengo");
+		UUID resolved = resolver.resolveTeam("Flamengo", sportId);
 
 		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
 		verify(teamRepository).save(captor.capture());
 		DimTeam saved = captor.getValue();
 		assertThat(resolved).isEqualTo(saved.id());
 		assertThat(saved.name()).isEqualTo("Flamengo");
+		assertThat(saved.sportId()).isEqualTo(sportId);
+	}
+
+	// feat-013: o mesmo nome em esportes diferentes nao deve reutilizar a linha do outro esporte.
+	@Test
+	void shouldNotReuseTeamFromADifferentSport() {
+		UUID soccerSportId = UUID.randomUUID();
+		UUID basketballSportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", basketballSportId)).thenReturn(Optional.empty());
+		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		resolver.resolveTeam("Flamengo", basketballSportId);
+
+		verify(teamRepository, never()).findByNameAndSportId("Flamengo", soccerSportId);
+		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
+		verify(teamRepository).save(captor.capture());
+		assertThat(captor.getValue().sportId()).isEqualTo(basketballSportId);
 	}
 }
