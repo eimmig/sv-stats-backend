@@ -2,51 +2,52 @@
 
 ## Current Objective
 
-- `epic-004` (raiz) `done`. `feat-013` (addendum sobre `epic-011`) fechada nesta sessão. Nenhuma
-  feature pendente neste harness.
-- Branch / commit: `develop` @ merge de `feature/SV-299` (PR #40).
+- `epic-004` (raiz) `done`. `epic-014` (raiz, extensão do dashboard consolidado) `in-progress` —
+  claimed nesta sessão, ainda sem feature granular criada aqui (próximo passo).
+- Branch / commit: `develop` @ `8582fef` (close de `feat-014`, Docker/GHCR).
 
 ## Completed This Session (2026-09-10)
 
-- [x] **`feat-013` fechada** (story SV-299, subtasks SV-300..302, PRs #39 subtask->feature + #40
-      feature->develop): `DIM_TEAM` ganha `sportId` (FK `DIM_SPORT`, NOT NULL), chave natural vira
-      `(name, sportId)`; `GET /api/v1/statistics/teams?sportId=<uuid>` novo (autocomplete escopado
-      por esporte da tela "Buscar Estatísticas" em `apps/web`).
-- [x] Achado real do Test Suite Auditor corrigido: teste novo prova a `UNIQUE(name, sport_id)` no
-      banco (`shouldRejectDuplicateNameAndSportAtTheDatabaseLevel`), não só o caminho de aplicação.
-- [x] Achado de gate corrigido: SonarCloud Quality Gate falhou no PR story->develop por um
-      Reliability finding em `EquityCurveCalculator.java` (código de `feat-012`, capturado pela
-      janela de "New Code" por tempo do projeto, não por diff do PR) — `n - 1` casteado pra `long`
-      explicitamente antes de `BigDecimal.valueOf`.
+- [x] **`feat-014` fechada** (Docker/GHCR publish, story SV-328) — encontrada `in-progress` de
+      uma sessão anterior (subtasks já `done`, mas validação real nunca tinha ocorrido) enquanto
+      tentando iniciar `epic-014` da raiz aqui — WIP máximo 1 por serviço bloqueava. Fechado:
+      primeiro merge `develop`→`main` deste serviço (PR #42, depois #44), imagem confirmada
+      publicada em `ghcr.io/eimmig/sv-stats-backend`.
+- [x] **Resolvido o "não investigado" da sessão anterior** sobre o SonarCloud usar janela de "New
+      Code" por tempo: não era isso. O problema real era a **primeira análise de sempre da branch
+      `main`** sem baseline de New Code, retornando `status: "NONE"` (confirmado via API do
+      SonarCloud + código-fonte do `sonar-scanner-engine`) que o scanner mal-interpreta como
+      `FAILED`. Corrigido ajustando o New Code Definition do projeto no dashboard SonarCloud
+      (usuário). Documentado em `docs/CI-CD.md` (raiz) — outros serviços sem merge pra `main`
+      ainda podem bater no mesmo problema.
 
 ## Verification Evidence
 
 | Check | Command | Result | Notes |
 |---|---|---|---|
-| Build/test | `./mvnw -q verify` | pass | JaCoCo gate incluso |
-| Local harness | `./init.sh` | pass | |
-| CI (full gate) | GitHub Actions + SonarCloud | pass | PR #40, após fix do achado de Reliability |
-| Delivery Reviewer | — | PASS | 1 desvio de plano aceito (endpoint no controller existente) |
-| Test Suite Auditor | — | CONCERNS -> corrigido | achado P2 (constraint sem teste DB-level) corrigido antes de fechar |
-| Persistence Auditor | — | CONCERNS (não-bloqueante) | achados P2/P3 documentados, consistentes com o plano |
+| `./init.sh` | — | pass | Nenhum código tocado nesta sessão, só CI/CD e docs. |
+| CI real em `main` | GitHub Actions | pass | PR #44, `pipeline` + `build-and-push-image` verdes após o fix do SonarCloud. |
+| Imagem no GHCR | log do job `build-and-push-image` | confirmado | `ghcr.io/eimmig/sv-stats-backend:latest`+`:<sha>`, digest `sha256:e47e6424...`. |
 
 ## Blockers / Risks
 
-- Nenhum.
+Nenhum.
 
 ## Next Session Startup
 
 1. Ler `../../CLAUDE.md` e o `CLAUDE.md` deste serviço.
-2. `feature_list.json` deste harness: todas as features `done` (`feat-001..013`). Nenhum trabalho
-   pendente aqui até surgir novo achado cross-service ou nova feature.
+2. Ler `docs/STATISTICS.md` (raiz) antes de codificar `epic-014` — as fórmulas novas
+   (wonCount/lostCount/voidCount/preCount/liveCount/avgOdd/byBetType) precisam estar lá antes do
+   código, por convenção do harness.
 3. Rodar `./init.sh` (deve passar).
+4. Criar a feature granular (`feat-015`) em `feature_list.json` deste serviço pra `epic-014` da
+   raiz, com Plan Reviewer antes de codificar — ver descrição completa do epic em
+   `../../feature_list.json`.
 
 ## Recommended Next Step
 
-- Nenhum próximo passo pendente neste harness. `epic-012` (raiz, `apps/web` — tela "Buscar
-  Estatísticas") está liberado, consumindo tanto `feat-012` (`GET /api/v1/statistics/search`)
-  quanto `feat-013` (`GET /api/v1/statistics/teams`).
-- Projeto SonarCloud deste serviço usa janela de "New Code" por tempo, não por diff de PR — um PR
-  sem nenhuma linha tocada num arquivo ainda pode falhar o gate por código de horas/dias atrás
-  entrando na janela. Vale considerar se isso é intencional (config do projeto no SonarCloud) ou
-  se devia ser "Reference branch" — não investigado nesta sessão, sinalizado aqui.
+- **`epic-014` (raiz)**: `GET /api/v1/statistics` ganha `wonCount`/`lostCount`/`voidCount`,
+  `preCount`/`liveCount` (a partir de `FACT_BET.betType`, populado só no insert de `BetCreated`),
+  `avgOdd`, e o segmento novo `byBetType` (2 buckets fixos PRE/LIVE). Atenção ao risco de colisão
+  de coluna já sinalizado na descrição do epic: se `epic-011`/`epic-018` (mesma raiz) também
+  tocarem `FACT_BET.odd`, confirmar no Plan Reviewer quem chega primeiro.
