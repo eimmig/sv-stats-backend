@@ -71,20 +71,20 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 
 	private FactBet settledBet(UUID dateId, UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake,
 			BigDecimal profit, boolean isWin) {
-		return new FactBet(UUID.randomUUID(), dateId, bettingHouseId, sportId, newLeagueId(), marketId, null, stake,
-				profit, isWin, isWin ? BetStatus.WON : BetStatus.LOST, 1);
+		return new FactBet(UUID.randomUUID(), dateId, bettingHouseId, sportId, newLeagueId(), marketId, null, null,
+				null, stake, null, profit, isWin, isWin ? BetStatus.WON : BetStatus.LOST, 1);
 	}
 
 	private FactBet pendingBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
-				stake, null, null, BetStatus.PENDING, 1);
+				null, null, stake, null, null, null, BetStatus.PENDING, 1);
 	}
 
 	// RN06 inclui explicitamente void nas agregacoes (aposta devolvida) - stake volta pro
 	// apostador, profit=0, nao conta como vitoria nem derrota.
 	private FactBet voidBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
-				stake, BigDecimal.ZERO, false, BetStatus.VOID, 1);
+				null, null, stake, null, BigDecimal.ZERO, false, BetStatus.VOID, 1);
 	}
 
 	@Test

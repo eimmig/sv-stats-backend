@@ -6,5 +6,5 @@ import java.util.UUID;
 
 public record BetCreatedEvent(UUID betId, UUID bettingHouseId, String bettingHouseName, UUID sportId,
 		String sportName, UUID leagueId, String leagueName, UUID marketId, String marketName, UUID tipsterId,
-		String tipsterName, BigDecimal stake, Instant betDate) {
+		String tipsterName, String team1, String team2, BigDecimal stake, BigDecimal odd, Instant betDate) {
 }

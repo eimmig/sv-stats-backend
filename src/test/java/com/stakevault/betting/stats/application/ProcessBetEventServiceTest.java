@@ -50,13 +50,14 @@ class ProcessBetEventServiceTest {
 
 	private BetCreatedEvent createdEvent(UUID betId) {
 		return new BetCreatedEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
-				"League", UUID.randomUUID(), "Market", null, null, BigDecimal.valueOf(100), Instant.now());
+				"League", UUID.randomUUID(), "Market", null, null, "Team A", "Team B", BigDecimal.valueOf(100),
+				BigDecimal.valueOf(2), Instant.now());
 	}
 
 	private BetSettledEvent settledEvent(UUID betId, Instant settledAt) {
 		return new BetSettledEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
-				"League", UUID.randomUUID(), "Market", null, null, BigDecimal.valueOf(100), BetStatus.WON,
-				BigDecimal.valueOf(50), settledAt);
+				"League", UUID.randomUUID(), "Market", null, null, "Team A", "Team B", BigDecimal.valueOf(100),
+				BigDecimal.valueOf(2), BetStatus.WON, BigDecimal.valueOf(50), settledAt);
 	}
 
 	@Test
@@ -105,8 +106,8 @@ class ProcessBetEventServiceTest {
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
 		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
 				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-						UUID.randomUUID(), null, BigDecimal.valueOf(100), BigDecimal.valueOf(50), true, BetStatus.WON,
-						1)));
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50),
+						true, BetStatus.WON, 1)));
 
 		service.processCreated(eventId, createdEvent(betId));
 
@@ -138,5 +139,33 @@ class ProcessBetEventServiceTest {
 		// evict usa o mes de settledAt (RN06 - so a liquidacao muda o que as queries enxergam).
 		var settledDate = settledAt.atZone(ZoneOffset.UTC).toLocalDate();
 		verify(metricsCacheRepository).evict(settledDate.getYear(), settledDate.getMonthValue());
+	}
+
+	// Achado real do plan review de epic-011: dateId reflete a data do JOGO (betDate), resolvida
+	// por processCreated - processSettled nao pode recalcula-lo a partir de settledAt (mes de
+	// liquidacao pode divergir do mes do jogo), sob risco de corromper o agregado mensal do
+	// dashboard (feat-006) silenciosamente.
+	@Test
+	void shouldPreserveExistingDateIdWhenSettlingAnAlreadyCreatedBet() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID gameDateId = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
+				new FactBet(betId, gameDateId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2), null,
+						null, BetStatus.PENDING, 1)));
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processSettled(eventId, settledEvent(betId, settledAt));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().dateId()).isEqualTo(gameDateId);
+		verify(dimensionResolver, never()).resolveDate(any());
 	}
 }

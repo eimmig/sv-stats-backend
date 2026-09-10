@@ -2,8 +2,36 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-08
-**Feature ativa:** nenhuma — backlog do serviço 100% concluído (`feat-001`..`feat-009` `done`)
+**Última atualização:** 2026-09-10
+**Feature ativa:** nenhuma — `feat-001`..`feat-012` `done` (`feat-012` fechada nesta sessão,
+`epic-011` da raiz).
+
+## `feat-012` fechada — GET /api/v1/statistics/search (2026-09-10)
+
+Escopo novo, fora do backlog original do TCC1 (pedido do usuário, `epic-011` da raiz). Endpoint
+de decisão pré-aposta, distinto do dashboard consolidado (`feat-006`): `sportId`/`leagueId`
+obrigatórios (400 RFC 7807 localizado), `teamId`/`bettingHouseId`/`marketId`/`tipsterId`/`from`/`to`
+opcionais. Resposta: `summary` (ROI, taxa de acerto, odd média, drawdown máximo, Índice de Sharpe
+simplificado) + `timeline` (equity curve). Fórmulas em `docs/STATISTICS.md` (nota nova).
+
+Duas mudanças de schema (migration aditiva, nullable): `DIM_TEAM` nova (chave natural por nome —
+`team1`/`team2` não têm catálogo em `bets-service`) e coluna `odd` em `FACT_BET` (já trafegava no
+evento desde o início, nunca tinha sido persistida). `EquityCurveCalculator` (domain, puro, sem
+I/O) calcula `maxDrawdown`/`sharpeRatio` a partir da série ordenada — testado com valores
+conferidos à mão, não só "não lança exceção".
+
+**Achado real corrigido antes do código** (Plan Reviewer): `processSettled` recalculava `dateId`
+a partir de `settledAt` em vez de preservar o `dateId` já resolvido de `betDate` (data do JOGO,
+decisão do usuário) por `processCreated` — corrompia silenciosamente o agregado mensal do
+dashboard consolidado (`feat-006`) para toda aposta liquidada em mês diferente do jogo, não só a
+série nova desta feature. Corrigido preservando o `dateId` existente; residual documentado
+(`BetSettled` fora de ordem sem `betDate` no payload).
+
+`Delivery Reviewer`: PASS (sem regressão em `GET /api/v1/statistics`). `Test Suite Auditor`: PASS.
+`Persistence Auditor`: CONCERNS, 1 P2 aceito (corrida check-then-act em
+`DimensionResolver.resolveTeam`, mesmo padrão das outras 5 dimensões, auto-recuperável via
+retry/DLQ já validado em `epic-007`). `./init.sh` do serviço e da raiz verdes. 6 subtasks
+(`SV-293`..`298`), branch `feature/SV-292` mergeada em `develop`.
 
 ## `feat-009` fechada — aviso do painel Problems do VSCode (2026-09-08)
 
