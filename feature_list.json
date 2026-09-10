@@ -930,7 +930,7 @@
           ],
           "validation": "mvn -B verify verde; testes de integracao Testcontainers cobrindo os 4 cenarios do checklist.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-297"
         },
         {

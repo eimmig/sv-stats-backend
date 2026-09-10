@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.stakevault.betting.stats.domain.model.InvalidTenantSlugException;
 import com.stakevault.betting.stats.domain.model.LocalizedDomainException;
+import com.stakevault.betting.stats.domain.model.MissingRequiredStatisticsFilterException;
 import com.stakevault.betting.stats.domain.model.TenantAlreadyProvisionedException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,8 @@ public class DomainExceptionHandler {
 		this.messageSource = messageSource;
 	}
 
-	@ExceptionHandler({ TenantAlreadyProvisionedException.class, InvalidTenantSlugException.class })
+	@ExceptionHandler({ TenantAlreadyProvisionedException.class, InvalidTenantSlugException.class,
+			MissingRequiredStatisticsFilterException.class })
 	public ProblemDetail handle(LocalizedDomainException exception, Locale locale, HttpServletRequest request) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
 				HttpStatus.valueOf(exception.httpStatusCode()),
