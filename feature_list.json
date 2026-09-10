@@ -5,37 +5,380 @@
       "name": "Setup do projeto + consumidor RabbitMQ",
       "description": "Inicializar projeto Spring Boot 4.x (Java 25) com Maven, pacotes domain/application/adapter/config (arquitetura hexagonal - ver docs/CONVENTIONS.md), schema-per-tenant (tenant_<slug>, resolvido a partir do header X-Tenant-Id nas consultas e do campo tenantId do envelope de evento - NAO mais X-User-Id, ver docs/DECISIONS-LOG.md 2026-08-02 e docs/API-CONTRACTS.md), Flyway configurado para migracao lazy por schema (ver docs/CONVENTIONS.md secao 'Migrations'), JaCoCo com gate de 80% vinculado a fase verify. MessageSource/ResourceBundle configurado para i18n de erros (pt-BR/en-US/es). Consumidores dos eventos BetCreated e BetSettled (adapter/in/messaging), assincronos e idempotentes (ver feat-002 para PROCESSED_EVENT), validando cada mensagem contra o JSON Schema correspondente em docs/contracts/. Expor tambem uma rota administrativa que cria o schema tenant_<slug> deste servico quando um tenant novo e provisionado, autenticada por X-Admin-Api-Key (ver docs/API-CONTRACTS.md) - chamada manualmente pelo operador, NAO orquestrada por auth-service em codigo (decisao de 2026-08-02, ver docs/DECISIONS-LOG.md item 3: 3 chamadas manuais separadas).",
       "dependencies": [],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-06, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 2 achados MAJOR corrigidos no plano (nenhum exigia decisao do usuario). (MAJOR #1) .github/workflows/ci.yml e CHANGELOG.md deste repositorio sao o scaffold antigo do epic-009 (bootstrap), com os mesmos 3 gotchas ja documentados e corrigidos em auth-service/bets-service (docs/CI-CD.md 'Guarda por arquivo-marcador'): passo de testes chama 'mvn test jacoco:report' (goal solto), passo Sonar usa o atalho 'mvn sonar:sonar' (nunca resolve sem pluginGroups/pom), falta o 6o passo (gate de zero issue/hotspot, validate-sonar-issues.py) e o sonar.qualitygate.wait condicional (quebra em push direto pra develop); CHANGELOG.md ainda em formato Keep a Changelog com prosa, anterior a decisao de uma linha por issue do Jira. Corrigido no plano: feat-001.1 (primeira subtask) porta o ci.yml/validate-sonar-issues.py ja endurecidos de bets-service (projectKey eimmig_sv-stats-backend), reescrevendo CHANGELOG.md pro novo formato antes do bootstrap - a entrada prosa preexistente (fix de sonar.projectKey) reaproveita a mesma Jira SV-9 ja usada por auth-service/bets-service para o mesmo fix, nao cria issue nova. (MAJOR #2) A description bundla o consumidor RabbitMQ (BetCreated/BetSettled) dentro do MESMO feat-001 de bootstrap - diferente de bets-service, onde o publicador so chegou em feat-006. Isso exige uma peca que docs/API-CONTRACTS.md ainda nao cobre: o produtor (bets-service) so precisava do JSON Schema vendorizado em src/test/resources/contracts/ (validacao so em teste, contra a propria mensagem publicada); o CONSUMIDOR precisa validar toda mensagem recebida em PRODUCAO (decidir DLQ vs processar), entao a copia vendorizada aqui tem que existir tambem em src/main/resources/contracts/ (lida em runtime), nao so em test. Corrigido no plano: feat-001.9 (nova subtask, consumidor) inclui atualizar docs/API-CONTRACTS.md (repositorio raiz) com essa distincao antes de vendorizar os 2 schemas nos dois diretorios deste repositorio. Escopo confirmado do consumidor nesta feature (sem decisao do usuario necessaria - already implicito na propria description): listener ligado a fila REAL de producao 'stats.bet-events' (nome e argumentos identicos a infra/rabbitmq/definitions.json, ver docs/API-CONTRACTS.md 'Topologia RabbitMQ' - nao e uma fila fake de teste como bets-service fez pro lado publicador, porque aqui o nome real importa para o @RabbitListener funcionar em producao), valida contra o schema correspondente ao eventType e loga recebimento (exception em schema invalido deixa o RabbitMQ redirecionar para DLQ via x-delivery-limit, sem tratamento especial no codigo) - SEM persistencia ainda (nao ha FACT_BET nem PROCESSED_EVENT nesta etapa, adiado para feat-002/003 conforme a propria description ja aponta 'ver feat-002 para PROCESSED_EVENT'). Auditoria confirmou que RabbitMQ Testcontainers (rabbitmq:4-management-alpine, mesma imagem de bets-service) suporta quorum queue em broker single-node para fins de teste. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-110",
+      "subtasks": [
+        {
+          "id": "feat-001.1",
+          "name": "Endurecer pipeline de CI antes do bootstrap (porta o padrao ja validado de bets-service)",
+          "status": "done",
+          "jira": "SV-111",
+          "detail": "Achado do Plan Reviewer: ci.yml/CHANGELOG.md deste repositorio ainda tem os mesmos 3 gotchas de goal/guarda + falta o 6o passo, ja corrigidos reativamente em auth-service/bets-service - portar a versao endurecida agora evita repetir o mesmo ciclo de descoberta.",
+          "checklist": [
+            "ci.yml: build 'mvn -B -DskipTests package', testes 'mvn -B verify', Sonar com coordenadas completas do plugin + sonar.qualitygate.wait condicional, 6o passo validate-sonar-issues.py.",
+            "Portar .github/scripts/validate-sonar-issues.py de bets-service para este repositorio.",
+            "Reescrever CHANGELOG.md para o formato de uma linha por issue do Jira, preservando a entrada de fix do sonar.projectKey sob a mesma chave SV-9."
+          ],
+          "validation": "ci.yml deste repositorio bate 1:1 com o de bets-service (so projectKey/nome diferentes); CHANGELOG.md no novo formato.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.2",
+          "name": "Bootstrap do pom.xml e esqueleto hexagonal",
+          "status": "done",
+          "jira": "SV-112",
+          "detail": "Mesmo padrao de bets-service feat-001.2 - Spring Boot 4.1.1, Java 25, Maven, groupId com.stakevault.stats, artifactId stats-service. Dependencias de mensageria (spring-boot-starter-amqp, com.networknt:json-schema-validator:1.5.9, org.testcontainers:testcontainers-rabbitmq) entram aqui, nao depois, porque o consumidor ja e escopo desta feature.",
+          "checklist": [
+            "pom.xml com Spring Boot 4.1.1 (parent), Java 25, spring-boot-starter-web/data-jpa/actuator/validation/amqp, flyway-core, postgresql driver, json-schema-validator 1.5.9, jacoco-maven-plugin.",
+            "Pacotes domain/application/adapter/{in/web,in/messaging,out/persistence}/config vazios (so package-info.java) criados.",
+            "Testcontainers (Postgres + RabbitMQ, mesma imagem rabbitmq:4-management-alpine de bets-service) configurados em src/test."
+          ],
+          "validation": "mvn -B -DskipTests package verde.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.3",
+          "name": "Conexao Postgres com profiles dev/test/prod",
+          "status": "done",
+          "jira": "SV-113",
+          "detail": "Mesmo padrao de bets-service feat-001.3 - variavel de ambiente direta (${DB_HOST:localhost} etc.), sem spring-dotenv.",
+          "checklist": [
+            "application.yml com profiles dev/test/prod, datasource via variavel de ambiente.",
+            "application-test.yml delega ao Testcontainers (@ServiceConnection)."
+          ],
+          "validation": "mvn -B verify sobe o contexto Spring nos 3 profiles sem erro (test via Testcontainers real).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.4",
+          "name": "Provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key",
+          "status": "done",
+          "jira": "SV-114",
+          "detail": "Mesmo padrao de bets-service feat-001.4 (ensureSchemaExists/migrateExistingOnly via Flyway.createSchemas, TenantSchemaName, filtro le X-Tenant-Id) + rota admin bundlada nesta feature, reaproveitando AdminApiKeyFilter ja corrigido em auth-service/bets-service (UriUtils.decode() antes de comparar prefixo de path). Sem multi-tenancy do Hibernate ainda (fica para feat-002, quando existirem entidades JPA) - so Flyway puro.",
+          "checklist": [
+            "TenantContextHolder/TenantContextScope/TenantSchemaFilter portados do padrao ja usado em auth-service/bets-service.",
+            "POST administrativo que cria o schema tenant_<slug> deste servico, autenticado por X-Admin-Api-Key.",
+            "Teste de integracao: schema criado sob demanda, isolamento entre tenants confirmado."
+          ],
+          "validation": "Duas requisicoes com X-Tenant-Id diferentes migram schemas distintos, sem vazamento entre eles.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.5",
+          "name": "Gate de cobertura JaCoCo 80%",
+          "status": "done",
+          "jira": "SV-115",
+          "detail": "mvn verify precisa falhar abaixo de 80% - o passo 4 do ci.yml (feat-001.1) ja assume isso.",
+          "checklist": [
+            "jacoco-maven-plugin configurado com regra de linha 80% vinculada a fase verify."
+          ],
+          "validation": "mvn verify falha de proposito com cobertura artificialmente baixa, depois volta a passar.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.6",
+          "name": "Scaffold de i18n (MessageSource) e teste smoke",
+          "status": "done",
+          "jira": "SV-116",
+          "detail": "messages.properties SEM sufixo de locale e obrigatorio (gotcha critico de auth-service feat-003.6 - MessageSourceAutoConfiguration nunca ativa sem ele) - criar desde o inicio.",
+          "checklist": [
+            "messages.properties + messages_pt_BR.properties + messages_en_US.properties + messages_es.properties.",
+            "Teste smoke confirmando resolucao de uma chave nos 3 locales."
+          ],
+          "validation": "Teste smoke verde nos 3 locales.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.7",
+          "name": "Health checks do Actuator",
+          "status": "done",
+          "jira": "SV-117",
+          "detail": "Necessario para o healthcheck do docker-compose e para confirmar que o servico sobe de fato - grupo de readiness inclui rabbit desde o inicio (consumidor ja e escopo desta feature).",
+          "checklist": [
+            "management.endpoint.health.group.readiness.include com db e rabbit.",
+            "Teste de integracao confirmando os dois nos readiness."
+          ],
+          "validation": "GET /actuator/health/readiness reporta UP com Postgres e RabbitMQ reais (Testcontainers).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.8",
+          "name": ".env.example e logging estruturado",
+          "status": "done",
+          "jira": "SV-118",
+          "detail": ".env.example restrito ao que feat-001 realmente le - ADMIN_API_KEY e variaveis de RabbitMQ ja sao consumidas aqui.",
+          "checklist": [
+            ".env.example com DB_*, ADMIN_API_KEY, RABBITMQ_*.",
+            "Logging estruturado (JSON, mesmo padrao ECS de bets-service) configurado."
+          ],
+          "validation": "Logs em JSON no console ao subir o servico.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.9",
+          "name": "Consumidor RabbitMQ BetCreated/BetSettled (adapter/in/messaging)",
+          "status": "done",
+          "jira": "SV-119",
+          "detail": "Achado do Plan Reviewer (MAJOR #2): listener ligado a fila real 'stats.bet-events' (nome e argumentos identicos a infra/rabbitmq/definitions.json - nao redeclarar com argumentos diferentes, ver docs/API-CONTRACTS.md 'Topologia RabbitMQ'), valida cada mensagem contra o schema do eventType correspondente antes de processar. Sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003) - so recebe, valida e loga; excecao em schema invalido deixa o RabbitMQ redirecionar para DLQ via x-delivery-limit.",
+          "checklist": [
+            "docs/API-CONTRACTS.md (repositorio raiz sv-harness) atualizado: copia vendorizada do consumidor vive em src/main/resources/contracts/ (lida em producao, nao so em teste como no lado publicador de bets-service) - commit separado no repositorio raiz.",
+            "Copias vendorizadas de bet-created.schema.json e bet-settled.schema.json em src/main/resources/contracts/ (producao) e src/test/resources/contracts/ (fixture de teste) deste repositorio.",
+            "@RabbitListener(queues = \"stats.bet-events\") deserializa o envelope, valida payload contra o schema pelo eventType, loga recebimento.",
+            "Teste de integracao (Testcontainers RabbitMQ real): mensagem valida de cada eventType e processada sem erro; mensagem que viola o schema lanca excecao (nao e engolida silenciosamente)."
+          ],
+          "validation": "Teste de integracao publica BetCreated/BetSettled reais no exchange bets.events (routing key bet.created/bet.settled) e confirma consumo; mensagem malformada gera excecao registrada.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-001.10",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-120",
+          "detail": "Fecha a feature com o gate real do harness, nao so com os testes isolados de cada subtask.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-06 (branch feature/SV-110, story SV-110 com 10 subtasks SV-111..120, 9 PRs de subtask mergeadas). Primeiro codigo de stats-service: bootstrap Spring Boot 4.1.1/Java 25/Maven (groupId com.stakevault.betting compartilhado com os outros 2 servicos Java, package com.stakevault.betting.stats), Postgres dev/test/prod, provisionamento de schema de tenant (Flyway lazy) + filtro X-Tenant-Id + rota admin X-Admin-Api-Key, gate JaCoCo 80%, i18n (MessageSource, 3 locales), health checks do Actuator (db + rabbit), .env.example + logging estruturado ECS, e o consumidor RabbitMQ dos eventos BetCreated/BetSettled (adapter/in/messaging) com validacao de schema em runtime - sem persistencia ainda (FACT_BET/PROCESSED_EVENT sao feat-002/003).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify, JaCoCo 80% incluso) verde localmente com Docker ativo, em cada uma das 10 subtasks.",
+              "CI verde em todas as 9 PRs de subtask (subtask/SV-111..119 -> feature/SV-110).",
+              "41 testes reais: schema de tenant/isolamento entre tenants, i18n nos 3 locales via MessageSource real, health checks (db/rabbit) contra Testcontainers reais, validacao de schema JSON contra os 2 eventos reais (BetCreated/BetSettled), consumo end-to-end via RabbitMQ real (Testcontainers) com contagem de fila/DLQ."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "RabbitMQ Testcontainers/Declarable beans planejados para entrar em feat-001.2 (junto do bootstrap) foram adiados para feat-001.9 (junto do consumidor) - bootstrap ficou identico ao padrao minimo ja usado em bets-service (so Postgres), evitando acoplar infraestrutura de mensageria a uma feature que ainda nao a usa."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): REVISE, 2 MAJOR corrigidos no plano - gotcha de CI (mesmos 3 gotchas ja vistos em auth-service/bets-service) e a distincao real entre a copia vendorizada do schema em teste (bets-service, produtor) vs em producao (stats-service, consumidor) - ver campo plan_review.",
+              "Achado real de execucao (feat-001.7, health checks): spring-boot-starter-amqp ja no classpath desde feat-001.2 ativa RabbitHealthIndicator automaticamente, derrubando a liveness (/actuator/health, que agrega todos os indicators por padrao) porque ainda nao havia RabbitMQ configurado. Corrigido com management.health.rabbit.enabled: false, revertido em feat-001.9 quando o consumidor real foi conectado.",
+              "Achado real de execucao (feat-001.9, consumidor RabbitMQ - o mais significativo da feature): uma falha de validacao de schema classificada como RuntimeException comum e reenfileirada indefinidamente pelo error handler padrao do Spring AMQP (medido: 128+ redeliveries em ~10s), porque o x-delivery-limit da quorum queue so e respeitado quando o container para de pedir requeue - nao e so um numero teorico, o teste de integracao real destravou isso rodando contra RabbitMQ real via Testcontainers. Corrigido fazendo InvalidBetEventException/UnknownBetEventTypeException estenderem AmqpRejectAndDontRequeueException - correto tambem semanticamente (falha de schema e permanente, nunca passa numa proxima tentativa) e documentado em docs/CONVENTIONS.md para qualquer consumidor RabbitMQ futuro (proximo: retry automatico via x-delivery-limit deve ser reservado para falha genuinamente transitoria, ex.: conexao com banco ao persistir FACT_BET em feat-002/003).",
+              "Achado tardio, no proprio gate feature->develop (PR #10, apos feat-001.10 ja marcada done - subtasks pulam SonarCloud de proposito, so a story inteira roda a analise): SonarCloud reportou 4 apontamentos - java:S2699 BLOCKER (teste de integracao copiado verbatim de bets-service sem nenhuma assercao, so provava 'nao lanca exception'; nunca pego la porque o PR de subtask que o introduziu nao roda Sonar), java:S5838 (isEqualTo(0) -> isZero()), java:S1130 (throws Exception desnecessario num metodo de teste - a excecao checked so ocorre dentro do lambda passado a assertThatNoException, nao propaga pro metodo), java:S2629 (argumentos de log.info avaliados incondicionalmente, guardado com log.isInfoEnabled()). Todos corrigidos antes do merge."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo da feature (60 arquivos) sem achado residual alem dos ja corrigidos e documentados.",
+              "docs/API-CONTRACTS.md, docs/CONVENTIONS.md e docs/services/stats-service.md (repositorio raiz sv-harness) atualizados nos commits correspondentes as subtasks feat-001.9/feat-001.10."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-002",
       "name": "Modelo OLAP (esquema estrela) + idempotencia",
-      "description": "Banco Postgres proprio, isolado por cliente. Tabela fato FACT_BET (com status varchar e profit/isWin nullable ate liquidacao) e dimensoes DIM_DATE, DIM_BETTING_HOUSE, DIM_SPORT, DIM_LEAGUE, DIM_MARKET, DIM_TIPSTER. Tabela tecnica PROCESSED_EVENT (id, eventId, processedAt) para idempotencia do consumo - verificar antes de processar, inserir na mesma transacao. Ver docs/services/stats-service.md.",
+      "description": "Banco Postgres proprio, isolado por cliente. Tabela fato FACT_BET (com status varchar e profit/isWin nullable ate liquidacao) e dimensoes DIM_DATE, DIM_BETTING_HOUSE, DIM_SPORT, DIM_LEAGUE, DIM_MARKET, DIM_TIPSTER. Tabela tecnica PROCESSED_EVENT (id, eventId, processedAt) para idempotencia do consumo - verificar antes de processar, inserir na mesma transacao. So schema + camada de persistencia (migration, entidades JPA, ports/adapters) - a escrita real (insert em BetCreated, upsert em BetSettled, check de PROCESSED_EVENT antes de processar) e feat-003, que consome o BetEventListener ja existente (feat-001.9). Sem exposicao REST (GET /api/v1/statistics e feat-006). Ver docs/services/stats-service.md e docs/DATA-MODEL.md.",
       "dependencies": [
         "feat-001"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-06, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: READY WITH CONCERNS, 1 achado MAJOR corrigido no plano (nao exigia decisao do usuario - o achado que exigia decisao, nomes das dimensoes, ja foi resolvido separadamente com o usuario e implementado em bets-service feat-010 antes desta feature comecar). (MAJOR) Esta e a primeira introducao de JPA/Hibernate neste servico - sem o resolver de multi-tenancy do Hibernate (CurrentTenantIdentifierResolver/MultiTenantConnectionProvider), toda escrita via JPA iria para o schema 'public' em vez do schema do tenant corrente, silenciosamente vazando dado entre tenants (mesmo achado MAJOR que bets-service feat-002.2 encontrou ao introduzir suas primeiras entidades JPA - nao redescoberto aqui, aplicado direto). Plano corrigido: nova subtask feat-002.2 porta SchemaMultiTenantConnectionProvider/TenantIdentifierResolver/TenantHibernatePropertiesCustomizer de bets-service (reaproveita TenantContextHolder/TenantContextScope ja existentes de feat-001.4) + TenantSchemaFilter passa a exigir X-Tenant-Id (400 missing-tenant-id) em rotas de negocio, fechando o residual aceito em feat-001.4 (que so passava por transparencia porque nenhuma rota de negocio existia ainda). Confirmado por leitura direta do jar Hibernate 7.x deste servico (mesma versao de bets-service, via spring-boot-starter-parent 4.1.1) que as chaves MultiTenancySettings.MULTI_TENANT_CONNECTION_PROVIDER/MULTI_TENANT_IDENTIFIER_RESOLVER nao mudaram. Escopo confirmado (sem decisao do usuario necessaria): dimensoes ganham so id+name (id = mesmo uuid do catalogo de bets-service, name denormalizado do payload do evento, ja resolvido); FACT_BET.betCount mantido fiel ao ERD original (docs/DATA-MODEL.md) mesmo sem uso aparente ainda - RF09 (feat-004) pode precisar. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-124",
+      "subtasks": [
+        {
+          "id": "feat-002.1",
+          "name": "Migration Flyway do esquema estrela + PROCESSED_EVENT",
+          "status": "done",
+          "jira": "SV-125",
+          "detail": "Primeira migration de verdade deste servico (Flyway ja configurado desde feat-001.4, so nunca teve arquivo em db/migration).",
+          "checklist": [
+            "fact_bet (id, date_id, betting_house_id, sport_id, league_id, market_id, tipster_id nullable, stake, profit nullable, is_win nullable, status, bet_count) + dim_date/dim_betting_house/dim_sport/dim_league/dim_market/dim_tipster (id+name, exceto dim_date com day/month/year/quarter/day_of_week) + processed_event (id, event_id unique, processed_at), fieis a docs/DATA-MODEL.md.",
+            "UNIQUE constraint em processed_event.event_id (mecanismo real de idempotencia, nao so verificacao em aplicacao)."
+          ],
+          "validation": "./init.sh migra sem erro em schema de tenant novo (mesmo mecanismo lazy de feat-001.4).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.2",
+          "name": "Multi-tenancy do Hibernate + enforcement de X-Tenant-Id",
+          "status": "done",
+          "jira": "SV-126",
+          "detail": "Achado MAJOR do Plan Reviewer: primeira introducao de JPA/Hibernate multi-tenant neste servico (portar padrao de bets-service feat-002.2), e correcao do residual de feat-001.4 (TenantSchemaFilter precisa exigir X-Tenant-Id agora que existe escrita real de dados por tenant).",
+          "checklist": [
+            "Portar SchemaMultiTenantConnectionProvider/TenantIdentifierResolver/TenantHibernatePropertiesCustomizer de bets-service, reaproveitando TenantContextHolder/TenantContextScope ja existentes aqui.",
+            "TenantSchemaFilter: responder 400 missing-tenant-id (chave de mensagem, i18n 3 locales) quando X-Tenant-Id ausente em rotas fora de /api/v1/admin/** e /actuator/** - remove o chain.doFilter direto.",
+            "Remover o residual correspondente de docs/CONVENTIONS.md e progress.md deste servico no mesmo commit, se citado."
+          ],
+          "validation": "Teste de integracao: dois tenants diferentes nao vazam dado entre schemas (mesma entidade logica); chamada sem X-Tenant-Id em rota de negocio recebe 400.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.3",
+          "name": "Entidades JPA e persistencia (domain + adapter)",
+          "status": "done",
+          "jira": "SV-127",
+          "detail": "FactBet, DimDate/DimBettingHouse/DimSport/DimLeague/DimMarket/DimTipster, ProcessedEvent como records de dominio + entidades JPA (AbstractJpaEntity, mesmo padrao de bets-service) + ports/adapters minimos provados por teste de integracao real - sem wiring no BetEventListener ainda (feat-003).",
+          "checklist": [
+            "Records de dominio (domain/model) para os 8 conceitos.",
+            "Entidades JPA (adapter/out/persistence) + Spring Data repositories.",
+            "Ports (domain/port/out): FactBetRepository (save, findById), um repositorio por dimensao (existsById, save - upsert-if-missing), ProcessedEventRepository (existsByEventId, save).",
+            "Teste de integracao por repositorio provando persistencia real (Testcontainers Postgres ja configurado)."
+          ],
+          "validation": "./init.sh (mvn verify) verde - persistencia das 8 tabelas provada por teste real, nao so compilacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-002.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-128",
+          "detail": "Fecha a feature - primeiro schema OLAP deste servico.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-06 (branch feature/SV-124, story SV-124 com 4 subtasks SV-125..128, 3 PRs de subtask mergeadas). Primeiro schema OLAP deste servico: migration Flyway (fact_bet + 6 dimensoes + processed_event, UNIQUE real em event_id), multi-tenancy do Hibernate (CurrentTenantIdentifierResolver/MultiTenantConnectionProvider portados de bets-service, TenantSchemaFilter passa a exigir X-Tenant-Id em rotas de negocio), e a camada completa de persistencia (domain + adapter) para os 8 conceitos - sem wiring no BetEventListener ainda (feat-003, que faz o insert/upsert de verdade).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 4 subtasks - 53 testes.",
+              "CI verde em todas as 3 PRs de subtask (subtask/SV-125..127 -> feature/SV-124).",
+              "Testes reais de persistencia contra Postgres (Testcontainers): save/existsById nas 5 dimensoes id+name, save/findByDayAndMonthAndYear em DimDate (chave natural), save/findById + isolamento real entre dois schemas de tenant em FactBet, save/existsByEventId + UNIQUE constraint real (DataIntegrityViolationException) em ProcessedEvent."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review - a validacao original de feat-002.2 ('teste de integracao: dois tenants nao vazam dado') so foi de fato satisfeita em feat-002.3, quando passou a existir uma entidade (FactBet) para isolar - mesma sequencia real que bets-service seguiu (confirmado lendo o historico de commits daquele servico), nao uma lacuna nova."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 1 MAJOR corrigido no plano - primeira introducao de JPA/Hibernate neste servico exigia o resolver de multi-tenancy (sem ele, toda escrita iria para o schema 'public', vazando dado entre tenants); nova subtask feat-002.2 portando o mecanismo ja provado em bets-service feat-002.2, em vez de descobrir isso reativamente.",
+              "Achado real de execucao (feat-002.3): BigDecimal.equals() distingue escala (100 vs 100.00 vindo da coluna NUMERIC) - mesmo gotcha ja documentado em docs/TESTING.md a partir de bets-service feat-003, mas aplicado apenas reativamente aqui (o teste falhou primeiro, a comparacao por campo com isEqualByComparingTo foi a correcao) em vez de evitado de proposito - reforca que a nota do vault precisa ser lembrada ativamente ao escrever teste com BigDecimal, nao so consultada quando algo ja quebrou.",
+              "Achado real no gate feature->develop (PR #14): CHANGELOG.md nao tinha as linhas de SV-124..128 - tools/jira_story.py as escreveu ao criar a story, mas o commit seguinte so deu 'git add feature_list.json' (nao '-A'), deixando CHANGELOG.md sem stage; um 'git reset --hard origin/develop' usado horas depois para corrigir um erro de branch nao relacionado (um commit de plan_review tinha ido parar direto em develop em vez da branch da feature) descartou essa mudanca nao commitada em silencio. O gate de changelog da CI pegou a lacuna de verdade (nao redundante) - corrigido restaurando as 5 linhas.",
+              "Achado real no mesmo gate (PR #14, apos o fix acima): SonarCloud java:S5778 em JpaProcessedEventRepositoryIntegrationTest - lambda de assertThatThrownBy com 2 invocacoes (construtor do record ProcessedEvent + save), mesmo padrao ja recorrente varias vezes em bets-service nesta sessao. Corrigido extraindo o record para variavel local antes do lambda."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 MAJOR corrigido) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (62 arquivos) sem achado residual alem do ja corrigido e documentado.",
+              "tools/jira_story.py usado normalmente (criacao da story + 4 subtasks, --sync-status a cada transicao real)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-003",
       "name": "Consumo dos eventos - insert em BetCreated, upsert em BetSettled",
-      "description": "BetCreated: insert em FACT_BET com dados dimensionais, status='pending', profit/isWin null. BetSettled: upsert na mesma linha por betId, atualizando status/profit/isWin - nao deve falhar se o BetCreated correspondente ainda nao foi processado (mensagens fora de ordem). RN06: linhas com status='pending' nunca entram em agregacoes.",
+      "description": "BetCreated: insert em FACT_BET com dados dimensionais, status='pending', profit/isWin null. BetSettled: upsert na mesma linha por betId, atualizando status/profit/isWin - nao deve falhar se o BetCreated correspondente ainda nao foi processado (mensagens fora de ordem). RN06: linhas com status='pending' nunca entram em agregacoes. Plugado no BetEventListener ja existente (feat-001.9), substituindo o log.info por processamento real. Idempotencia via PROCESSED_EVENT (feat-002): verificar existsByEventId antes de processar, inserir na mesma transacao.",
       "dependencies": [
         "feat-002"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: READY WITH CONCERNS, 1 achado MAJOR corrigido no plano (nao exigia decisao do usuario). (MAJOR) FactBet.id = mesmo uuid do betId (decisao natural, ja que o upsert e 'por betId'), mas JpaFactBetRepository.save(FactBet) tal como desenhado em feat-002.3 SEMPRE constroi uma FactBetJpaEntity nova (new FactBetJpaEntity(factBet)), e AbstractJpaEntity marca isNew=true em qualquer instancia recem-construida (independente de a linha ja existir no banco) - Hibernate tentaria INSERT sempre, falhando com chave duplicada no caso de upsert real (BetSettled sobre uma linha ja inserida por BetCreated). Corrigido no plano: JpaFactBetRepository.save() passa a fazer findById(factBet.id()) primeiro - se existir, carrega a MESMA instancia rastreada (isNew=false via @PostLoad) e muta os campos (setters adicionados a FactBetJpaEntity, justificados agora que ha upsert de verdade, diferente de bets-service onde nenhuma entidade e mutada in-place); se nao existir, constroi nova (insert). Sem race de concorrencia a proteger aqui (diferente do PATCH de bets-service) - RabbitMQ entrega mensagens da mesma fila sequencialmente a um consumidor, sem paralelismo entre eventos do mesmo bet. Escopo confirmado (sem decisao do usuario): BetSettled chegando antes de BetCreated processado (RN, mensagens fora de ordem) cria a linha FACT_BET direto com os dados de liquidacao (nao falha) - a proxima vez que BetCreated for consumido (se ainda nao tiver sido idempotentemente descartado) faria upsert por cima, mas como BetCreated so grava campos que BetSettled ja preencheu com os mesmos valores (dados dimensionais identicos nos dois payloads) e sempre status=pending, upsert de BetCreated DEPOIS de BetSettled sobrescreveria erroneamente o status/profit ja liquidados - corrigido no plano: BetCreated so faz INSERT quando a linha ainda nao existe (nao upsert); se a linha ja existe (BetSettled processado primeiro), BetCreated e um no-op alem de marcar o evento como processado (idempotencia), preservando o resultado da liquidacao. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-129",
+      "subtasks": [
+        {
+          "id": "feat-003.1",
+          "name": "Upsert real em FactBetRepository + resolucao de dimensoes",
+          "status": "done",
+          "jira": "SV-130",
+          "detail": "Achado MAJOR do Plan Reviewer: JpaFactBetRepository.save() precisa carregar a entidade existente (nao construir sempre nova) para o upsert de BetSettled funcionar como UPDATE, nao um INSERT que falha por chave duplicada.",
+          "checklist": [
+            "FactBetJpaEntity ganha setters (justificado agora - upsert real, diferente do resto do codebase onde nenhuma entidade e mutada in-place).",
+            "JpaFactBetRepository.save() faz findById primeiro - atualiza a instancia rastreada se existir, cria nova se nao.",
+            "Metodo de resolucao de dimensoes (por eventType generico, reaproveitado por BetCreated/BetSettled): resolve/cria DimBettingHouse/DimSport/DimLeague/DimMarket (existsById + save se ausente) e DimTipster (mesmo padrao, so se tipsterId presente no payload); resolve/cria DimDate a partir de uma data (extrai day/month/year/quarter/dayOfWeek, busca por chave natural, cria se ausente).",
+            "Teste de integracao: upsert real (insert seguido de update na mesma linha) prova UPDATE via SQL/contagem de linhas, nao so ausencia de excecao."
+          ],
+          "validation": "./init.sh verde - teste de upsert prova update de verdade (profit muda de null para um valor na mesma linha, count(*) continua 1).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-003.2",
+          "name": "Plugar BetCreated/BetSettled no BetEventListener com idempotencia real",
+          "status": "done",
+          "jira": "SV-131",
+          "detail": "Substitui o log.info do BetEventListener (feat-001.9) por processamento real: idempotencia (existsByEventId antes, insere ProcessedEvent na mesma transacao), insert em BetCreated (so quando FACT_BET ainda nao existe - nao sobrescreve liquidacao ja processada fora de ordem, ver plan_review), upsert em BetSettled.",
+          "checklist": [
+            "Novo port/in (ex.: ProcessBetEventUseCase) com metodos processCreated/processSettled, implementado em application/.",
+            "BetEventListener chama o use case apos validar schema, dentro de uma transacao (idempotencia + escrita atomicas).",
+            "BetCreated: se FACT_BET(betId) ja existe, no-op alem de marcar evento processado (preserva liquidacao ja aplicada fora de ordem).",
+            "BetSettled: upsert por betId, dimensoes resolvidas/criadas se ainda nao existirem (mensagem pode chegar antes do BetCreated correspondente).",
+            "Teste de integracao real publicando BetCreated/BetSettled via RabbitMQ (Testcontainers ja configurado) e verificando FACT_BET/PROCESSED_EVENT no banco - incluindo redelivery do mesmo eventId nao duplicar nem reprocessar, e BetSettled chegando antes do BetCreated correspondente."
+          ],
+          "validation": "Teste de integracao real (RabbitMQ + Postgres via Testcontainers) prova insert/upsert/idempotencia/fora-de-ordem, nao so unitario com mocks.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-003.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-132",
+          "detail": "Fecha a feature - primeiro consumo real de evento com efeito persistente deste servico.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-129, story SV-129 com 3 subtasks SV-130..132, 2 PRs de subtask mergeadas). Primeiro consumo real de evento com efeito persistente deste servico: BetCreated insere FACT_BET pending, BetSettled faz upsert real (status/profit/isWin), idempotencia real via PROCESSED_EVENT (existsByEventId + insert na mesma transacao), mensagens fora de ordem tratadas sem reverter liquidacao ja aplicada, tenant nao resolvivel vai direto pra DLQ.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo - 66 testes.",
+              "CI verde nas 2 PRs de subtask (subtask/SV-130/131 -> feature/SV-129).",
+              "Teste de integracao real (RabbitMQ + Postgres via Testcontainers): insert em BetCreated, upsert real em BetSettled (linha unica, campos mutados de verdade), BetSettled chegando antes do BetCreated correspondente (nao reverte liquidacao), redelivery do mesmo eventId nao reprocessa, tenant nao provisionado vai para DLQ.",
+              "Teste unitario complementar (ProcessBetEventServiceTest, DimensionResolverTest) prova os mesmos ramos com mocks - falha rapida e localizada."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 1 MAJOR corrigido no plano - JpaFactBetRepository.save() (feat-002.3) sempre construia uma entidade nova, que Hibernate sempre tentaria INSERT (isNew=true numa instancia recem-construida, independente de a linha ja existir) - um upsert real (BetSettled sobre BetCreated ja inserido) falharia por chave duplicada. Corrigido carregando a instancia existente via findById antes de mutar.",
+              "Achado real durante a implementacao (nao pego pelo Plan Reviewer): a primeira versao do fix acima usou @Setter do Lombok na classe inteira - docs/CONVENTIONS.md ja documentava (de bets-service feat-004/005) que a mutacao deve ser feita por um metodo da propria entidade, nao um @Setter amplo. Corrigido consolidando os campos mutaveis em FactBetJpaEntity.applyFrom(FactBet), reaproveitado pelo construtor e pelo caminho de update - nota do vault atualizada confirmando o reaproveitamento."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 MAJOR corrigido) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor/Persistence Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (14 arquivos) sem achado residual alem do ja corrigido e documentado.",
+              "docs/services/stats-service.md (repositorio raiz) atualizado para refletir consumo real (insert/upsert/idempotencia), substituindo a nota de 'ainda sem persistencia' de feat-001.9."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-004",
@@ -44,50 +387,627 @@
       "dependencies": [
         "feat-003"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado em feat-002/003 deste servico). Veredito: READY WITH CONCERNS, 2 achados MINOR corrigidos no plano, nenhum exigia decisao do usuario. Escopo confirmado: feat-004 entrega o calculo (repositorio + servico de dominio), sem endpoint HTTP (feat-006) nem cache (feat-005) - metricas verificadas por teste direto (integracao no repositorio, unitario no calculo), nao por chamada HTTP. (MINOR) FactBetJpaEntity nao tem @ManyToOne para as dimensoes (colunas UUID simples, ver adapter/out/persistence/FactBetJpaEntity.java) - a query segmentada (por sportId/marketId/bettingHouseId) precisa de JOIN explicito por condicao (JPQL 'FROM FactBetJpaEntity f, DimSportJpaEntity s WHERE f.sportId = s.id'), nao um path de associacao; confirmado que JPQL suporta essa forma (cross join + WHERE), sem necessidade de query nativa. (MINOR) ROI/taxa de acerto sao razoes computadas em memoria (nao persistidas), RN04='lucro liquido acumulado / valor total investido' nao define o que fazer quando total investido=0 (nenhuma aposta liquidada ainda) - corrigido no plano: retorna BigDecimal.ZERO nesse caso (nao lanca excecao, nao retorna null), decisao de implementacao sem impacto de contrato ainda (endpoint so existe em feat-006, onde o formato de resposta sera revisado). Agregacao bruta (soma de stake/profit, contagem de vitorias/liquidadas) calculada em SQL (SUM/COUNT via JPQL) filtrando status <> PENDING (RN06) - ROI/taxa de acerto computados no dominio a partir do agregado bruto (formula testavel sem banco). Multi-tenancy: nenhum mecanismo novo - a mesma conexao com schema do tenant ja resolvida por TenantContextScope/TenantIdentifierResolver (feat-002.2) escopa a query automaticamente, sem where clause manual de tenant. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-133",
+      "subtasks": [
+        {
+          "id": "feat-004.1",
+          "name": "Agregacao real em FactBetRepository (overall + segmentado por sport/market/betting-house)",
+          "status": "done",
+          "jira": "SV-134",
+          "detail": "Query JPQL com SUM(stake)/SUM(profit)/COUNT filtrando status <> PENDING (RN06); segmentada faz join explicito por condicao com a dimensao correspondente para trazer o nome (RN09 - cada grupo considera exclusivamente suas proprias apostas).",
+          "checklist": [
+            "Novo record de dominio BetAggregate (totalStaked, netProfit, wonCount, settledCount) - agregado bruto, sem ROI/taxa ainda calculados.",
+            "Novo record SegmentedBetAggregate (dimensionId, dimensionName, BetAggregate).",
+            "FactBetRepository (port out) ganha aggregateOverall(), aggregateBySport(), aggregateByMarket(), aggregateByBettingHouse().",
+            "Implementacao via JPQL no FactBetSpringDataRepository (@Query), filtrando f.status <> com.stakevault.betting.stats.domain.model.BetStatus.PENDING.",
+            "Teste de integracao (Testcontainers Postgres ja configurado): insere apostas won/lost/void/pending nos 3 grupos e prova que pending e excluida da soma e que cada segmento so agrega suas proprias apostas."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova a agregacao real via SQL, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-004.2",
+          "name": "Servico de calculo de metricas (ROI, taxa de acerto) a partir do agregado",
+          "status": "done",
+          "jira": "SV-135",
+          "detail": "Transforma BetAggregate/SegmentedBetAggregate em BetMetrics (RN04 ROI = lucro liquido / total investido, taxa de acerto = vitorias / liquidadas) - formula pura, testavel sem banco.",
+          "checklist": [
+            "Novo record de dominio BetMetrics (totalStaked, netProfit, roi, winRate, settledCount).",
+            "Novo port in CalculateMetricsUseCase (calculateOverall, calculateBySport, calculateByMarket, calculateByBettingHouse) implementado em application/CalculateMetricsService.",
+            "Divisao por zero (total investido=0 ou liquidadas=0) retorna BigDecimal.ZERO, nao excecao.",
+            "Teste unitario cobrindo: caso normal, total investido=0, liquidadas=0, segmento sem nenhuma aposta liquidada."
+          ],
+          "validation": "./init.sh verde - teste unitario prova a formula (RN04/RN09) com tabela de casos, incluindo bordas.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-004.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-136",
+          "detail": "Fecha a feature - primeiro calculo de metrica de negocio deste servico (RF09).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-133, story SV-133 com 3 subtasks SV-134..136, 3 PRs de subtask mergeadas). Primeiro calculo de metrica de negocio deste servico (RF09): FactBetRepository ganha 4 metodos de agregacao bruta (overall + segmentado por sport/market/betting-house) via JPQL, filtrando status<>pending (RN06) e agrupando por dimensao com join explicito por condicao (RN09); CalculateMetricsService transforma o agregado bruto em ROI/taxa de acerto (RN04), com divisao por zero retornando ZERO em vez de excecao. Sem endpoint HTTP (feat-006) nem cache (feat-005) ainda - escopo confirmado no plan_review.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-134..136 -> feature/SV-133).",
+              "Teste de integracao real (Testcontainers Postgres): overall exclui pending e inclui won/lost/void na soma (RN06), agregado zerado sem nenhuma aposta liquidada, isolamento entre 2 esportes (RN09), agregacao por market e por betting-house.",
+              "Teste unitario parametrizado (tabela de casos) para ROI/taxa de acerto: caso normal, total investido zero, 100% de acerto, 0% de acerto; teste de mapeamento de segmentos preservando id/nome da dimensao."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review (2 achados MINOR corrigidos antes de codificar: join explicito por condicao para as dimensoes sem @ManyToOne, e divisao por zero retornando ZERO)."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real do self-review (Delivery Reviewer/Test Suite Auditor, feat-004.3): a suite de feat-004.1 cobria won/lost e pending, mas nenhum teste exercitava explicitamente o status void - RN06 o inclui na agregacao lado a lado com won/lost, e a query usa 'status <> pending' (equivalente por o enum so ter 4 valores), entao um erro que excluisse void especificamente nao teria sido pego. Corrigido adicionando um caso void ao teste de agregacao overall (stake entra na soma, nao conta como vitoria) antes de fechar a feature - nenhum defeito de producao encontrado, a implementacao ja estava correta (isWin=false para void, feat-003), mas a lacuna de teste era real."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (2 MINOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (15 arquivos) - 1 achado real de cobertura de teste (void nao exercitado), corrigido antes do fechamento.",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-005",
       "name": "Cache Redis cache-aside",
-      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market} (ingles, ver docs/API-CONTRACTS.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache hit responde direto; cache miss consulta FACT_BET e grava no Redis depois.",
+      "description": "Chaves tenant:{tenantId}:dashboard:consolidated, tenant:{tenantId}:stats:monthly:{year}_{month}, tenant:{tenantId}:segment:{sport|market|house} (ingles, ver docs/services/stats-service.md). Por tenantId, nao userId - FACT_BET e compartilhado por todos os usuarios do mesmo tenant, ver docs/DECISIONS-LOG.md 2026-08-02 item 9. Cache-aside (hit responde direto, miss consulta FACT_BET e grava depois) COM invalidacao no consumo do evento - decisao do usuario (2026-09-07) resolvendo uma divergencia real entre docs/ARCHITECTURE.md (fluxo dizia 'stats-service... atualiza o cache Redis' ao consumir evento) e esta description original (so mencionava cache-aside puro, sem invalidacao) - sem isso o dashboard mostraria metricas desatualizadas por todo o TTL apos uma aposta ser liquidada. So BetSettled evicta as 5 chaves do tenant (incluindo o mes especifico do evento) - achado real durante a implementacao de feat-005.2, corrigindo a premissa inicial do plan_review de que BetCreated tambem evictaria: RN06 exclui status=pending de toda agregacao, entao o insert de BetCreated e invisivel pras metricas cacheadas, evictar ali seria desperdicio sem nenhuma mudanca de valor.",
       "dependencies": [
         "feat-004"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao das features anteriores). Veredito: READY WITH CONCERNS, 3 achados corrigidos no plano (1 MAJOR resolvido com o usuario via AskUserQuestion, 2 MINOR sem necessidade de decisao do usuario). (MAJOR, resolvido com o usuario) docs/ARCHITECTURE.md descreve o fluxo de BetCreated/BetSettled dizendo que stats-service 'atualiza o cache Redis' ao processar o evento, mas a description original desta feature (escrita na criacao do backlog) descrevia cache-aside puro (so grava no miss, ao consultar GET /api/v1/statistics, sem nenhuma invalidacao no consumo do evento) - sem invalidacao, uma aposta liquidada so refletiria no dashboard depois do TTL inteiro expirar, o que e uma lacuna de frescor de dados real, nao so uma escolha de performance. Usuario escolheu: cache-aside + invalidacao no consumo do evento (opcao recomendada) - ProcessBetEventService evita as chaves do tenant apos cada escrita real (nao nos ramos de no-op/idempotencia) em vez de confiar so no TTL. (MINOR) docs/services/stats-service.md documenta as chaves de segmento como '{sport|market}', omitindo 'house' - mas RN09 exige ROI por mercado/esporte/CASA e feat-004 ja implementou calculateByBettingHouse; sem motivo para deixar esse segmento sem cache enquanto os outros dois tem. Corrigido no plano: estendido para '{sport|market|house}', mesma simetria, sem decisao de arquitetura nova (RN09 ja exigia os 3). (MINOR) a chave 'stats:monthly:{year}_{month}' pressupoe uma agregacao mensal que feat-004 nao construiu (aquela feature foi escopada deliberadamente para overall+segmentado, sem serie temporal) - corrigido no plano: nova agregacao FactBetRepository.aggregateByMonth() (agrupada por DimDate.year/month, mesmo padrao de join explicito por condicao ja usado para as dimensoes) + CalculateMetricsUseCase.calculateMonthly(), mesma extensao natural do mecanismo de feat-004, sem logica de negocio nova alem do agrupamento. Design da camada de cache: porta MetricsCacheRepository (domain/port/out) SEM parametro de tenant nos metodos - resolvido internamente pelo adapter Redis via TenantContextHolder.current().slug() (config), o mesmo ThreadLocal que TenantIdentifierResolver ja usa pra rotear o schema do Hibernate - mesma simetria, nao um mecanismo novo. Novo caso de uso GetDashboardMetricsUseCase (application) orquestra cache-aside por chave (5 metodos: overall, 3 segmentos, mensal) chamando CalculateMetricsUseCase no miss. TTL de seguranca (Duration.ofHours(1), aplicado em toda gravacao) e um default de implementacao, nao uma regra de negocio - nenhum RNF define TTL, e a invalidacao explicita e o mecanismo primario de frescor; documentado como tal, ajustavel sem impacto de contrato (chave/valor no Redis nao e contrato externo). Redis: com.redis:testcontainers-redis:2.2.4 (RedisContainer, resolvido em Maven Central, @ServiceConnection via org.springframework.boot.data.redis.testcontainers.RedisContainerConnectionDetailsFactory ja presente em spring-boot-data-redis 4.1.1 - confirmado inspecionando o jar antes de escrever codigo, mesmo nivel de verificacao usado pras libs anteriores). Serializacao via tools.jackson.databind.ObjectMapper (bean ja injetado em outros adapters desta camada web, ver FilterProblemWriter) sobre StringRedisTemplate, nao GenericJackson2JsonRedisSerializer (evita depender de compatibilidade Jackson3/spring-data-redis nao verificada). Infra: infra/docker-compose.yml ja provisiona 'redis' (porta 6379, senha obrigatoria via REDIS_PASSWORD) desde epic-001 - sem mudanca de infra necessaria, so as variaveis REDIS_HOST/REDIS_PORT/REDIS_PASSWORD no application.yml/.env.example deste servico, mesmo padrao de DB_HOST/RABBITMQ_HOST. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-137",
+      "subtasks": [
+        {
+          "id": "feat-005.1",
+          "name": "Bootstrap Redis + porta/adapter de cache (sem invalidacao ainda)",
+          "status": "done",
+          "jira": "SV-138",
+          "detail": "spring-boot-starter-data-redis + Testcontainers (com.redis:testcontainers-redis) + MetricsCacheRepository (domain/port/out) com adapter Redis usando TenantContextHolder pra resolver a chave, sem ainda plugar no fluxo de consumo de evento.",
+          "checklist": [
+            "pom.xml: spring-boot-starter-data-redis (main) + spring-boot-starter-data-redis-test/com.redis:testcontainers-redis (test).",
+            "TestcontainersConfiguration ganha o bean RedisContainer com @ServiceConnection.",
+            "application.yml (dev/prod): spring.data.redis.host/port/password via REDIS_HOST/REDIS_PORT/REDIS_PASSWORD; management.health grupo readiness ganha 'redis'; .env.example documenta as 3 variaveis (default localhost:6379, mesmo container de infra/docker-compose.yml).",
+            "MetricsCacheRepository (domain/port/out): findOverall/saveOverall, findBySport/saveBySport, findByMarket/saveByMarket, findByBettingHouse/saveByBettingHouse, findMonthly/saveMonthly, evict(year, month) - todos sem parametro de tenant.",
+            "RedisMetricsCacheRepository (adapter/out/cache): StringRedisTemplate + ObjectMapper (tools.jackson, injetado), chaves tenant:{slug}:dashboard:consolidated / segment:{sport|market|house} / stats:monthly:{year}_{month}, TTL de 1h em toda gravacao.",
+            "Teste de integracao real (Testcontainers Redis): save+find (hit), find sem save antes (miss = Optional.empty), evict remove as 5 chaves do tenant, isolamento entre 2 tenants (mesma chave logica, tenants diferentes nao colidem)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova hit/miss/evict/isolamento contra Redis real.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-005.2",
+          "name": "Agregacao mensal + orquestracao cache-aside + invalidacao no consumo do evento",
+          "status": "done",
+          "jira": "SV-139",
+          "detail": "FactBetRepository.aggregateByMonth() (mesmo padrao de join de feat-004) + GetDashboardMetricsUseCase (cache-aside real, chama CalculateMetricsUseCase no miss) + ProcessBetEventService evita o cache apos cada escrita real (RN08 - dashboard reflete apostas novas sem esperar o TTL).",
+          "checklist": [
+            "MonthlyBetAggregate/MonthlyBetMetrics (domain/model); FactBetRepository.aggregateByMonth() (JPQL agrupado por DimDate.year/month, join explicito); CalculateMetricsUseCase.calculateMonthly().",
+            "GetDashboardMetricsUseCase (domain/port/in) + GetDashboardMetricsService (application): 5 metodos, cache-aside (find no cache; se ausente, calcula via CalculateMetricsUseCase e grava).",
+            "ProcessBetEventService ganha MetricsCacheRepository como dependencia; processCreated/processSettled chamam evict(year, month) SO nos ramos de escrita real (nao no early-return de evento ja processado, nao no no-op de BetCreated tardio sobre liquidacao ja aplicada).",
+            "Teste de integracao real (Testcontainers Postgres+Redis): consumir um BetSettled e provar que uma chave previamente cacheada (ex.: dashboard:consolidated) some do Redis apos o processamento.",
+            "Teste unitario: GetDashboardMetricsService (hit nao chama CalculateMetricsUseCase; miss chama e grava); ProcessBetEventServiceTest atualizado (verify evict chamado/nao chamado nos ramos certos)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova invalidacao real pos-consumo, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-005.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-140",
+          "detail": "Fecha a feature - primeiro cache deste servico (e do projeto).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: docs/services/stats-service.md secao 'Cache Redis' atualizada (chaves {sport|market|house}, invalidacao no consumo do evento, TTL de seguranca) - alguma outra descoberta desta feature sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-137, story SV-137 com 3 subtasks SV-138..140, 3 PRs de subtask mergeadas). Primeiro cache deste servico (e do projeto): MetricsCacheRepository/RedisMetricsCacheRepository (cache-aside, tenant resolvido via TenantContextHolder, TTL de seguranca 1h), agregacao mensal (FactBetRepository.aggregateByMonth), GetDashboardMetricsService orquestrando cache-aside pras 5 chaves, e invalidacao real no consumo do evento - so BetSettled evicta (RN06 exclui pending de toda agregacao, entao BetCreated e invisivel pras metricas e nao precisa evictar).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-138..140 -> feature/SV-137).",
+              "Teste de integracao real (Testcontainers Redis): hit/miss, round-trip de lista segmentada, evict (overall+3 segmentos+mes especifico) sem afetar outros meses, isolamento entre 2 tenants, padrao de chave documentado.",
+              "Teste de integracao real (Testcontainers Postgres+RabbitMQ+Redis): publica BetSettled via RabbitMQ, confirma que uma chave previamente cacheada some do Redis apos o processamento.",
+              "Teste unitario GetDashboardMetricsServiceTest (hit nao chama CalculateMetricsUseCase; miss chama e salva, incluindo mes sem dado); ProcessBetEventServiceTest atualizado (evict chamado so no BetSettled real, nunca no BetCreated nem nos ramos de no-op/idempotencia, com o ano/mes corretos derivados de settledAt)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "O plan_review original presumia que tanto BetCreated quanto BetSettled evictariam o cache - corrigido durante a implementacao de feat-005.2: RN06 exclui status=pending de toda agregacao, entao o insert de BetCreated (sempre pending) e invisivel pras metricas cacheadas: evictar ali seria desperdicio sem nenhuma mudanca de valor. So BetSettled evicta de verdade."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real do self-review (Delivery Reviewer/Test Suite Auditor, feat-005.3): a serie mensal so cacheava os meses presentes em aggregateByMonth() (GROUP BY nunca retorna grupo vazio) - uma consulta a um mes sem nenhuma aposta liquidada nunca batia no cache, recalculando a serie inteira via Postgres a cada chamada, mesmo sem nenhuma mudanca de dado entre elas. Corrigido cacheando BetMetrics ZERO explicitamente para o mes pedido quando ausente da serie, antes de fechar a feature - nenhum defeito de producao (o valor retornado sempre esteve correto), mas um problema real de eficiencia que so apareceria sob uso repetido de um periodo sem apostas.",
+              "Achado do Plan Reviewer (antes do codigo): a chave de segmento documentada originalmente ('{sport|market}') omitia 'house', apesar de RN09 exigir ROI por casa de apostas e feat-004 ja ter implementado calculateByBettingHouse - estendido pra '{sport|market|house}' no plano antes de codificar, evitando deixar aquele segmento sem cache por omissao de documentacao.",
+              "Nenhum outro ponto de escrita em FACT_BET alem de ProcessBetEventService.processCreated/processSettled foi encontrado (confirmado por busca no codebase) - nao ha invalidacao faltando em nenhum caminho paralelo."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (3 achados corrigidos no plano, 1 MAJOR resolvido com o usuario via AskUserQuestion sobre invalidacao vs TTL puro) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (feature/SV-137 vs develop) - 1 achado real de eficiencia (mes sem dado nunca cacheado) corrigido antes do fechamento.",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-006",
       "name": "RF11 - Endpoint GET /api/v1/statistics com filtros dinamicos",
-      "description": "Filtros em ingles (sport, league, market, tipster - ver docs/API-CONTRACTS.md) recalculando as metricas dinamicamente (RN08). Meta de performance < 300ms com cache quente (RNF03).",
+      "description": "Query params bettingHouseId/sportId/leagueId/marketId/tipsterId (uuid) + from/to (intervalo de data) - nomenclatura corrigida contra docs/API-CONTRACTS.md (a description original desta feature usava 'sport/league/market/tipster' sem sufixo Id, o mesmo erro ja documentado e corrigido em API-CONTRACTS.md antes desta sessao, so nao propagado ate aqui). RN08: filtros recalculam as metricas dinamicamente - qualquer filtro presente bypassa o cache de feat-005 (chaves so cobrem a vista sem filtro nenhum por tenant) e consulta FACT_BET direto. Resposta e um bundle unico ({overall, bySport, byMarket, byBettingHouse, monthly}) - decisao do usuario (2026-09-07, AskUserQuestion) entre bundle unico/resposta minima+groupBy/endpoints separados por segmento. Meta de performance < 300ms com cache quente (RNF03) - so se aplica a requisicao sem filtro nenhum (unica que usa o cache).",
       "dependencies": [
         "feat-005"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada). Veredito: READY WITH CONCERNS, 1 achado BLOCKED resolvido com o usuario via AskUserQuestion, 2 achados MAJOR corrigidos no plano. (BLOCKED, resolvido com o usuario) Nenhuma nota do vault fixava o formato de resposta de GET /api/v1/statistics - RF11/RN08 definem os filtros (ja convencionados em API-CONTRACTS.md) mas nao a forma JSON do payload, e essa e uma decisao de contrato externo (apps/web ainda nao construido vai consumir esta rota) que nao da pra inferir com seguranca do resto do vault. 3 opcoes apresentadas (bundle unico / resposta minima+groupBy / endpoints separados por segmento) - usuario escolheu bundle unico: {overall, bySport, byMarket, byBettingHouse, monthly}, uma chamada por mudanca de filtro (coerente com docs/services/web.md 'cada mudanca de filtro e uma nova consulta a GET /api/v1/statistics', singular). (MAJOR #1) FactBet nao guarda um timestamp direto (so dateId, FK pra DimDate com day/month/year como inteiros separados) - filtrar por from/to (intervalo de data, RF11) exige comparar contra uma data reconstruida. Corrigido no plano: JPQL com FUNCTION('make_date', d.year, d.month, d.day) (Postgres, ja o unico banco alvo do projeto - flyway-database-postgresql, imagens postgres nos 3 servicos) comparado contra from/to truncados pra LocalDate na fronteira da aplicacao (mesmo padrao UTC ja usado em DimensionResolver.resolveDate). (MAJOR #2) FactBetRepository/CalculateMetricsUseCase (feat-004/005) foram desenhados sem parametro de filtro - bundle filtrado precisa dos mesmos 5 metodos de agregacao, mas com filtro opcional aplicado. Corrigido no plano: migrar as assinaturas existentes pra aceitar StatisticsFilter (todos os campos nullable, StatisticsFilter.none() = sem filtro nenhum) em vez de manter dois conjuntos paralelos de metodos (com/sem filtro) - GetDashboardMetricsService (cache-aside, feat-005) passa a chamar CalculateMetricsUseCase sempre com StatisticsFilter.none() internamente, sem mudar seu proprio contrato de porta (getOverall/getBySport/etc continuam sem parametro, cache continua so pra vista sem filtro). Predicados opcionais em JPQL via '(:param IS NULL OR campo = :param)', mesmo padrao usado em bets-service pra filtros de listagem (confirmado por analogia, nao reinventado). Serie mensal do bundle (campo 'monthly') e sempre calculada direto via CalculateMetricsUseCase.calculateMonthly(filter), nunca pelo cache de feat-005 (GetDashboardMetricsUseCase.getMonthly(year,month) - decisao de escopo, nao removida): decisao de implementacao (nao de contrato) - a serie e uma agregacao GROUP BY barata e de baixa cardinalidade (poucos meses com dado), enquanto overall/segmentos sao consultas mais pesadas e mais valiosas de cachear; sem essa distincao seria necessario descobrir quais meses existem antes de poder usar o cache por mes, complicando o mecanismo sem ganho real. Rota GET /api/v1/statistics: X-Tenant-Id ja exigido pelo TenantSchemaFilter existente (feat-001.4), sem middleware novo. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-141",
+      "subtasks": [
+        {
+          "id": "feat-006.1",
+          "name": "StatisticsFilter + agregacao filtrada em FactBetRepository/CalculateMetricsUseCase",
+          "status": "done",
+          "jira": "SV-142",
+          "detail": "Migra as 5 assinaturas existentes (aggregateOverall/BySport/ByMarket/ByBettingHouse/ByMonth e os equivalentes em CalculateMetricsUseCase) pra aceitar StatisticsFilter, com predicados opcionais em JPQL. Filtro por data via FUNCTION('make_date', ...) contra DimDate.",
+          "checklist": [
+            "StatisticsFilter (domain/model): bettingHouseId/sportId/leagueId/marketId/tipsterId (UUID nullable) + from/to (LocalDate nullable). StatisticsFilter.none() = todos null.",
+            "FactBetRepository (port out): os 5 metodos de agregacao passam a receber StatisticsFilter.",
+            "FactBetSpringDataRepository (@Query): predicados '(:param IS NULL OR ...)' pros 5 UUIDs + FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :from AND :to (so quando ambos presentes - se so um dos dois vier, aplicar so aquele lado do intervalo).",
+            "JpaFactBetRepository: repassa o filtro pros metodos do Spring Data repository.",
+            "CalculateMetricsUseCase/CalculateMetricsService: os 4 metodos de calculo (overall/sport/market/house) + calculateMonthly passam a receber StatisticsFilter, repassando pro FactBetRepository.",
+            "GetDashboardMetricsService (feat-005) atualizado pra chamar CalculateMetricsUseCase sempre com StatisticsFilter.none() - seu proprio contrato de porta (GetDashboardMetricsUseCase) NAO muda.",
+            "Testes existentes (FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) atualizados pras novas assinaturas.",
+            "Novo teste de integracao real: filtro por sportId exclui apostas de outro esporte da agregacao overall; filtro por from/to exclui apostas fora do intervalo (Testcontainers Postgres ja configurado)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova filtro real via SQL (nao mock), incluindo o caso de data.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-006.2",
+          "name": "Bundle de dashboard + endpoint GET /api/v1/statistics",
+          "status": "done",
+          "jira": "SV-143",
+          "detail": "StatisticsDashboard (bundle) + GetStatisticsDashboardUseCase/Service (decide cache vs calculo direto conforme StatisticsFilter.isEmpty()) + StatisticsController.",
+          "checklist": [
+            "StatisticsDashboard (domain/model): overall (BetMetrics), bySport/byMarket/byBettingHouse (List<SegmentedBetMetrics>), monthly (List<MonthlyBetMetrics>).",
+            "GetStatisticsDashboardUseCase (domain/port/in) + GetStatisticsDashboardService (application): se filter.isEmpty(), usa GetDashboardMetricsUseCase (cache-aside, feat-005) pros 4 primeiros campos; senao, chama CalculateMetricsUseCase(filter) direto pros 4. Campo monthly sempre via CalculateMetricsUseCase.calculateMonthly(filter) (ver plan_review).",
+            "StatisticsController (adapter/in/web): GET /api/v1/statistics, parseia os 7 query params opcionais pra StatisticsFilter, X-Tenant-Id ja exigido pelo TenantSchemaFilter existente, X-User-Id nao e necessario aqui (leitura, nao trilha de auditoria de escrita).",
+            "docs/API-CONTRACTS.md (repositorio raiz) ganha o exemplo concreto do payload de resposta.",
+            "Teste de integracao HTTP real (MockMvc ou WebTestClient): sem filtro (bate no cache - verificar via chave populada no Redis apos a chamada), com filtro (bypassa cache, resultado restrito), X-Tenant-Id ausente -> 400 (ja coberto pelo filtro existente, so confirmar que a rota nova respeita)."
+          ],
+          "validation": "./init.sh verde - teste HTTP real prova os dois caminhos (com/sem filtro) e o bundle completo.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-006.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-144",
+          "detail": "Fecha a feature - ultima planejada deste servico (feat-001..006).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (automatica, via tools/jira_story.py na criacao da issue).",
+            "./init.sh (mvn verify) verde com Docker ativo.",
+            "Delivery Reviewer e Test Suite Auditor rodados sobre o diff completo da feature.",
+            "Vault (docs/) revisado: docs/services/web.md linha do RN08 ainda cita query params sem sufixo Id ('sport', 'league', 'market') - drift de documentacao pre-existente contra a correcao ja feita em API-CONTRACTS.md, corrigir no mesmo commit. Alguma outra descoberta desta feature sem nota correspondente? Se sim, atualizar/criar a nota do assunto."
+          ],
+          "validation": "./init.sh sai 0; feature_list.json deste servico atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-141, story SV-141 com 3 subtasks SV-142..144, 3 PRs de subtask mergeadas). RF11/RN08 completos: GET /api/v1/statistics aceita 7 filtros opcionais (bettingHouseId/sportId/leagueId/marketId/tipsterId/from/to) e responde um bundle unico (overall/bySport/byMarket/byBettingHouse/monthly) - decisao do usuario. StatisticsFilter substituiu as assinaturas sem parametro de feat-004/005 (uma mecanica so, nao dois conjuntos paralelos). Sem filtro usa o cache-aside de feat-005; com filtro bypassa e calcula direto contra FACT_BET. Fecha o backlog de RF/RN deste servico (feat-001..006) - falta so feat-007 (fechamento formal do pipeline de CI, ja rodando de verdade desde feat-001).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde localmente com Docker ativo, em cada uma das 3 subtasks.",
+              "CI verde nas 3 PRs de subtask (subtask/SV-142..144 -> feature/SV-141) e na PR de story->develop.",
+              "Teste de integracao real (Testcontainers Postgres): filtro por sportId exclui outro esporte da agregacao overall; filtro por from/to exclui apostas fora do intervalo de data.",
+              "Teste HTTP real (SpringBootTest RANDOM_PORT, java.net.http.HttpClient): sem filtro (200, bundle completo, parse real do JSON confirmando overall/segmentos/mensal com os valores certos, chave aparece no Redis apos a chamada), com filtro sportId (resultado restrito, so o esporte filtrado aparece), sem X-Tenant-Id (400, ja coberto pelo TenantSchemaFilter existente)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review (achado BLOCKED resolvido com o usuario via AskUserQuestion sobre o formato de resposta, e 2 achados MAJOR corrigidos no plano antes de codificar - ver campo plan_review desta feature)."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado real durante feat-006.1: Postgres nao consegue inferir o tipo de um parametro null usado so dentro de CAST/FUNCTION ('could not determine data type of parameter') - a abordagem original do plano (predicado '(:from IS NULL OR CAST(:from AS date) ...)') falhava; corrigido substituindo from/to ausentes por limites-sentinela (1900-01-01/2999-12-31) antes de montar a query, removendo a necessidade do IS NULL para as datas.",
+              "Achado do self-review (Delivery Reviewer/Test Suite Auditor, feat-006.3): a resposta real do bundle aninha as metricas de cada segmento/mes sob uma chave 'metrics' (reaproveitando SegmentedBetMetrics/MonthlyBetMetrics ja existentes desde feat-004/005), diferente do exemplo achatado mostrado ao usuario durante a decisao do formato (AskUserQuestion) - o exemplo servia so para ilustrar a escolha bundle-unico-vs-endpoints-separados, nao o formato exato de cada item; corrigido a documentacao (API-CONTRACTS.md) pra bater com a resposta real, e o teste HTTP fortalecido pra fazer parse de verdade do JSON (antes so checava substring) em vez de so provar que a chave aparecia na resposta.",
+              "Achado do self-review (mesmo passe): docs/services/web.md ainda citava os query params antigos sem sufixo Id ('sport', 'league', 'market'), drift pre-existente contra a correcao ja feita em API-CONTRACTS.md antes desta sessao - corrigido no mesmo commit, junto com a omissao de 'casa de apostas' na lista de filtros em prosa daquela nota."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (1 BLOCKED resolvido com o usuario, 2 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer/Test Suite Auditor (passe proprio, sem subagentes - independencia reduzida, declarada) confirmaram o diff completo (feature/SV-141 vs develop) - 2 achados reais corrigidos antes do fechamento (formato de resposta na documentacao, drift em web.md).",
+              "tools/jira_story.py usado normalmente (criacao da story + 3 subtasks, --sync-status a cada transicao real, incluindo o estado Review entre a ultima subtask fechar e a feature fechar)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-007",
       "name": "Pipeline de CI (GitHub Actions + SonarCloud)",
-      "description": "Workflow ja versionado em .github/workflows/ci.yml (dentro deste repositorio - este servico e seu proprio repositorio Git, nao um monorepo, ver docs/CI-CD.md) com 5 passos: validacao de CHANGELOG.md atualizado, validacao de chaves de traducao (messages_pt_BR/en_US/es.properties), build (mvn package), testes unitarios + cobertura (mvn test jacoco:report), qualidade/cobertura no SonarCloud (mvn sonar:sonar, projectKey sv-stats-backend). Scripts de validacao em .github/scripts/ (duplicados neste repositorio, nao compartilhados). Repositorio GitHub: https://github.com/eimmig/sv-stats-backend.git. So funciona de fato apos este repositorio existir no GitHub e o setup do SonarCloud (org, projeto, SONAR_TOKEN, SONAR_ORGANIZATION) estar feito - ver docs/CI-CD.md secao 'Setup pendente'.",
+      "description": "Workflow ja versionado em .github/workflows/ci.yml (dentro deste repositorio - este servico e seu proprio repositorio Git, nao um monorepo, ver docs/CI-CD.md) com 6 passos: validacao de CHANGELOG.md atualizado, validacao de chaves de traducao (messages_pt_BR/en_US/es.properties), build (mvn -B -DskipTests package), testes unitarios + cobertura (mvn -B verify), qualidade no SonarCloud (org.sonarsource.scanner.maven:sonar-maven-plugin, projectKey eimmig_sv-stats-backend, sonar.qualitygate.wait condicional), e validacao de zero issues/hotspots no SonarCloud (.github/scripts/validate-sonar-issues.py) - descricao corrigida contra o ci.yml real (a versao anterior citava so 5 passos, sem o gate de zero issues, e comandos Maven desatualizados; mesma desatualizacao ja encontrada e corrigida em bets-service feat-007). Scripts de validacao em .github/scripts/ (duplicados neste repositorio, nao compartilhados). Repositorio GitHub: https://github.com/eimmig/sv-stats-backend.git - ja existe e o pipeline ja roda de verdade em producao desde feat-001 (todas as PRs desta sessao, incluindo feat-002..006, passaram por ele). Feature de fechamento formal do backlog deste servico, sem codigo/workflow novo.",
       "dependencies": [
         "feat-001"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
-      "evidence": ""
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer mudanca (passe proprio, sem subagentes - independencia reduzida, declarada). Veredito: READY, sem achado que exigisse decisao do usuario ou correcao no plano. Escopo confirmado: esta feature nao introduz codigo/workflow novo - o pipeline real (.github/workflows/ci.yml, 6 passos: CHANGELOG, i18n, Build, Testes+cobertura, SonarCloud, Validar zero issues) ja roda em producao desde feat-001.1 (hardening do CI antes do bootstrap) e ja gateou com sucesso todas as PRs de feat-001..006 nesta sessao. Unico trabalho real: corrigir a description desatualizada da feature (citava 5 passos e comandos Maven antigos) pra bater com o ci.yml real - mesmo achado e mesmo fechamento formal ja feitos em bets-service feat-007. Sem rodada de desafio independente adicional - risco trivial, sem decisao de arquitetura.",
+      "jira": "SV-145",
+      "subtasks": [
+        {
+          "id": "feat-007.1",
+          "name": "Confirmar pipeline real e corrigir description desatualizada",
+          "status": "done",
+          "jira": "SV-146",
+          "detail": "Fecha o backlog planejado deste servico (feat-001..007) - sem codigo/workflow novo, so a description da propria feature estava desatualizada.",
+          "checklist": [
+            "Confirmar os 6 passos reais de .github/workflows/ci.yml batem com a description corrigida da feature.",
+            "feature_list.json deste servico atualizado com a description correta."
+          ],
+          "validation": "./init.sh sai 0 (nenhuma mudanca de codigo); feature_list.json atualizado com evidence.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Entregue em 2026-09-07 (branch feature/SV-145, story SV-145 com 1 subtask SV-146). Fechamento formal do backlog deste servico - sem codigo/workflow novo. O pipeline real (.github/workflows/ci.yml, 6 passos: CHANGELOG, i18n, Build, Testes+cobertura, SonarCloud, Validar zero issues) ja rodava em producao desde feat-001.1 e gateou com sucesso todas as PRs de feat-001..006 desta sessao. Unico achado real: a description da propria feature estava desatualizada (citava 5 passos e comandos Maven antigos, sem o gate de zero issues) - corrigida pra bater com o ci.yml real, mesmo achado ja encontrado e corrigido em bets-service feat-007.",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify) verde com Docker ativo - nenhuma mudanca de codigo, so confirmacao do estado ja verde.",
+              "Historico de CI desta sessao (PRs de feat-001..006, todas as subtasks e stories) usado como evidencia de que o pipeline de 6 passos ja funciona de verdade em producao, incluindo o gate de zero issues do SonarCloud (que pegou achados reais em feat-001, feat-002, feat-004 e feat-006 nesta mesma sessao)."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma - escopo era so corrigir a description, plan_review confirmou READY sem achado."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Achado de planejamento (nao de codigo): esta feature nao estava no escopo que a sessao tinha em mente ao planejar o fechamento do epic-004 (feat-001..006) - so percebida ao revisar o feature_list.json completo do servico antes de marcar o epic como done. Mesma categoria de descoberta que o achado de description desatualizada em si: nada substitui reler o backlog completo antes de declarar um epic fechado."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada) rodado antes da mudanca - READY, sem achado. Delivery Reviewer/Test Suite Auditor dispensados dado o escopo trivial (so texto de documentacao, sem codigo/teste novo).",
+              "tools/jira_story.py usado normalmente (criacao da story + 1 subtask, --sync-status a cada transicao real)."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "feat-008",
+      "name": "Porta HTTP fixa (8083)",
+      "description": "Fixar server.port=8083 em application.yml. Motivada por lacuna encontrada ao planejar api-gateway feat-003 (tabela de rotas): nenhum dos 4 servicos Java tinha porta HTTP explicita (todos no default 8080 do Spring Boot, colidindo em dev local com os outros 3 - nenhum ainda e containerizado). Decisao cross-service registrada em docs/DECISIONS-LOG.md ('Porta HTTP fixa por servico Java + URL de roteamento configuravel no Gateway', 2026-09-07) e docs/OBSERVABILITY-AND-CONFIG.md (secao 'Portas HTTP'), tomada durante a sessao de api-gateway - epic-004 ja estava done, feature reaberta so para esta mudanca minima e indispensavel.",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-07, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado antes da mudanca - passe proprio, sem subagentes (risco baixo, mudanca de configuracao unica linha, independencia reduzida declarada). Veredito: READY. Verificado: os testes de integracao HTTP do servico usam @SpringBootTest(webEnvironment = RANDOM_PORT) + @LocalServerPort - RANDOM_PORT sobrescreve server.port em runtime de teste independente do valor configurado, confirmado rodando ./init.sh do servico apos a mudanca (verde, exit 0, nenhuma regressao, incluindo os testes de RabbitMQ/Redis/Testcontainers). Sem mudanca de codigo Java, sem teste novo (nao ha comportamento novo a testar, so um valor de configuracao ja usado por nenhum caminho de codigo do proprio servico). Unica subtask.",
+      "jira": "SV-163",
+      "subtasks": [
+        {
+          "id": "feat-008.1",
+          "name": "server.port fixo, CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-164"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-07 - server.port=8083 fixado no bloco base de application.yml (sem profile, aplica dev/test/prod), destravando api-gateway feat-003. Delivery Reviewer (passe proprio, sem subagentes - risco baixo, independencia reduzida declarada): PASS, sem achado - nenhum teste hardcoda porta, sem referencia a 8080/porta em .github/workflows/ci.yml. Test Suite Auditor/Persistence Auditor dispensados (zero codigo/teste/persistencia tocado). ./init.sh do servico verde (exit 0) na branch feature/SV-163 apos merge da subtask (PR #32, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
+    },
+    {
+      "id": "feat-009",
+      "name": "Corrigir aviso do compilador/IDE (RabbitMQContainer deprecado)",
+      "description": "Limpeza de aviso real encontrado no painel Problems do VSCode (nao bloqueava ./init.sh nem o gate do SonarCloud, mas e defeito real de codigo, nao ruido de IDE): TestcontainersConfiguration usava org.testcontainers.containers.RabbitMQContainer, deprecado desde que o modulo dedicado org.testcontainers.rabbitmq (ja presente como dependencia testcontainers-rabbitmq no pom.xml) introduziu org.testcontainers.rabbitmq.RabbitMQContainer com o mesmo construtor - mesmo padrao ja seguido para PostgreSQLContainer (org.testcontainers.postgresql) no mesmo arquivo.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-09-08, Plan Reviewer rodado antes da mudanca - passe proprio, sem subagentes (risco baixo, troca de import, independencia reduzida declarada). Veredito: READY. Verificado via javap contra o jar real (testcontainers-rabbitmq 2.0.5, ja presente no pom.xml): org.testcontainers.rabbitmq.RabbitMQContainer tem o mesmo construtor publico RabbitMQContainer(DockerImageName) da classe deprecada - troca de import segura, sem mudanca de comportamento. ./init.sh do servico rodado apos a troca (verde, exit 0, Testcontainers sobe RabbitMQ e Redis normalmente). Unica subtask.",
+      "jira": "SV-174",
+      "subtasks": [
+        {
+          "id": "feat-009.1",
+          "name": "Trocar import de RabbitMQContainer, CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-175"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-08 - RabbitMQContainer migrado para org.testcontainers.rabbitmq (mesmo construtor, confirmado via javap). Delivery Reviewer (passe proprio, sem subagentes, risco baixo - grep confirmou zero referencia remanescente ao pacote antigo org.testcontainers.containers.RabbitMQContainer): PASS. Test Suite Auditor/Persistence Auditor dispensados (mudanca cosmetica de import, zero comportamento novo). ./init.sh do servico verde (exit 0) na branch feature/SV-174 apos merge da subtask (PR #34, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
+    },
+    {
+      "id": "feat-010",
+      "name": "Retry de aplicacao para consumo de eventos (RabbitMQ 4.3+ nao conta nack-requeue pro x-delivery-limit)",
+      "description": "Achado real descoberto testando de verdade infra/feat-002 (teste de resiliencia cross-service do epic-007) contra o RabbitMQ 4.3.5 real do docker-compose: a partir da versao 4.3, nack(requeue=true) - o que o ConditionalRejectingErrorHandler padrao do Spring AMQP faz em qualquer excecao nao-fatal do listener - virou 'explicit return' e NAO conta mais para x-delivery-limit da fila quorum stats.bet-events; so reject (requeue=false) ou redelivery real por queda de conexao/canal conta. Confirmado empiricamente: derrubar postgres-stats e publicar 1 evento fez BetEventListener.onMessage falhar 15 vezes seguidas sem nunca cair em stats.bet-events.dlq (x-delivery-count travado em 1, x-acquired-count subindo). Isso quebra o proprio objetivo de isolamento de falha do epic-007 - uma mensagem envenenada trava o unico consumidor para sempre em vez de isolar via DLQ. Fix: mover a contagem de tentativas do broker (x-delivery-limit, que nao dispara mais nesse cenario) para a aplicacao, via retry nativo do Spring Boot (spring.rabbitmq.listener.simple.retry.*) - apos esgotar as tentativas EM PROCESSO, o RejectAndDontRequeueRecoverer padrao rejeita com requeue=false, o que sempre morta-letra via DLX independente da contagem do broker. BetEventListener.java ja usa AmqpRejectAndDontRequeueException corretamente para erro de dado (tenant nao resolvivel/schema invalido, sem retry cabivel) - nao mexer nesse caminho.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 2 achados BLOCKER/MAJOR corrigidos no plano. (BLOCKER) 'mvnw dependency:tree -Dincludes=org.springframework.retry:spring-retry' voltou vazio - a dependencia nao existe no pom.xml (so spring-boot-starter-amqp, que nao traz spring-retry transitivamente); spring.rabbitmq.listener.simple.retry.enabled sozinho nao ativa nada sem ela. Corrigido: adicionar org.springframework.retry:spring-retry como dependencia direta (sem spring-aspects - retry de listener RabbitMQ e wiring programatico do SimpleRabbitListenerContainerFactoryConfigurer, nao AOP via @Retryable). (MAJOR) application.yml tem 3 blocos de profile (dev/test/prod) via '---', cada um e uma PropertySource independente - se as 3 chaves de retry fossem adicionadas so em dev/prod (como o plano original propunha), o teste de integracao (perfil test, Testcontainers) rodaria sem o mecanismo ativo, dando falso-positivo. Corrigido: colocar as 3 chaves no bloco DEFAULT (sem on-profile, topo do arquivo), nao duplicar por profile. (MAJOR) plano nao fixava como forcar falha transitoria deterministica no teste - os 2 testes de DLQ ja existentes (shouldDeadLetterAMessageThatViolatesTheSchema, shouldDeadLetterAMessageForAnUnprovisionedTenant) cobrem so o caminho de reject imediato (AmqpRejectAndDontRequeueException), nenhum cobre 'N falhas transitorias entao DLQ'. Corrigido: bean @Primary de teste decorando ProcessBetEventUseCase (porta ja injetada em BetEventListener), sempre lancando RuntimeException (sem contador - mais simples que simular sucesso na ultima tentativa, os 2 testes existentes ja provam o caminho feliz), mesmo padrao de asserção dos 2 testes de DLQ ja existentes. (MINOR, aceito sem mudanca) caminho de AmqpRejectAndDontRequeueException provavelmente e retriado 2x inutilmente antes do reject final (RetryTemplateFactory do Spring Boot nao exclui essa excecao da SimpleRetryPolicy por padrao) - nao e regressao funcional, so latencia extra (~2s) num caminho que ja e erro definitivo; nao vale a complexidade de uma RetryPolicy customizada. (MINOR) initial-interval sem valor definido no plano original - fixado em 1000ms, sem backoff exponencial (KISS, decisao do usuario foi por mecanismo simples). Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-268",
+      "subtasks": [
+        {
+          "id": "feat-010.1",
+          "name": "Ativar retry de aplicacao no listener (spring-retry + application.yml)",
+          "status": "done",
+          "jira": "SV-269",
+          "detail": "Sem a dependencia spring-retry, as chaves de retry no application.yml nao fazem nada - achado BLOCKER do Plan Reviewer.",
+          "checklist": [
+            "pom.xml: adicionar org.springframework.retry:spring-retry como dependencia direta.",
+            "application.yml: adicionar no bloco DEFAULT (sem on-profile) spring.rabbitmq.listener.simple.retry.enabled=true, max-attempts=3 (mesmo numero ja documentado como x-delivery-limit), initial-interval=1000 - nao duplicar por profile dev/test/prod.",
+            "Confirmar via mvnw dependency:tree que spring-retry aparece na arvore de dependencias."
+          ],
+          "validation": "mvn -B -DskipTests package verde; dependency:tree mostra spring-retry.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.2",
+          "name": "Teste de integracao: falha transitoria esgota tentativas e morta-letra",
+          "status": "done",
+          "jira": "SV-270",
+          "detail": "Nenhum teste hoje prova o caminho de retry-entao-DLQ - os 2 testes de DLQ existentes cobrem so reject imediato (erro de dado), nao falha transitoria.",
+          "checklist": [
+            "BetEventListenerIntegrationTest: bean @Primary de teste decorando ProcessBetEventUseCase, sempre lancando RuntimeException (sem contador).",
+            "Publicar 1 BetCreated valido, publish() ja existente.",
+            "Assert rabbitTemplate.receive(DLQ, 10000) nao-nulo e queueMessageCount(QUEUE) zero - mesmo padrao dos 2 testes de DLQ ja existentes."
+          ],
+          "validation": "Teste novo passa; os 2 testes de DLQ existentes continuam passando (caminho AmqpRejectAndDontRequeueException nao quebrou).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.3",
+          "name": "Vault: registrar a mudanca de comportamento do RabbitMQ 4.3+",
+          "status": "done",
+          "jira": "SV-271",
+          "detail": "docs/services/infra.md e docs/API-CONTRACTS.md descrevem hoje o x-delivery-limit do broker como o mecanismo de contagem - desatualizado apos este achado.",
+          "checklist": [
+            "docs/services/infra.md secao Resiliencia: retry/delivery-limit agora e aplicado em nivel de aplicacao (Spring AMQP RetryTemplate), nao mais pela contagem nativa do RabbitMQ - explicar por que (RabbitMQ 4.3+ nao conta nack-requeue).",
+            "docs/API-CONTRACTS.md: corrigir citacao do mecanismo de contagem, se houver.",
+            "docs/DECISIONS-LOG.md: nova entrada registrando o achado (data, evidencia empirica, decisao do usuario sobre o mecanismo de fix)."
+          ],
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-272",
+          "detail": "Fechamento formal da feature.",
+          "checklist": [
+            "CHANGELOG.md: entrada em [Unreleased] descrevendo o fix.",
+            "./init.sh do servico verde.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit.",
+            "Preencher evidence desta feature."
+          ],
+          "owner": "agente"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-10 (branch feature/SV-268, story SV-268, subtasks SV-269..272). org.springframework.retry:spring-retry adicionado como dependencia direta (pom.xml); spring.rabbitmq.listener.simple.retry (enabled=true, max-attempts=3, initial-interval=1000) movido para o bloco DEFAULT de application.yml (sem on-profile), nao duplicado por dev/test/prod - achado MAJOR do Plan Reviewer, sem isso o teste de integracao (perfil test) validaria com o mecanismo desligado. BetEventListenerRetryIntegrationTest novo (contexto Spring proprio, @Primary decorando ProcessBetEventUseCase sempre lancando RuntimeException) prova o caminho que os 2 testes de DLQ existentes nao cobriam: falha transitoria esgotando as 3 tentativas ate cair em stats.bet-events.dlq via RejectAndDontRequeueRecoverer. ./mvnw -q verify verde (gate JaCoCo incluso), os 6 testes de BetEventListenerIntegrationTest ja existentes continuam passando - caminho AmqpRejectAndDontRequeueException (erro de dado, sem retry cabivel) nao foi tocado. docs/DECISIONS-LOG.md/docs/API-CONTRACTS.md/docs/services/infra.md (raiz) atualizados no mesmo commit logico com o achado completo (RabbitMQ 4.3+ nao conta nack-requeue para x-delivery-limit). Fix consumido e confirmado de verdade em infra/feat-002.4 (epic-007): o cenario de DLQ rodou contra esta versao ja corrigida e a mensagem morta-letrou apos ~105s, sem o travamento indefinido observado antes do fix."
+    },
+    {
+      "id": "feat-011",
+      "name": "Dockerfile para imagem de producao",
+      "description": "Achado real de infra/feat-004 (epic-010 da raiz, migracao para Kubernetes): este servico nunca teve Dockerfile proprio. Mesmo precedente das features de 'porta HTTP fixa' - decisao cross-service implementada como pequena feature dedicada em cada repositorio de servico, para infra/feat-004 so precisar referenciar a imagem ja construida.",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-10, achado durante infra/feat-004 - nao um plan review dedicado (mesmo build multi-stage ja validado em auth-service feat-011, risco baixo). Grounding: pom.xml confirmado com spring-boot-maven-plugin e java.version=25, sem finalName customizado.",
+      "jira": "SV-280",
+      "subtasks": [
+        {
+          "id": "feat-011.1",
+          "name": "Dockerfile multi-stage + verificacao real do container contra a infra",
+          "status": "done",
+          "jira": "SV-281"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-10. Dockerfile multi-stage identico ao padrao de auth-service feat-011 (build eclipse-temurin:25-jdk-alpine, runtime 25-jre-alpine, usuario nao-root, porta 8083) + .dockerignore. Build real e execucao real testados contra a infra (postgres-stats, rabbitmq, redis): GET /actuator/health respondeu 200. Imagem usada de fato por infra/feat-004 para os manifests Kubernetes."
+    },
+    {
+      "id": "feat-012",
+      "name": "Busca de estatisticas por combinacao (GET /api/v1/statistics/search)",
+      "description": "epic-011 da raiz - escopo novo, fora do backlog original do TCC1 (pedido do usuario, 2026-09-10). Endpoint novo, distinto de GET /api/v1/statistics (feat-006): sportId+leagueId obrigatorios, demais filtros (teamId novo, bettingHouseId, marketId, tipsterId, from/to) opcionais. Duas mudancas de schema sobre o modelo de feat-002/feat-004: DIM_TEAM nova (resolvida por nome - sem catalogo em bets-service, team1/team2 sao texto livre) com team1Id/team2Id em FACT_BET (nullable, filtro por teamId casa contra qualquer um dos dois); persistencia de odd em FACT_BET (nullable - ja trafega no evento BetCreated/BetSettled, nunca foi gravada). Resposta: summary (betCount, totalStaked, netProfit, roi, winRate, avgOdd, maxDrawdown, sharpeRatio) + timeline (serie ordenada por betDate - data do JOGO, decisao do usuario 2026-09-10, nao data de registro nem de liquidacao - de lucro acumulado das apostas liquidadas do recorte). maxDrawdown/sharpeRatio nao sao agregados SQL simples - exigem iterar a serie ordenada em memoria (domain, calculador puro sem I/O). Sem cache-aside (espaco de combinacoes grande demais para o padrao de chave fixa por tenant de feat-005). Inclui fix de bug pre-existente real (achado do plan review): processSettled recalculava dateId a partir de settledAt em vez de preservar o dateId ja resolvido de betDate por processCreated - corrompia silenciosamente a granularidade mensal do dashboard (feat-006) para toda aposta liquidada em mes diferente do jogo, nao so a serie nova desta feature. Formulas e fundamentacao teorica (TCC1 cap. 2.4/2.5) em docs/STATISTICS.md.",
+      "dependencies": [
+        "feat-006"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 3 achados MAJOR corrigidos no plano (nenhum exigiu decisao do usuario alem da ja tomada sobre semantica de betDate). (MAJOR #1) BetCreatedEvent/BetSettledEvent (domain/port/in) e BetEventListener.toBetCreatedEvent/toBetSettledEvent nao extraem team1/team2/odd do payload hoje, apesar de existirem no JSON Schema - plano original so citava DimensionResolver, faltava a camada de mapeamento do evento. Corrigido: subtask dedicada (feat-012.2) estende os 2 records + os 2 metodos de mapeamento (helpers nullableText/decimal ja existentes, reaproveitados). (MAJOR #2, revisado apos correcao do usuario) ordenar a serie temporal por betDate exige que dateId reflita a data do jogo de forma estavel - achado real: processSettled recalculava dateId a partir de settledAt, sobrescrevendo o dateId correto (resolvido de betDate no insert de processCreated) toda vez que uma aposta liquidava; usuario confirmou explicitamente que a data e sempre a do jogo, nunca registro/liquidacao. Corrigido: processSettled passa a preservar o dateId ja existente na linha em vez de recalcular - bug pre-existente (feat-003) que tambem corrompia silenciosamente o agregado mensal do dashboard (feat-006), nao so a serie nova. Residual aceito e documentado (docs/STATISTICS.md): BetSettled nao carrega betDate no payload (so settledAt) - no caso raro de chegar antes do BetCreated correspondente, a linha nasce com dateId estimado de settledAt ate o BetCreated processar depois; corrigir de verdade exigiria mudanca de contrato cross-service com bets-service, fora do escopo desta feature. (MAJOR #3) validacao de sportId/leagueId obrigatorios precisa seguir o padrao LocalizedDomainException/DomainExceptionHandler ja usado no servico (RFC 7807, i18n 3 locales) - o 400 default do Spring para @RequestParam ausente nao sai nesse formato (confirmado via grep, sem spring.mvc.problemdetails configurado). Corrigido: nova MissingRequiredStatisticsFilterException + 3 mensagens i18n, controller mantem os 2 params como required=false e valida manualmente. Achados MINOR aceitos sem mudanca: desenho de DIM_TEAM (chave natural por nome, team1Id/team2Id duplo) confirmado correto contra o precedente real de DimensionResolver.resolveDate; migration aditiva de baixo risco (colunas nullable, sem backfill); calculo de drawdown/Sharpe deve viver em domain (calculador puro sem I/O), nao em application, para ser testavel isoladamente. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-292",
+      "subtasks": [
+        {
+          "id": "feat-012.1",
+          "name": "Schema: DIM_TEAM + team1Id/team2Id/odd em FACT_BET",
+          "detail": "Migration nova (dim_team id+name; ALTER TABLE fact_bet ADD team1_id/team2_id/odd nullable). DimTeam domain model + porta + adapter JPA/Spring Data, mesmo padrao dos outros 5 catalogos. FactBet record e FactBetJpaEntity ganham os 3 campos. DimensionResolver.resolveTeam(name) por chave natural (padrao resolveDate, nao resolveBettingHouse - sem catalogo de times em bets-service).",
+          "checklist": [
+            "Migration V<timestamp>__add_team_dimension_and_odd.sql aplicada sem erro em schema de tenant existente",
+            "DimTeam + DimTeamRepository + DimTeamJpaEntity + Spring Data repo + adapter criados",
+            "FactBet/FactBetJpaEntity com team1Id/team2Id/odd, applyFrom/toDomain atualizados",
+            "DimensionResolver.resolveTeam(String name) - upsert-if-missing por nome"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao confirma resolveTeam idempotente (mesmo nome nao duplica linha em DIM_TEAM).",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-293"
+        },
+        {
+          "id": "feat-012.2",
+          "name": "Consumo do evento: mapear team1/team2/odd + corrigir dateId em processSettled",
+          "detail": "BetCreatedEvent/BetSettledEvent ganham team1/team2/odd. BetEventListener extrai do payload (helpers existentes). ProcessBetEventService.processCreated/processSettled resolvem team1Id/team2Id via DimensionResolver.resolveTeam e persistem odd nos dois caminhos. Fix do bug real: processSettled preserva dateId existente em vez de recalcular de settledAt (ver plan_review).",
+          "checklist": [
+            "BetCreatedEvent/BetSettledEvent com team1/team2/odd, BetEventListener mapeando os 3 campos",
+            "processCreated grava team1Id/team2Id/odd via DimensionResolver.resolveTeam",
+            "processSettled grava team1Id/team2Id/odd E preserva dateId ja existente na linha (nao chama resolveDate(settledAt) quando a linha ja existe)",
+            "Teste de integracao prova o fix: BetCreated com betDate em mes X, BetSettled com settledAt em mes Y != X, dateId final continua refletindo mes X"
+          ],
+          "validation": "mvn -B verify verde; teste de idempotencia/ordem de mensagem (BetSettled antes de BetCreated) continua passando com o residual documentado.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-294"
+        },
+        {
+          "id": "feat-012.3",
+          "name": "Query layer: agregacao com avgOdd + serie ordenada para timeline",
+          "detail": "StatisticsSearchFilter (domain record, sportId/leagueId nao-nulos por construcao). FactBetRepository ganha aggregateForSearch (avgOdd via AVG(f.odd)) e findOrderedSettledProfits (lista date+profit ordenada por DIM_DATE, mesmo FUNCTION('make_date',...) ja usado). Filtro teamId casa team1Id OR team2Id.",
+          "checklist": [
+            "StatisticsSearchFilter criado",
+            "FactBetRepository.aggregateForSearch + findOrderedSettledProfits (port + adapter JPQL)",
+            "Filtro teamId (team1Id = :teamId OR team2Id = :teamId) coberto por teste"
+          ],
+          "validation": "Teste de integracao com apostas em times diferentes confirma teamId casando os 2 lados (mandante e visitante).",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-295"
+        },
+        {
+          "id": "feat-012.4",
+          "name": "Calculo de decisao (domain): drawdown maximo + Indice de Sharpe simplificado",
+          "detail": "EquityCurveCalculator (domain, sem I/O): recebe serie ordenada de profit, devolve maxDrawdown e sharpeRatio (formulas em docs/STATISTICS.md). null se <2 apostas liquidadas ou desvio-padrao zero - nunca divisao por zero.",
+          "checklist": [
+            "EquityCurveCalculator criado em domain, sem dependencia de Spring/repositorio",
+            "Teste unitario puro com serie sintetica confere maxDrawdown contra calculo manual",
+            "Teste unitario cobre sharpeRatio null (0 e 1 aposta liquidada, desvio-padrao zero)"
+          ],
+          "validation": "Testes unitarios verdes, sem Testcontainers (calculo puro).",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-296"
+        },
+        {
+          "id": "feat-012.5",
+          "name": "Endpoint GET /api/v1/statistics/search",
+          "detail": "MissingRequiredStatisticsFilterException (LocalizedDomainException, 400) + registro em DomainExceptionHandler + 3 mensagens i18n (pt-BR/en-US/es). SearchStatisticsService (application) orquestra: valida sportId/leagueId, busca aggregateForSearch + findOrderedSettledProfits, chama EquityCurveCalculator, monta StatisticsSearchResult. Controller + DTOs HTTP.",
+          "checklist": [
+            "MissingRequiredStatisticsFilterException + DomainExceptionHandler + messages_{pt_BR,en_US,es}.properties",
+            "SearchStatisticsService + StatisticsSearchResult (filters/summary/timeline)",
+            "StatisticsController novo endpoint GET /api/v1/statistics/search",
+            "Teste de integracao: 400 RFC 7807 localizado sem sportId/leagueId; combinacao sem apostas liquidadas retorna zeros/nulls (nao excecao); resposta completa com summary+timeline"
+          ],
+          "validation": "mvn -B verify verde; testes de integracao Testcontainers cobrindo os 4 cenarios do checklist.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-297"
+        },
+        {
+          "id": "feat-012.6",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal: CHANGELOG.md, init.sh, skills de auditoria, e o item fixo de vault desta feature.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit"
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-298"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-10 (branch feature/SV-292, story SV-292, subtasks SV-293..298). GET /api/v1/statistics/search novo: sportId/leagueId obrigatorios (400 RFC 7807 localizado pt-BR/en-US/es via MissingRequiredStatisticsFilterException), teamId/bettingHouseId/marketId/tipsterId/from/to opcionais. DIM_TEAM nova (chave natural por nome, sem catalogo em bets-service) + team1Id/team2Id/odd em FACT_BET (migration V20260910120000, nullable, aditiva). Resposta: summary (betCount/totalStaked/netProfit/roi/winRate/avgOdd/maxDrawdown/sharpeRatio) + timeline (equity curve). maxDrawdown/sharpeRatio calculados por EquityCurveCalculator (domain puro, sem I/O, testado com valores conferidos a mao). Achado real corrigido no mesmo escopo (Plan Reviewer, antes do codigo): processSettled recalculava dateId a partir de settledAt em vez de preservar o dateId resolvido de betDate (data do jogo, decisao do usuario) por processCreated - corrompia silenciosamente o agregado mensal do dashboard consolidado (feat-006) para toda aposta liquidada em mes diferente do jogo, nao so a serie nova desta feature; corrigido preservando o dateId existente, residual documentado (BetSettled fora de ordem sem betDate no payload). mvn verify (JaCoCo incluso) verde em cada uma das 5 subtasks de codigo. Delivery Reviewer: PASS (sem regressao em GET /api/v1/statistics existente). Test Suite Auditor: PASS (drawdown/Sharpe com oracle conferivel a mao, teamId provado nos 2 lados do confronto, fix de dateId provado no mecanismo causal). Persistence Auditor: CONCERNS, 1 P2 aceito como residual (DimensionResolver.resolveTeam tem a mesma corrida check-then-act ja presente nas outras 5 dimensoes, auto-recuperavel via retry/DLQ ja validado em epic-007 - documentado em docs/services/stats-service.md). ./init.sh do servico e da raiz verdes. Documentacao: docs/DATA-MODEL.md, docs/STATISTICS.md (nota nova, formulas com fundamentacao teorica do TCC1 cap. 2.4/2.5), docs/API-CONTRACTS.md, docs/services/stats-service.md atualizados no mesmo commit logico das mudancas. Libera apps/web feat-012 (epic-012 da raiz)."
+    },
+    {
+      "id": "feat-013",
+      "name": "DIM_TEAM escopado por esporte + GET /api/v1/statistics/teams",
+      "description": "Addendum descoberto planejando apps/web feat-012 (tela \"Buscar Estatisticas\") - DIM_TEAM (feat-012) nao tinha endpoint de listagem em lugar nenhum, impedindo autocomplete de time na tela nova. Decisao do usuario (2026-09-10, apos revisao do plano): DIM_TEAM ganha FK de esporte (sportId, DIM_SPORT) - chave natural composta (name, sportId) substitui (name) sozinho, porque o mesmo nome de time pode existir em esportes diferentes; troca de esporte na tela nova deve refiltrar o autocomplete de time. GET /api/v1/statistics/teams?sportId=<uuid> (sportId obrigatorio, mesmo padrao RFC 7807 de MissingRequiredStatisticsFilterException ja usado em feat-012) lista {id,name} escopado por esporte, sem paginacao (volume baixo por tenant). Nested sob /api/v1/statistics/** - api-gateway ja roteia esse prefixo inteiro pra stats-service, sem mudanca la. Migration altera DIM_TEAM ja existente (introduzida nesta mesma sessao, nunca usada em tenant real - ALTER TABLE direto, sem backfill).",
+      "dependencies": [
+        "feat-012"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o desenho original (listagem de DIM_TEAM sem escopo de esporte, plano A da revisao conjunta com apps/web feat-012) - veredito READY WITH CONCERNS, achados MINOR: card de betCount ausente do plano de web (nao afeta este harness), extracao de shared/kpi-card justificada (idem), listTeams() precisa de metodo proprio no client HTTP (nao reaproveita catalogApi - idem). Residual sinalizado explicitamente pelo proprio Plan Reviewer: DIM_TEAM sem FK de esporte, trocar de esporte na tela nao refiltraria o autocomplete de time, aceito como nao-bloqueante 'corrigir exigiria rastrear esporte por time no schema, fora do escopo desta rodada'. Usuario leu o residual e decidiu explicitamente o contrario: quer a correcao agora, nao aceita o residual. Escopo deste addendum corrigido para refletir a decisao: DIM_TEAM ganha sportId (FK DIM_SPORT, NOT NULL - tabela introduzida nesta mesma sessao, nunca usada em tenant real, sem risco de linha orfa sem sportId), chave natural vira (name, sportId) - troca UNIQUE(name) por UNIQUE(name, sportId) e DimensionResolver.resolveTeam(name, sportId) (sportId ja resolvido antes no mesmo metodo de processCreated/processSettled, so passar adiante). GET /api/v1/statistics/teams?sportId=<uuid> (obrigatorio) em vez de sem filtro algum. Sem novo Plan Reviewer dedicado para a correcao - instrucao direta e inequivoca do usuario, nao uma decisao de design em aberto exigindo desafio independente; risco tecnico baixo (mesmo padrao ja usado por resolveDate/DimensionJpaEntity, tabela sem dado real).",
+      "jira": "SV-299",
+      "subtasks": [
+        {
+          "id": "feat-013.1",
+          "name": "Schema: sportId em DIM_TEAM + chave natural composta",
+          "detail": "Migration ALTER TABLE dim_team: DROP CONSTRAINT uq_dim_team_name, ADD COLUMN sport_id UUID NOT NULL REFERENCES dim_sport(id), ADD CONSTRAINT uq_dim_team_name_sport UNIQUE (name, sport_id). DimTeam record ganha sportId. DimTeamRepository.findByName vira findByNameAndSportId(name, sportId) + findBySportId(sportId) novo (usado pelo endpoint de feat-013.2). DimensionResolver.resolveTeam(name, sportId) - assinatura muda, sportId ja disponivel no mesmo escopo de processCreated/processSettled (resolvido antes de team1Id/team2Id). Testes existentes de feat-012 (JpaDimTeamRepositoryIntegrationTest, DimensionResolverTest, ProcessBetEventServiceTest, JpaFactBetRepositorySearchIntegrationTest) atualizados para a nova assinatura.",
+          "checklist": [
+            "Migration nova aplicada sem erro em schema de tenant existente (dim_team ja criada por feat-012)",
+            "DimTeam/DimTeamRepository/DimTeamJpaEntity/DimTeamSpringDataRepository/JpaDimTeamRepository com sportId",
+            "DimensionResolver.resolveTeam(name, sportId) - mesmo nome em esportes diferentes resolve para 2 linhas distintas (teste novo)",
+            "ProcessBetEventService.processCreated/processSettled passam sportId pra resolveTeam nos 2 lados (team1/team2)"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao confirma 2 linhas de DIM_TEAM para o mesmo nome em 2 esportes diferentes, sem violar a UNIQUE composta.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-300"
+        },
+        {
+          "id": "feat-013.2",
+          "name": "Endpoint GET /api/v1/statistics/teams",
+          "detail": "ListTeamsUseCase (port/in) + ListTeamsService (application) chamando DimTeamRepository.findBySportId - mantem o limite hexagonal (adapter/in nunca chama port/out direto, mesmo padrao de SearchStatisticsUseCase). TeamsController novo (adapter/in/web): sportId obrigatorio (400 RFC 7807 localizado via MissingRequiredStatisticsFilterException, mesma excecao ja criada em feat-012 - reaproveitar, nao duplicar). Resposta: lista [{id,name}], ordenada por nome, sem paginacao.",
+          "checklist": [
+            "ListTeamsUseCase/ListTeamsService criados",
+            "TeamsController: GET /api/v1/statistics/teams, sportId obrigatorio (400 localizado se ausente, reaproveitando MissingRequiredStatisticsFilterException)",
+            "Teste de integracao: sportId ausente = 400; sportId com times cadastrados = lista correta; sportId sem nenhum time = lista vazia (nao erro)"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao HTTP cobrindo os 3 cenarios do checklist.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-301"
+        },
+        {
+          "id": "feat-013.3",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal: CHANGELOG.md, init.sh, skills de auditoria, e o item fixo de vault desta feature.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido",
+            "Vault (docs/) revisado: docs/DATA-MODEL.md (DIM_TEAM com FK de esporte), docs/API-CONTRACTS.md (endpoint novo), docs/services/stats-service.md atualizados no mesmo commit"
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-302"
+        }
+      ],
+      "evidence": "Fechado em 2026-09-10 (feat-013.1..013.3, story SV-299, PRs #36/#37/#39 subtask->feature + merge final feature->develop). DIM_TEAM ganha sportId (FK DIM_SPORT, NOT NULL) - chave natural vira (name, sportId), UNIQUE(name) trocada por UNIQUE(name, sportId); DimensionResolver.resolveTeam(name, sportId) mantem o mesmo padrao check-then-act de resolveDate, sem regressao de concorrencia. GET /api/v1/statistics/teams?sportId=<uuid> (sportId obrigatorio, 400 RFC 7807 via MissingRequiredStatisticsFilterException reaproveitada de feat-012) nested em StatisticsController (desvio aceito do plano original 'TeamsController novo' - mesmo limite hexagonal adapter/in->port/in->port/out, sem duplicar classe). Delivery Reviewer: PASS, um desvio de plano aceito (endpoint no controller existente em vez de um novo), sem achado bloqueante. Test Suite Auditor: CONCERNS, achado real corrigido no mesmo escopo (feat-013.3) - constraint UNIQUE(name, sport_id) nao tinha teste DB-level, so prova indireta via caminho de aplicacao; teste novo adicionado (shouldRejectDuplicateNameAndSportAtTheDatabaseLevel), mesmo padrao de JpaProcessedEventRepositoryIntegrationTest. Persistence Auditor: CONCERNS nao-bloqueante - 2 achados P3 informativos (indice composto com sport_id como coluna nao-lider, aceitavel para tabela de baixo volume por tenant; race de check-then-act e padrao pre-existente, nao introduzido por esta feature) e 1 P2 documentado (ADD COLUMN NOT NULL sem DEFAULT falharia se algum tenant ja tivesse migrado so ate V120000 com dados reais - consistente com a premissa explicita do plano de que dim_team nunca foi usada em tenant real nesta sessao, sem acao corretiva necessaria). mvn verify e ./init.sh do servico e da raiz verdes. Libera epic-012 (web)."
     }
   ]
 }
