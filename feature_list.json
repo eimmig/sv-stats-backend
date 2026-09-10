@@ -988,7 +988,7 @@
           ],
           "validation": "mvn -B verify verde; teste de integracao HTTP cobrindo os 3 cenarios do checklist.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-301"
         },
         {
