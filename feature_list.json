@@ -788,7 +788,7 @@
         {
           "id": "feat-010.2",
           "name": "Teste de integracao: falha transitoria esgota tentativas e morta-letra",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-270",
           "detail": "Nenhum teste hoje prova o caminho de retry-entao-DLQ - os 2 testes de DLQ existentes cobrem so reject imediato (erro de dado), nao falha transitoria.",
           "checklist": [
