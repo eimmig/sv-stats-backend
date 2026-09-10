@@ -802,7 +802,7 @@
         {
           "id": "feat-010.3",
           "name": "Vault: registrar a mudanca de comportamento do RabbitMQ 4.3+",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-271",
           "detail": "docs/services/infra.md e docs/API-CONTRACTS.md descrevem hoje o x-delivery-limit do broker como o mecanismo de contagem - desatualizado apos este achado.",
           "checklist": [
