@@ -761,6 +761,73 @@
         }
       ],
       "evidence": "Fechada em 2026-09-08 - RabbitMQContainer migrado para org.testcontainers.rabbitmq (mesmo construtor, confirmado via javap). Delivery Reviewer (passe proprio, sem subagentes, risco baixo - grep confirmou zero referencia remanescente ao pacote antigo org.testcontainers.containers.RabbitMQContainer): PASS. Test Suite Auditor/Persistence Auditor dispensados (mudanca cosmetica de import, zero comportamento novo). ./init.sh do servico verde (exit 0) na branch feature/SV-174 apos merge da subtask (PR #34, CI verde). CHANGELOG.md atualizado automaticamente por tools/jira_story.py."
+    },
+    {
+      "id": "feat-010",
+      "name": "Retry de aplicacao para consumo de eventos (RabbitMQ 4.3+ nao conta nack-requeue pro x-delivery-limit)",
+      "description": "Achado real descoberto testando de verdade infra/feat-002 (teste de resiliencia cross-service do epic-007) contra o RabbitMQ 4.3.5 real do docker-compose: a partir da versao 4.3, nack(requeue=true) - o que o ConditionalRejectingErrorHandler padrao do Spring AMQP faz em qualquer excecao nao-fatal do listener - virou 'explicit return' e NAO conta mais para x-delivery-limit da fila quorum stats.bet-events; so reject (requeue=false) ou redelivery real por queda de conexao/canal conta. Confirmado empiricamente: derrubar postgres-stats e publicar 1 evento fez BetEventListener.onMessage falhar 15 vezes seguidas sem nunca cair em stats.bet-events.dlq (x-delivery-count travado em 1, x-acquired-count subindo). Isso quebra o proprio objetivo de isolamento de falha do epic-007 - uma mensagem envenenada trava o unico consumidor para sempre em vez de isolar via DLQ. Fix: mover a contagem de tentativas do broker (x-delivery-limit, que nao dispara mais nesse cenario) para a aplicacao, via retry nativo do Spring Boot (spring.rabbitmq.listener.simple.retry.*) - apos esgotar as tentativas EM PROCESSO, o RejectAndDontRequeueRecoverer padrao rejeita com requeue=false, o que sempre morta-letra via DLX independente da contagem do broker. BetEventListener.java ja usa AmqpRejectAndDontRequeueException corretamente para erro de dado (tenant nao resolvivel/schema invalido, sem retry cabivel) - nao mexer nesse caminho.",
+      "dependencies": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 2 achados BLOCKER/MAJOR corrigidos no plano. (BLOCKER) 'mvnw dependency:tree -Dincludes=org.springframework.retry:spring-retry' voltou vazio - a dependencia nao existe no pom.xml (so spring-boot-starter-amqp, que nao traz spring-retry transitivamente); spring.rabbitmq.listener.simple.retry.enabled sozinho nao ativa nada sem ela. Corrigido: adicionar org.springframework.retry:spring-retry como dependencia direta (sem spring-aspects - retry de listener RabbitMQ e wiring programatico do SimpleRabbitListenerContainerFactoryConfigurer, nao AOP via @Retryable). (MAJOR) application.yml tem 3 blocos de profile (dev/test/prod) via '---', cada um e uma PropertySource independente - se as 3 chaves de retry fossem adicionadas so em dev/prod (como o plano original propunha), o teste de integracao (perfil test, Testcontainers) rodaria sem o mecanismo ativo, dando falso-positivo. Corrigido: colocar as 3 chaves no bloco DEFAULT (sem on-profile, topo do arquivo), nao duplicar por profile. (MAJOR) plano nao fixava como forcar falha transitoria deterministica no teste - os 2 testes de DLQ ja existentes (shouldDeadLetterAMessageThatViolatesTheSchema, shouldDeadLetterAMessageForAnUnprovisionedTenant) cobrem so o caminho de reject imediato (AmqpRejectAndDontRequeueException), nenhum cobre 'N falhas transitorias entao DLQ'. Corrigido: bean @Primary de teste decorando ProcessBetEventUseCase (porta ja injetada em BetEventListener), sempre lancando RuntimeException (sem contador - mais simples que simular sucesso na ultima tentativa, os 2 testes existentes ja provam o caminho feliz), mesmo padrao de asserção dos 2 testes de DLQ ja existentes. (MINOR, aceito sem mudanca) caminho de AmqpRejectAndDontRequeueException provavelmente e retriado 2x inutilmente antes do reject final (RetryTemplateFactory do Spring Boot nao exclui essa excecao da SimpleRetryPolicy por padrao) - nao e regressao funcional, so latencia extra (~2s) num caminho que ja e erro definitivo; nao vale a complexidade de uma RetryPolicy customizada. (MINOR) initial-interval sem valor definido no plano original - fixado em 1000ms, sem backoff exponencial (KISS, decisao do usuario foi por mecanismo simples). Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-268",
+      "subtasks": [
+        {
+          "id": "feat-010.1",
+          "name": "Ativar retry de aplicacao no listener (spring-retry + application.yml)",
+          "status": "done",
+          "jira": "SV-269",
+          "detail": "Sem a dependencia spring-retry, as chaves de retry no application.yml nao fazem nada - achado BLOCKER do Plan Reviewer.",
+          "checklist": [
+            "pom.xml: adicionar org.springframework.retry:spring-retry como dependencia direta.",
+            "application.yml: adicionar no bloco DEFAULT (sem on-profile) spring.rabbitmq.listener.simple.retry.enabled=true, max-attempts=3 (mesmo numero ja documentado como x-delivery-limit), initial-interval=1000 - nao duplicar por profile dev/test/prod.",
+            "Confirmar via mvnw dependency:tree que spring-retry aparece na arvore de dependencias."
+          ],
+          "validation": "mvn -B -DskipTests package verde; dependency:tree mostra spring-retry.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.2",
+          "name": "Teste de integracao: falha transitoria esgota tentativas e morta-letra",
+          "status": "not-started",
+          "jira": "SV-270",
+          "detail": "Nenhum teste hoje prova o caminho de retry-entao-DLQ - os 2 testes de DLQ existentes cobrem so reject imediato (erro de dado), nao falha transitoria.",
+          "checklist": [
+            "BetEventListenerIntegrationTest: bean @Primary de teste decorando ProcessBetEventUseCase, sempre lancando RuntimeException (sem contador).",
+            "Publicar 1 BetCreated valido, publish() ja existente.",
+            "Assert rabbitTemplate.receive(DLQ, 10000) nao-nulo e queueMessageCount(QUEUE) zero - mesmo padrao dos 2 testes de DLQ ja existentes."
+          ],
+          "validation": "Teste novo passa; os 2 testes de DLQ existentes continuam passando (caminho AmqpRejectAndDontRequeueException nao quebrou).",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.3",
+          "name": "Vault: registrar a mudanca de comportamento do RabbitMQ 4.3+",
+          "status": "not-started",
+          "jira": "SV-271",
+          "detail": "docs/services/infra.md e docs/API-CONTRACTS.md descrevem hoje o x-delivery-limit do broker como o mecanismo de contagem - desatualizado apos este achado.",
+          "checklist": [
+            "docs/services/infra.md secao Resiliencia: retry/delivery-limit agora e aplicado em nivel de aplicacao (Spring AMQP RetryTemplate), nao mais pela contagem nativa do RabbitMQ - explicar por que (RabbitMQ 4.3+ nao conta nack-requeue).",
+            "docs/API-CONTRACTS.md: corrigir citacao do mecanismo de contagem, se houver.",
+            "docs/DECISIONS-LOG.md: nova entrada registrando o achado (data, evidencia empirica, decisao do usuario sobre o mecanismo de fix)."
+          ],
+          "owner": "agente"
+        },
+        {
+          "id": "feat-010.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-272",
+          "detail": "Fechamento formal da feature.",
+          "checklist": [
+            "CHANGELOG.md: entrada em [Unreleased] descrevendo o fix.",
+            "./init.sh do servico verde.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto no mesmo commit.",
+            "Preencher evidence desta feature."
+          ],
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

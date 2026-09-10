@@ -12,6 +12,13 @@ spring:
     open-in-view: false
   messages:
     fallback-to-system-locale: false
+  rabbitmq:
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
 
 management:
   endpoint:
