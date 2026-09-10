@@ -3,8 +3,48 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-10
-**Feature ativa:** nenhuma — `feat-001`..`feat-012` `done` (`feat-012` fechada nesta sessão,
-`epic-011` da raiz).
+**Feature ativa:** nenhuma — `feat-001`..`feat-013` `done` (`feat-013` fechada nesta sessão,
+addendum sobre `epic-011` da raiz, descoberto planejando `apps/web feat-012`).
+
+## `feat-013` fechada — DIM_TEAM escopado por esporte + GET /api/v1/statistics/teams (2026-09-10)
+
+Addendum descoberto planejando a tela "Buscar Estatísticas" em `apps/web` (`epic-012` da raiz):
+o Plan Reviewer daquela feature sinalizou que `DIM_TEAM` não tinha nenhum endpoint de listagem —
+sem catálogo em `bets-service` (`team1`/`team2` são texto livre por aposta), o frontend não tinha
+como saber quais `teamId` existiam pra montar o autocomplete de time. O Plan Reviewer também
+sinalizou um residual não-bloqueante (mesmo nome de time em esportes diferentes colidiria no
+autocomplete, já que `DIM_TEAM` não tinha FK de esporte) e aceitou deixá-lo pra depois. Usuário
+leu o residual e decidiu o contrário: quis a correção agora.
+
+3 subtasks (story SV-299): `feat-013.1` (SV-300, migration `sport_id` NOT NULL em `dim_team` +
+chave natural composta `(name, sportId)`, `DimensionResolver.resolveTeam(name, sportId)`),
+`feat-013.2` (SV-301, `GET /api/v1/statistics/teams?sportId=<uuid>` — sportId obrigatório, 400
+RFC 7807 via `MissingRequiredStatisticsFilterException` reaproveitada de `feat-012`), `feat-013.3`
+(SV-302, fechamento formal). Desvio de plano aceito: o endpoint entrou dentro do
+`StatisticsController` já existente em vez de um `TeamsController` novo — mesmo limite hexagonal
+(`adapter/in`→`port/in`→`port/out`), sem duplicar classe de controller pra uma rota só.
+
+Achado real do Test Suite Auditor, corrigido no escopo de `feat-013.3`: a `UNIQUE(name, sport_id)`
+nova nunca tinha teste que provasse a constraint no banco — só o caminho de aplicação (que já
+evita duplicata antes do `save()`) era exercitado. Teste novo
+(`shouldRejectDuplicateNameAndSportAtTheDatabaseLevel`) adicionado, mesmo padrão de
+`JpaProcessedEventRepositoryIntegrationTest`. Persistence Auditor: achados não-bloqueantes
+(`sport_id` como coluna não-líder do índice composto — aceitável pra tabela de baixo volume por
+tenant; `ADD COLUMN NOT NULL` sem `DEFAULT` falharia se algum tenant real já tivesse `dim_team`
+populada antes desta migration — consistente com a premissa do plano de que a tabela nunca foi
+usada em tenant real, sem ação corretiva necessária).
+
+**Achado de processo, corrigido durante o fechamento**: o PR `feature/SV-299 -> develop` falhou o
+Quality Gate do SonarCloud na primeira tentativa (`B Reliability Rating on New Code`) num arquivo
+que `feat-013` nunca tocou (`EquityCurveCalculator.java`, de `feat-012`) — o projeto usa janela de
+"New Code" por tempo (não por diff de PR), então código de horas atrás ainda conta como novo.
+Corrigido (`n - 1` de `int` pra `long` explícito antes de `BigDecimal.valueOf`, evita overflow
+teórico antes do widening implícito) mesmo fora do escopo nominal de `feat-013`, porque bloqueava
+o gate de merge — registrado aqui em vez de escondido no commit.
+
+3 PRs: #39 (subtask `feat-013.3`→story, CI verde sem Sonar), #40 (story→`develop`, CI+SonarCloud
+verdes após o fix acima). `./mvnw -q verify`/`./init.sh` do serviço e da raiz verdes. Libera
+`epic-012` (web).
 
 ## `feat-012` fechada — GET /api/v1/statistics/search (2026-09-10)
 

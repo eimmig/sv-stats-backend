@@ -2,40 +2,33 @@
 
 ## Current Objective
 
-- `epic-004` (raiz) `done` — `feat-001..009` `done`. `feat-010` (retry de aplicação, achado do
-  RabbitMQ 4.3+) acrescentada e fechada nesta sessão. Nenhuma feature pendente neste harness.
-- Branch / commit: `develop` @ merge de `feature/SV-268` (PR #36).
+- `epic-004` (raiz) `done`. `feat-013` (addendum sobre `epic-011`) fechada nesta sessão. Nenhuma
+  feature pendente neste harness.
+- Branch / commit: `develop` @ merge de `feature/SV-299` (PR #40).
 
 ## Completed This Session (2026-09-10)
 
-- [x] **`feat-010` fechada** (story SV-268, subtasks SV-269..272, PR #36 feature->develop,
-      CI+SonarCloud verdes): retry de aplicação para `BetEventListener`. Achado real de
-      `infra/feat-002` (teste de resiliência de `epic-007`, outro repositório): a partir do
-      RabbitMQ 4.3 (versão real deste projeto, 4.3.5), `nack(requeue=true)` — o que o Spring AMQP
-      faz por padrão em qualquer falha de listener — deixou de contar para `x-delivery-limit` da
-      fila quorum `stats.bet-events`. Confirmado ao vivo: derrubar `postgres-stats` fazia o
-      consumidor falhar indefinidamente sem nunca cair na DLQ, quebrando o objetivo do
-      `epic-007`. Fix: `spring.rabbitmq.listener.simple.retry` (3 tentativas, bloco DEFAULT de
-      `application.yml`, sem duplicar por profile) — após esgotar, o
-      `RejectAndDontRequeueRecoverer` padrão rejeita com `requeue=false`, que sempre morta-letra
-      independente da contagem do broker.
-- [x] Teste novo (`BetEventListenerRetryIntegrationTest`) prova o caminho "falha transitória
-      esgota tentativas → DLQ", que os 2 testes de DLQ existentes (caminho de reject imediato por
-      erro de dado) não cobriam.
-- [x] Achado de processo, corrigido: as 4 subtasks tinham sido mescladas localmente numa sessão
-      anterior sem passar por PR/CI real — corrigido nesta sessão, branches empurradas pro GitHub
-      e o PR `feature/SV-268 -> develop` passou pela CI real (incluindo SonarCloud) antes do
-      merge.
-- [x] Dezenas de branches antigas já mescladas (deste e de outros repositórios) limpas local e
-      remotamente, a pedido do usuário.
+- [x] **`feat-013` fechada** (story SV-299, subtasks SV-300..302, PRs #39 subtask->feature + #40
+      feature->develop): `DIM_TEAM` ganha `sportId` (FK `DIM_SPORT`, NOT NULL), chave natural vira
+      `(name, sportId)`; `GET /api/v1/statistics/teams?sportId=<uuid>` novo (autocomplete escopado
+      por esporte da tela "Buscar Estatísticas" em `apps/web`).
+- [x] Achado real do Test Suite Auditor corrigido: teste novo prova a `UNIQUE(name, sport_id)` no
+      banco (`shouldRejectDuplicateNameAndSportAtTheDatabaseLevel`), não só o caminho de aplicação.
+- [x] Achado de gate corrigido: SonarCloud Quality Gate falhou no PR story->develop por um
+      Reliability finding em `EquityCurveCalculator.java` (código de `feat-012`, capturado pela
+      janela de "New Code" por tempo do projeto, não por diff do PR) — `n - 1` casteado pra `long`
+      explicitamente antes de `BigDecimal.valueOf`.
 
 ## Verification Evidence
 
 | Check | Command | Result | Notes |
 |---|---|---|---|
-| Build/test | `./mvnw -q verify` | pass | JaCoCo gate incluso; os 2 testes de DLQ pré-existentes continuam passando |
+| Build/test | `./mvnw -q verify` | pass | JaCoCo gate incluso |
 | Local harness | `./init.sh` | pass | |
-| CI (full gate) | GitHub Actions + SonarCloud | pass | PR #36 |
+| CI (full gate) | GitHub Actions + SonarCloud | pass | PR #40, após fix do achado de Reliability |
+| Delivery Reviewer | — | PASS | 1 desvio de plano aceito (endpoint no controller existente) |
+| Test Suite Auditor | — | CONCERNS -> corrigido | achado P2 (constraint sem teste DB-level) corrigido antes de fechar |
+| Persistence Auditor | — | CONCERNS (não-bloqueante) | achados P2/P3 documentados, consistentes com o plano |
 
 ## Blockers / Risks
 
@@ -44,12 +37,16 @@
 ## Next Session Startup
 
 1. Ler `../../CLAUDE.md` e o `CLAUDE.md` deste serviço.
-2. `feature_list.json` deste harness: todas as features `done` (`feat-001..010`). Nenhum trabalho
+2. `feature_list.json` deste harness: todas as features `done` (`feat-001..013`). Nenhum trabalho
    pendente aqui até surgir novo achado cross-service ou nova feature.
 3. Rodar `./init.sh` (deve passar).
 
 ## Recommended Next Step
 
-- Nenhum próximo passo pendente neste harness. Qualquer outro serviço Java que vier a consumir
-  fila própria vai precisar do mesmo `spring.rabbitmq.listener.simple.retry` (RabbitMQ 4.3+ do
-  ambiente) — ver `docs/DECISIONS-LOG.md`/`docs/services/infra.md` na raiz.
+- Nenhum próximo passo pendente neste harness. `epic-012` (raiz, `apps/web` — tela "Buscar
+  Estatísticas") está liberado, consumindo tanto `feat-012` (`GET /api/v1/statistics/search`)
+  quanto `feat-013` (`GET /api/v1/statistics/teams`).
+- Projeto SonarCloud deste serviço usa janela de "New Code" por tempo, não por diff de PR — um PR
+  sem nenhuma linha tocada num arquivo ainda pode falhar o gate por código de horas/dias atrás
+  entrando na janela. Vale considerar se isso é intencional (config do projeto no SonarCloud) ou
+  se devia ser "Reference branch" — não investigado nesta sessão, sinalizado aqui.
