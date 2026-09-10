@@ -848,6 +848,108 @@
         }
       ],
       "evidence": "Fechada em 2026-09-10. Dockerfile multi-stage identico ao padrao de auth-service feat-011 (build eclipse-temurin:25-jdk-alpine, runtime 25-jre-alpine, usuario nao-root, porta 8083) + .dockerignore. Build real e execucao real testados contra a infra (postgres-stats, rabbitmq, redis): GET /actuator/health respondeu 200. Imagem usada de fato por infra/feat-004 para os manifests Kubernetes."
+    },
+    {
+      "id": "feat-012",
+      "name": "Busca de estatisticas por combinacao (GET /api/v1/statistics/search)",
+      "description": "epic-011 da raiz - escopo novo, fora do backlog original do TCC1 (pedido do usuario, 2026-09-10). Endpoint novo, distinto de GET /api/v1/statistics (feat-006): sportId+leagueId obrigatorios, demais filtros (teamId novo, bettingHouseId, marketId, tipsterId, from/to) opcionais. Duas mudancas de schema sobre o modelo de feat-002/feat-004: DIM_TEAM nova (resolvida por nome - sem catalogo em bets-service, team1/team2 sao texto livre) com team1Id/team2Id em FACT_BET (nullable, filtro por teamId casa contra qualquer um dos dois); persistencia de odd em FACT_BET (nullable - ja trafega no evento BetCreated/BetSettled, nunca foi gravada). Resposta: summary (betCount, totalStaked, netProfit, roi, winRate, avgOdd, maxDrawdown, sharpeRatio) + timeline (serie ordenada por betDate - data do JOGO, decisao do usuario 2026-09-10, nao data de registro nem de liquidacao - de lucro acumulado das apostas liquidadas do recorte). maxDrawdown/sharpeRatio nao sao agregados SQL simples - exigem iterar a serie ordenada em memoria (domain, calculador puro sem I/O). Sem cache-aside (espaco de combinacoes grande demais para o padrao de chave fixa por tenant de feat-005). Inclui fix de bug pre-existente real (achado do plan review): processSettled recalculava dateId a partir de settledAt em vez de preservar o dateId ja resolvido de betDate por processCreated - corrompia silenciosamente a granularidade mensal do dashboard (feat-006) para toda aposta liquidada em mes diferente do jogo, nao so a serie nova desta feature. Formulas e fundamentacao teorica (TCC1 cap. 2.4/2.5) em docs/STATISTICS.md.",
+      "dependencies": [
+        "feat-006"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo. Veredito: REVISE, 3 achados MAJOR corrigidos no plano (nenhum exigiu decisao do usuario alem da ja tomada sobre semantica de betDate). (MAJOR #1) BetCreatedEvent/BetSettledEvent (domain/port/in) e BetEventListener.toBetCreatedEvent/toBetSettledEvent nao extraem team1/team2/odd do payload hoje, apesar de existirem no JSON Schema - plano original so citava DimensionResolver, faltava a camada de mapeamento do evento. Corrigido: subtask dedicada (feat-012.2) estende os 2 records + os 2 metodos de mapeamento (helpers nullableText/decimal ja existentes, reaproveitados). (MAJOR #2, revisado apos correcao do usuario) ordenar a serie temporal por betDate exige que dateId reflita a data do jogo de forma estavel - achado real: processSettled recalculava dateId a partir de settledAt, sobrescrevendo o dateId correto (resolvido de betDate no insert de processCreated) toda vez que uma aposta liquidava; usuario confirmou explicitamente que a data e sempre a do jogo, nunca registro/liquidacao. Corrigido: processSettled passa a preservar o dateId ja existente na linha em vez de recalcular - bug pre-existente (feat-003) que tambem corrompia silenciosamente o agregado mensal do dashboard (feat-006), nao so a serie nova. Residual aceito e documentado (docs/STATISTICS.md): BetSettled nao carrega betDate no payload (so settledAt) - no caso raro de chegar antes do BetCreated correspondente, a linha nasce com dateId estimado de settledAt ate o BetCreated processar depois; corrigir de verdade exigiria mudanca de contrato cross-service com bets-service, fora do escopo desta feature. (MAJOR #3) validacao de sportId/leagueId obrigatorios precisa seguir o padrao LocalizedDomainException/DomainExceptionHandler ja usado no servico (RFC 7807, i18n 3 locales) - o 400 default do Spring para @RequestParam ausente nao sai nesse formato (confirmado via grep, sem spring.mvc.problemdetails configurado). Corrigido: nova MissingRequiredStatisticsFilterException + 3 mensagens i18n, controller mantem os 2 params como required=false e valida manualmente. Achados MINOR aceitos sem mudanca: desenho de DIM_TEAM (chave natural por nome, team1Id/team2Id duplo) confirmado correto contra o precedente real de DimensionResolver.resolveDate; migration aditiva de baixo risco (colunas nullable, sem backfill); calculo de drawdown/Sharpe deve viver em domain (calculador puro sem I/O), nao em application, para ser testavel isoladamente. Rodada de desafio independente executada como passe proprio, sem subagentes - independencia reduzida, declarada.",
+      "jira": "SV-292",
+      "subtasks": [
+        {
+          "id": "feat-012.1",
+          "name": "Schema: DIM_TEAM + team1Id/team2Id/odd em FACT_BET",
+          "detail": "Migration nova (dim_team id+name; ALTER TABLE fact_bet ADD team1_id/team2_id/odd nullable). DimTeam domain model + porta + adapter JPA/Spring Data, mesmo padrao dos outros 5 catalogos. FactBet record e FactBetJpaEntity ganham os 3 campos. DimensionResolver.resolveTeam(name) por chave natural (padrao resolveDate, nao resolveBettingHouse - sem catalogo de times em bets-service).",
+          "checklist": [
+            "Migration V<timestamp>__add_team_dimension_and_odd.sql aplicada sem erro em schema de tenant existente",
+            "DimTeam + DimTeamRepository + DimTeamJpaEntity + Spring Data repo + adapter criados",
+            "FactBet/FactBetJpaEntity com team1Id/team2Id/odd, applyFrom/toDomain atualizados",
+            "DimensionResolver.resolveTeam(String name) - upsert-if-missing por nome"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao confirma resolveTeam idempotente (mesmo nome nao duplica linha em DIM_TEAM).",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-293"
+        },
+        {
+          "id": "feat-012.2",
+          "name": "Consumo do evento: mapear team1/team2/odd + corrigir dateId em processSettled",
+          "detail": "BetCreatedEvent/BetSettledEvent ganham team1/team2/odd. BetEventListener extrai do payload (helpers existentes). ProcessBetEventService.processCreated/processSettled resolvem team1Id/team2Id via DimensionResolver.resolveTeam e persistem odd nos dois caminhos. Fix do bug real: processSettled preserva dateId existente em vez de recalcular de settledAt (ver plan_review).",
+          "checklist": [
+            "BetCreatedEvent/BetSettledEvent com team1/team2/odd, BetEventListener mapeando os 3 campos",
+            "processCreated grava team1Id/team2Id/odd via DimensionResolver.resolveTeam",
+            "processSettled grava team1Id/team2Id/odd E preserva dateId ja existente na linha (nao chama resolveDate(settledAt) quando a linha ja existe)",
+            "Teste de integracao prova o fix: BetCreated com betDate em mes X, BetSettled com settledAt em mes Y != X, dateId final continua refletindo mes X"
+          ],
+          "validation": "mvn -B verify verde; teste de idempotencia/ordem de mensagem (BetSettled antes de BetCreated) continua passando com o residual documentado.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-294"
+        },
+        {
+          "id": "feat-012.3",
+          "name": "Query layer: agregacao com avgOdd + serie ordenada para timeline",
+          "detail": "StatisticsSearchFilter (domain record, sportId/leagueId nao-nulos por construcao). FactBetRepository ganha aggregateForSearch (avgOdd via AVG(f.odd)) e findOrderedSettledProfits (lista date+profit ordenada por DIM_DATE, mesmo FUNCTION('make_date',...) ja usado). Filtro teamId casa team1Id OR team2Id.",
+          "checklist": [
+            "StatisticsSearchFilter criado",
+            "FactBetRepository.aggregateForSearch + findOrderedSettledProfits (port + adapter JPQL)",
+            "Filtro teamId (team1Id = :teamId OR team2Id = :teamId) coberto por teste"
+          ],
+          "validation": "Teste de integracao com apostas em times diferentes confirma teamId casando os 2 lados (mandante e visitante).",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-295"
+        },
+        {
+          "id": "feat-012.4",
+          "name": "Calculo de decisao (domain): drawdown maximo + Indice de Sharpe simplificado",
+          "detail": "EquityCurveCalculator (domain, sem I/O): recebe serie ordenada de profit, devolve maxDrawdown e sharpeRatio (formulas em docs/STATISTICS.md). null se <2 apostas liquidadas ou desvio-padrao zero - nunca divisao por zero.",
+          "checklist": [
+            "EquityCurveCalculator criado em domain, sem dependencia de Spring/repositorio",
+            "Teste unitario puro com serie sintetica confere maxDrawdown contra calculo manual",
+            "Teste unitario cobre sharpeRatio null (0 e 1 aposta liquidada, desvio-padrao zero)"
+          ],
+          "validation": "Testes unitarios verdes, sem Testcontainers (calculo puro).",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-296"
+        },
+        {
+          "id": "feat-012.5",
+          "name": "Endpoint GET /api/v1/statistics/search",
+          "detail": "MissingRequiredStatisticsFilterException (LocalizedDomainException, 400) + registro em DomainExceptionHandler + 3 mensagens i18n (pt-BR/en-US/es). SearchStatisticsService (application) orquestra: valida sportId/leagueId, busca aggregateForSearch + findOrderedSettledProfits, chama EquityCurveCalculator, monta StatisticsSearchResult. Controller + DTOs HTTP.",
+          "checklist": [
+            "MissingRequiredStatisticsFilterException + DomainExceptionHandler + messages_{pt_BR,en_US,es}.properties",
+            "SearchStatisticsService + StatisticsSearchResult (filters/summary/timeline)",
+            "StatisticsController novo endpoint GET /api/v1/statistics/search",
+            "Teste de integracao: 400 RFC 7807 localizado sem sportId/leagueId; combinacao sem apostas liquidadas retorna zeros/nulls (nao excecao); resposta completa com summary+timeline"
+          ],
+          "validation": "mvn -B verify verde; testes de integracao Testcontainers cobrindo os 4 cenarios do checklist.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-297"
+        },
+        {
+          "id": "feat-012.6",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal: CHANGELOG.md, init.sh, skills de auditoria, e o item fixo de vault desta feature.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit"
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-298"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

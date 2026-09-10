@@ -36,8 +36,16 @@ public class FactBetJpaEntity extends AbstractJpaEntity {
 	@Column(name = "tipster_id")
 	private UUID tipsterId;
 
+	@Column(name = "team1_id")
+	private UUID team1Id;
+
+	@Column(name = "team2_id")
+	private UUID team2Id;
+
 	@Column(nullable = false)
 	private BigDecimal stake;
+
+	private BigDecimal odd;
 
 	private BigDecimal profit;
 
@@ -67,7 +75,10 @@ public class FactBetJpaEntity extends AbstractJpaEntity {
 		this.leagueId = factBet.leagueId();
 		this.marketId = factBet.marketId();
 		this.tipsterId = factBet.tipsterId();
+		this.team1Id = factBet.team1Id();
+		this.team2Id = factBet.team2Id();
 		this.stake = factBet.stake();
+		this.odd = factBet.odd();
 		this.profit = factBet.profit();
 		this.isWin = factBet.isWin();
 		this.status = factBet.status();

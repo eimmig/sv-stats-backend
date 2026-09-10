@@ -105,8 +105,8 @@ class ProcessBetEventServiceTest {
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
 		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
 				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-						UUID.randomUUID(), null, BigDecimal.valueOf(100), BigDecimal.valueOf(50), true, BetStatus.WON,
-						1)));
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50),
+						true, BetStatus.WON, 1)));
 
 		service.processCreated(eventId, createdEvent(betId));
 

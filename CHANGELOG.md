@@ -53,3 +53,10 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-272](https://stakevault.atlassian.net/browse/SV-272) - CHANGELOG e verificacao final
 - [SV-280](https://stakevault.atlassian.net/browse/SV-280) - Dockerfile para imagem de producao
 - [SV-281](https://stakevault.atlassian.net/browse/SV-281) - Dockerfile multi-stage + verificacao real do container contra a infra
+- [SV-292](https://stakevault.atlassian.net/browse/SV-292) - Busca de estatisticas por combinacao (GET /api/v1/statistics/search)
+- [SV-293](https://stakevault.atlassian.net/browse/SV-293) - Schema: DIM_TEAM + team1Id/team2Id/odd em FACT_BET
+- [SV-294](https://stakevault.atlassian.net/browse/SV-294) - Consumo do evento: mapear team1/team2/odd + corrigir dateId em processSettled
+- [SV-295](https://stakevault.atlassian.net/browse/SV-295) - Query layer: agregacao com avgOdd + serie ordenada para timeline
+- [SV-296](https://stakevault.atlassian.net/browse/SV-296) - Calculo de decisao (domain): drawdown maximo + Indice de Sharpe simplificado
+- [SV-297](https://stakevault.atlassian.net/browse/SV-297) - Endpoint GET /api/v1/statistics/search
+- [SV-298](https://stakevault.atlassian.net/browse/SV-298) - CHANGELOG e verificacao final

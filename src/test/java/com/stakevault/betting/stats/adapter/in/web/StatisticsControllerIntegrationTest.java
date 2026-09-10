@@ -84,7 +84,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 			UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
 			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
-					BigDecimal.valueOf(100), BigDecimal.valueOf(50), true, BetStatus.WON, 1));
+					null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50), true, BetStatus.WON, 1));
 			return sportId;
 		}
 	}
