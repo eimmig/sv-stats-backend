@@ -98,14 +98,16 @@ public class DimensionResolver {
 	}
 
 	// team1/team2 nao tem catalogo em bets-service (texto livre por aposta) - sem id proprio no
-	// evento, resolvida por chave natural (name), mesmo padrao de resolveDate. Nem toda aposta
-	// referencia os 2 lados (ex. mercado sem confronto de dois lados) - null passa direto.
-	public UUID resolveTeam(String name) {
+	// evento, resolvida por chave natural composta (name, sportId), mesmo padrao de resolveDate.
+	// sportId faz parte da chave (feat-013, decisao do usuario) - o mesmo nome de time pode
+	// existir em esportes diferentes. Nem toda aposta referencia os 2 lados (ex. mercado sem
+	// confronto de dois lados) - null passa direto.
+	public UUID resolveTeam(String name, UUID sportId) {
 		if (name == null) {
 			return null;
 		}
-		return teamRepository.findByName(name).map(DimTeam::id)
-				.orElseGet(() -> teamRepository.save(new DimTeam(UUID.randomUUID(), name)).id());
+		return teamRepository.findByNameAndSportId(name, sportId).map(DimTeam::id)
+				.orElseGet(() -> teamRepository.save(new DimTeam(UUID.randomUUID(), name, sportId)).id());
 	}
 
 	private static int quarterOf(LocalDate date) {

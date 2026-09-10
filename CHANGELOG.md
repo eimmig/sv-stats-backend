@@ -60,3 +60,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-296](https://stakevault.atlassian.net/browse/SV-296) - Calculo de decisao (domain): drawdown maximo + Indice de Sharpe simplificado
 - [SV-297](https://stakevault.atlassian.net/browse/SV-297) - Endpoint GET /api/v1/statistics/search
 - [SV-298](https://stakevault.atlassian.net/browse/SV-298) - CHANGELOG e verificacao final
+- [SV-299](https://stakevault.atlassian.net/browse/SV-299) - DIM_TEAM escopado por esporte + GET /api/v1/statistics/teams
+- [SV-300](https://stakevault.atlassian.net/browse/SV-300) - Schema: sportId em DIM_TEAM + chave natural composta
+- [SV-301](https://stakevault.atlassian.net/browse/SV-301) - Endpoint GET /api/v1/statistics/teams
+- [SV-302](https://stakevault.atlassian.net/browse/SV-302) - CHANGELOG e verificacao final

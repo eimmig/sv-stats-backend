@@ -64,9 +64,9 @@ class JpaFactBetRepositorySearchIntegrationTest extends TenantSchemaIntegrationS
 			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
-			UUID teamA = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team A")).id();
-			UUID teamB = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team B")).id();
-			UUID teamC = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team C")).id();
+			UUID teamA = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team A", sportId)).id();
+			UUID teamB = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team B", sportId)).id();
+			UUID teamC = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Team C", sportId)).id();
 
 			UUID date1 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 1, 9, 2026, 3, "TUESDAY")).id();
 			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();

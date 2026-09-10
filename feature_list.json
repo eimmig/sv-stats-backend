@@ -950,6 +950,64 @@
         }
       ],
       "evidence": "Fechada em 2026-09-10 (branch feature/SV-292, story SV-292, subtasks SV-293..298). GET /api/v1/statistics/search novo: sportId/leagueId obrigatorios (400 RFC 7807 localizado pt-BR/en-US/es via MissingRequiredStatisticsFilterException), teamId/bettingHouseId/marketId/tipsterId/from/to opcionais. DIM_TEAM nova (chave natural por nome, sem catalogo em bets-service) + team1Id/team2Id/odd em FACT_BET (migration V20260910120000, nullable, aditiva). Resposta: summary (betCount/totalStaked/netProfit/roi/winRate/avgOdd/maxDrawdown/sharpeRatio) + timeline (equity curve). maxDrawdown/sharpeRatio calculados por EquityCurveCalculator (domain puro, sem I/O, testado com valores conferidos a mao). Achado real corrigido no mesmo escopo (Plan Reviewer, antes do codigo): processSettled recalculava dateId a partir de settledAt em vez de preservar o dateId resolvido de betDate (data do jogo, decisao do usuario) por processCreated - corrompia silenciosamente o agregado mensal do dashboard consolidado (feat-006) para toda aposta liquidada em mes diferente do jogo, nao so a serie nova desta feature; corrigido preservando o dateId existente, residual documentado (BetSettled fora de ordem sem betDate no payload). mvn verify (JaCoCo incluso) verde em cada uma das 5 subtasks de codigo. Delivery Reviewer: PASS (sem regressao em GET /api/v1/statistics existente). Test Suite Auditor: PASS (drawdown/Sharpe com oracle conferivel a mao, teamId provado nos 2 lados do confronto, fix de dateId provado no mecanismo causal). Persistence Auditor: CONCERNS, 1 P2 aceito como residual (DimensionResolver.resolveTeam tem a mesma corrida check-then-act ja presente nas outras 5 dimensoes, auto-recuperavel via retry/DLQ ja validado em epic-007 - documentado em docs/services/stats-service.md). ./init.sh do servico e da raiz verdes. Documentacao: docs/DATA-MODEL.md, docs/STATISTICS.md (nota nova, formulas com fundamentacao teorica do TCC1 cap. 2.4/2.5), docs/API-CONTRACTS.md, docs/services/stats-service.md atualizados no mesmo commit logico das mudancas. Libera apps/web feat-012 (epic-012 da raiz)."
+    },
+    {
+      "id": "feat-013",
+      "name": "DIM_TEAM escopado por esporte + GET /api/v1/statistics/teams",
+      "description": "Addendum descoberto planejando apps/web feat-012 (tela \"Buscar Estatisticas\") - DIM_TEAM (feat-012) nao tinha endpoint de listagem em lugar nenhum, impedindo autocomplete de time na tela nova. Decisao do usuario (2026-09-10, apos revisao do plano): DIM_TEAM ganha FK de esporte (sportId, DIM_SPORT) - chave natural composta (name, sportId) substitui (name) sozinho, porque o mesmo nome de time pode existir em esportes diferentes; troca de esporte na tela nova deve refiltrar o autocomplete de time. GET /api/v1/statistics/teams?sportId=<uuid> (sportId obrigatorio, mesmo padrao RFC 7807 de MissingRequiredStatisticsFilterException ja usado em feat-012) lista {id,name} escopado por esporte, sem paginacao (volume baixo por tenant). Nested sob /api/v1/statistics/** - api-gateway ja roteia esse prefixo inteiro pra stats-service, sem mudanca la. Migration altera DIM_TEAM ja existente (introduzida nesta mesma sessao, nunca usada em tenant real - ALTER TABLE direto, sem backfill).",
+      "dependencies": [
+        "feat-012"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o desenho original (listagem de DIM_TEAM sem escopo de esporte, plano A da revisao conjunta com apps/web feat-012) - veredito READY WITH CONCERNS, achados MINOR: card de betCount ausente do plano de web (nao afeta este harness), extracao de shared/kpi-card justificada (idem), listTeams() precisa de metodo proprio no client HTTP (nao reaproveita catalogApi - idem). Residual sinalizado explicitamente pelo proprio Plan Reviewer: DIM_TEAM sem FK de esporte, trocar de esporte na tela nao refiltraria o autocomplete de time, aceito como nao-bloqueante 'corrigir exigiria rastrear esporte por time no schema, fora do escopo desta rodada'. Usuario leu o residual e decidiu explicitamente o contrario: quer a correcao agora, nao aceita o residual. Escopo deste addendum corrigido para refletir a decisao: DIM_TEAM ganha sportId (FK DIM_SPORT, NOT NULL - tabela introduzida nesta mesma sessao, nunca usada em tenant real, sem risco de linha orfa sem sportId), chave natural vira (name, sportId) - troca UNIQUE(name) por UNIQUE(name, sportId) e DimensionResolver.resolveTeam(name, sportId) (sportId ja resolvido antes no mesmo metodo de processCreated/processSettled, so passar adiante). GET /api/v1/statistics/teams?sportId=<uuid> (obrigatorio) em vez de sem filtro algum. Sem novo Plan Reviewer dedicado para a correcao - instrucao direta e inequivoca do usuario, nao uma decisao de design em aberto exigindo desafio independente; risco tecnico baixo (mesmo padrao ja usado por resolveDate/DimensionJpaEntity, tabela sem dado real).",
+      "jira": "SV-299",
+      "subtasks": [
+        {
+          "id": "feat-013.1",
+          "name": "Schema: sportId em DIM_TEAM + chave natural composta",
+          "detail": "Migration ALTER TABLE dim_team: DROP CONSTRAINT uq_dim_team_name, ADD COLUMN sport_id UUID NOT NULL REFERENCES dim_sport(id), ADD CONSTRAINT uq_dim_team_name_sport UNIQUE (name, sport_id). DimTeam record ganha sportId. DimTeamRepository.findByName vira findByNameAndSportId(name, sportId) + findBySportId(sportId) novo (usado pelo endpoint de feat-013.2). DimensionResolver.resolveTeam(name, sportId) - assinatura muda, sportId ja disponivel no mesmo escopo de processCreated/processSettled (resolvido antes de team1Id/team2Id). Testes existentes de feat-012 (JpaDimTeamRepositoryIntegrationTest, DimensionResolverTest, ProcessBetEventServiceTest, JpaFactBetRepositorySearchIntegrationTest) atualizados para a nova assinatura.",
+          "checklist": [
+            "Migration nova aplicada sem erro em schema de tenant existente (dim_team ja criada por feat-012)",
+            "DimTeam/DimTeamRepository/DimTeamJpaEntity/DimTeamSpringDataRepository/JpaDimTeamRepository com sportId",
+            "DimensionResolver.resolveTeam(name, sportId) - mesmo nome em esportes diferentes resolve para 2 linhas distintas (teste novo)",
+            "ProcessBetEventService.processCreated/processSettled passam sportId pra resolveTeam nos 2 lados (team1/team2)"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao confirma 2 linhas de DIM_TEAM para o mesmo nome em 2 esportes diferentes, sem violar a UNIQUE composta.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-300"
+        },
+        {
+          "id": "feat-013.2",
+          "name": "Endpoint GET /api/v1/statistics/teams",
+          "detail": "ListTeamsUseCase (port/in) + ListTeamsService (application) chamando DimTeamRepository.findBySportId - mantem o limite hexagonal (adapter/in nunca chama port/out direto, mesmo padrao de SearchStatisticsUseCase). TeamsController novo (adapter/in/web): sportId obrigatorio (400 RFC 7807 localizado via MissingRequiredStatisticsFilterException, mesma excecao ja criada em feat-012 - reaproveitar, nao duplicar). Resposta: lista [{id,name}], ordenada por nome, sem paginacao.",
+          "checklist": [
+            "ListTeamsUseCase/ListTeamsService criados",
+            "TeamsController: GET /api/v1/statistics/teams, sportId obrigatorio (400 localizado se ausente, reaproveitando MissingRequiredStatisticsFilterException)",
+            "Teste de integracao: sportId ausente = 400; sportId com times cadastrados = lista correta; sportId sem nenhum time = lista vazia (nao erro)"
+          ],
+          "validation": "mvn -B verify verde; teste de integracao HTTP cobrindo os 3 cenarios do checklist.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-301"
+        },
+        {
+          "id": "feat-013.3",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal: CHANGELOG.md, init.sh, skills de auditoria, e o item fixo de vault desta feature.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido",
+            "Vault (docs/) revisado: docs/DATA-MODEL.md (DIM_TEAM com FK de esporte), docs/API-CONTRACTS.md (endpoint novo), docs/services/stats-service.md atualizados no mesmo commit"
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-302"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }
