@@ -312,3 +312,13 @@ pelo `initial-interval` de 1s entre tentativas).
 
 `./mvnw -q verify`/`./init.sh` verdes. `docs/DECISIONS-LOG.md`/`docs/API-CONTRACTS.md`/
 `docs/services/infra.md` (raiz) atualizados no mesmo commit lógico com o achado completo.
+
+## `feat-011` — Dockerfile para imagem de produção (2026-09-10)
+
+Achado real de `infra/feat-004` (migração para Kubernetes, `epic-010` da raiz): este serviço
+nunca teve `Dockerfile` próprio. Multi-stage idêntico ao padrão de `auth-service feat-011`
+(build `eclipse-temurin:25-jdk-alpine`, runtime `25-jre-alpine`, usuário não-root, porta 8083).
+Build real e execução real testados contra a infra (`postgres-stats`, `rabbitmq`, `redis`):
+`/actuator/health` UP. Imagem usada de fato pelos manifests Kubernetes de `infra/feat-004`. 1
+subtask (SV-281, story SV-280), 2 PRs (#37 subtask->feature, #38 feature->develop), CI+SonarCloud
+verdes nos dois.
