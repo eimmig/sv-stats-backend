@@ -67,7 +67,7 @@ public final class EquityCurveCalculator {
 			BigDecimal diff = point.profit().subtract(mean);
 			sumSquaredDiff = sumSquaredDiff.add(diff.multiply(diff));
 		}
-		BigDecimal variance = sumSquaredDiff.divide(BigDecimal.valueOf(n - 1), MathContext.DECIMAL64);
+		BigDecimal variance = sumSquaredDiff.divide(BigDecimal.valueOf(n - 1L), MathContext.DECIMAL64);
 		if (variance.compareTo(BigDecimal.ZERO) == 0) {
 			return null;
 		}
