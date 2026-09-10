@@ -64,3 +64,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-300](https://stakevault.atlassian.net/browse/SV-300) - Schema: sportId em DIM_TEAM + chave natural composta
 - [SV-301](https://stakevault.atlassian.net/browse/SV-301) - Endpoint GET /api/v1/statistics/teams
 - [SV-302](https://stakevault.atlassian.net/browse/SV-302) - CHANGELOG e verificacao final
+- [SV-328](https://stakevault.atlassian.net/browse/SV-328) - CI: build e push da imagem Docker pro GHCR
+- [SV-329](https://stakevault.atlassian.net/browse/SV-329) - Job build-and-push-image no ci.yml
+- [SV-330](https://stakevault.atlassian.net/browse/SV-330) - CHANGELOG e verificacao final
