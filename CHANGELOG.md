@@ -46,3 +46,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-164](https://stakevault.atlassian.net/browse/SV-164) - server.port fixo, CHANGELOG e verificacao final
 - [SV-174](https://stakevault.atlassian.net/browse/SV-174) - Corrigir aviso do compilador/IDE (RabbitMQContainer deprecado)
 - [SV-175](https://stakevault.atlassian.net/browse/SV-175) - Trocar import de RabbitMQContainer, CHANGELOG e verificacao final
+- [SV-268](https://stakevault.atlassian.net/browse/SV-268) - Retry de aplicacao para consumo de eventos (RabbitMQ 4.3+ nao conta nack-requeue pro x-delivery-limit)
+- [SV-269](https://stakevault.atlassian.net/browse/SV-269) - Ativar retry de aplicacao no listener (spring-retry + application.yml)
+- [SV-270](https://stakevault.atlassian.net/browse/SV-270) - Teste de integracao: falha transitoria esgota tentativas e morta-letra
+- [SV-271](https://stakevault.atlassian.net/browse/SV-271) - Vault: registrar a mudanca de comportamento do RabbitMQ 4.3+
+- [SV-272](https://stakevault.atlassian.net/browse/SV-272) - CHANGELOG e verificacao final
