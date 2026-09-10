@@ -19,11 +19,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
+import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.port.out.DimBettingHouseRepository;
 import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
+import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTipsterRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,13 +43,15 @@ class DimensionResolverTest {
 	private DimTipsterRepository tipsterRepository;
 	@Mock
 	private DimDateRepository dateRepository;
+	@Mock
+	private DimTeamRepository teamRepository;
 
 	private DimensionResolver resolver;
 
 	@BeforeEach
 	void setUp() {
 		resolver = new DimensionResolver(bettingHouseRepository, sportRepository, leagueRepository, marketRepository,
-				tipsterRepository, dateRepository);
+				tipsterRepository, dateRepository, teamRepository);
 	}
 
 	@Test
@@ -110,5 +114,38 @@ class DimensionResolverTest {
 		assertThat(saved.year()).isEqualTo(2026);
 		assertThat(saved.quarter()).isEqualTo(3);
 		assertThat(saved.dayOfWeek()).isEqualTo("SUNDAY");
+	}
+
+	@Test
+	void shouldReturnNullForTeamWhenNameIsNull() {
+		UUID resolved = resolver.resolveTeam(null);
+
+		assertThat(resolved).isNull();
+		verify(teamRepository, never()).findByName(any());
+	}
+
+	@Test
+	void shouldReuseExistingTeamByName() {
+		UUID existingId = UUID.randomUUID();
+		when(teamRepository.findByName("Flamengo")).thenReturn(Optional.of(new DimTeam(existingId, "Flamengo")));
+
+		UUID resolved = resolver.resolveTeam("Flamengo");
+
+		assertThat(resolved).isEqualTo(existingId);
+		verify(teamRepository, never()).save(any());
+	}
+
+	@Test
+	void shouldCreateTeamRowWhenNameIsMissing() {
+		when(teamRepository.findByName("Flamengo")).thenReturn(Optional.empty());
+		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		UUID resolved = resolver.resolveTeam("Flamengo");
+
+		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
+		verify(teamRepository).save(captor.capture());
+		DimTeam saved = captor.getValue();
+		assertThat(resolved).isEqualTo(saved.id());
+		assertThat(saved.name()).isEqualTo("Flamengo");
 	}
 }

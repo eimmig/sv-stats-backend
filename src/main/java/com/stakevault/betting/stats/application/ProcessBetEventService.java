@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.application;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -52,12 +53,14 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 			UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 			UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
+			UUID team1Id = dimensionResolver.resolveTeam(event.team1());
+			UUID team2Id = dimensionResolver.resolveTeam(event.team2());
 
 			// Sem evict aqui: RN06 exclui status=pending de toda agregacao, entao este insert e
 			// invisivel para as metricas cacheadas - invalidar agora seria desperdicio (mesmo
 			// valor antes/depois). So processSettled muda o que as queries RN06 realmente veem.
 			factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-					tipsterId, event.stake(), null, null, BetStatus.PENDING, 1));
+					tipsterId, team1Id, team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING, 1));
 		}
 
 		markProcessed(eventId);
@@ -70,15 +73,27 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			return;
 		}
 
-		UUID dateId = dimensionResolver.resolveDate(event.settledAt());
+		Optional<FactBet> existing = factBetRepository.findById(event.betId());
+		// dateId reflete a data do JOGO (betDate, resolvida por processCreated a partir de
+		// event.betDate() - nao a de registro nem a de liquidacao, decisao do usuario). Achado
+		// real do plan review de epic-011: preserva o dateId ja gravado em vez de recalcular a
+		// partir de settledAt, que corrompia silenciosamente o agregado mensal do dashboard
+		// (feat-006) toda vez que uma aposta liquidava em mes diferente do jogo. Residual aceito:
+		// se BetSettled chegar antes do BetCreated correspondente (mensagens fora de ordem), nao
+		// ha betDate disponivel neste payload - cai em settledAt como estimativa ate BetCreated
+		// processar depois (ver docs/STATISTICS.md "Drawdown maximo").
+		UUID dateId = existing.map(FactBet::dateId).orElseGet(() -> dimensionResolver.resolveDate(event.settledAt()));
 		UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(), event.bettingHouseName());
 		UUID sportId = dimensionResolver.resolveSport(event.sportId(), event.sportName());
 		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
+		UUID team1Id = dimensionResolver.resolveTeam(event.team1());
+		UUID team2Id = dimensionResolver.resolveTeam(event.team2());
 
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-				tipsterId, event.stake(), event.profit(), event.status() == BetStatus.WON, event.status(), 1));
+				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),
+				event.status() == BetStatus.WON, event.status(), 1));
 		evictMetricsFor(event.settledAt());
 
 		markProcessed(eventId);

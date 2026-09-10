@@ -12,8 +12,11 @@ import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
+import com.stakevault.betting.stats.domain.model.SearchAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
+import com.stakevault.betting.stats.domain.model.SettledBetPoint;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
+import com.stakevault.betting.stats.domain.model.StatisticsSearchFilter;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
 @Repository
@@ -85,10 +88,29 @@ public class JpaFactBetRepository implements FactBetRepository {
 				.toList();
 	}
 
+	@Override
+	public SearchAggregate aggregateForSearch(StatisticsSearchFilter filter) {
+		AggregateWithOddProjection projection = jpaRepository.aggregateForSearch(BetStatus.PENDING, resolve(filter));
+		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
+		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
+		long wonCount = projection.getWonCount() != null ? projection.getWonCount() : 0L;
+		long settledCount = projection.getSettledCount() != null ? projection.getSettledCount() : 0L;
+		return new SearchAggregate(totalStaked, netProfit, wonCount, settledCount, projection.getAvgOdd());
+	}
+
+	@Override
+	public List<SettledBetPoint> findOrderedSettledProfits(StatisticsSearchFilter filter) {
+		return jpaRepository.findOrderedSettledProfits(BetStatus.PENDING, resolve(filter))
+				.stream()
+				.map(projection -> new SettledBetPoint(projection.getDate(), projection.getProfit()))
+				.toList();
+	}
+
 	private static FactBet toDomain(FactBetJpaEntity entity) {
 		return new FactBet(entity.getId(), entity.getDateId(), entity.getBettingHouseId(), entity.getSportId(),
-				entity.getLeagueId(), entity.getMarketId(), entity.getTipsterId(), entity.getStake(),
-				entity.getProfit(), entity.getIsWin(), entity.getStatus(), entity.getBetCount());
+				entity.getLeagueId(), entity.getMarketId(), entity.getTipsterId(), entity.getTeam1Id(),
+				entity.getTeam2Id(), entity.getStake(), entity.getOdd(), entity.getProfit(), entity.getIsWin(),
+				entity.getStatus(), entity.getBetCount());
 	}
 
 	// SUM sobre um grupo vazio (nenhuma aposta liquidada) retorna null em SQL, nao zero.
@@ -118,5 +140,18 @@ public class JpaFactBetRepository implements FactBetRepository {
 	private static ResolvedStatisticsFilter resolve(StatisticsFilter filter) {
 		return new ResolvedStatisticsFilter(filter.bettingHouseId(), filter.sportId(), filter.leagueId(),
 				filter.marketId(), filter.tipsterId(), from(filter), to(filter));
+	}
+
+	private static LocalDate from(StatisticsSearchFilter filter) {
+		return filter.from() != null ? filter.from() : MIN_DATE;
+	}
+
+	private static LocalDate to(StatisticsSearchFilter filter) {
+		return filter.to() != null ? filter.to() : MAX_DATE;
+	}
+
+	private static ResolvedStatisticsSearchFilter resolve(StatisticsSearchFilter filter) {
+		return new ResolvedStatisticsSearchFilter(filter.sportId(), filter.leagueId(), filter.teamId(),
+				filter.bettingHouseId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter));
 	}
 }
