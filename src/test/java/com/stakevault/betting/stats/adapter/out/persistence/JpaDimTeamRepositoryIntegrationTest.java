@@ -1,11 +1,13 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.stakevault.betting.stats.config.TenantContextScope;
@@ -58,6 +60,21 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 			assertThat(soccerFlamengo.id()).isNotEqualTo(basketballFlamengo.id());
 			assertThat(dimTeamRepository.findBySportId(soccerId)).containsExactly(soccerFlamengo);
 			assertThat(dimTeamRepository.findBySportId(basketballId)).containsExactly(basketballFlamengo);
+		}
+	}
+
+	// feat-013: prova a UNIQUE(name, sport_id) no banco, nao so o caminho de aplicacao (que ja
+	// evita duplicata via findByNameAndSportId antes do save) - mesmo padrao de
+	// JpaProcessedEventRepositoryIntegrationTest.shouldRejectDuplicateEventIdAtTheDatabaseLevel.
+	@Test
+	void shouldRejectDuplicateNameAndSportAtTheDatabaseLevel() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Flamengo", sportId));
+			DimTeam duplicate = new DimTeam(UUID.randomUUID(), "Flamengo", sportId);
+
+			assertThatThrownBy(() -> dimTeamRepository.save(duplicate))
+					.isInstanceOf(DataIntegrityViolationException.class);
 		}
 	}
 
