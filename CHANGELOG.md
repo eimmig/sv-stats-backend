@@ -51,3 +51,5 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-270](https://stakevault.atlassian.net/browse/SV-270) - Teste de integracao: falha transitoria esgota tentativas e morta-letra
 - [SV-271](https://stakevault.atlassian.net/browse/SV-271) - Vault: registrar a mudanca de comportamento do RabbitMQ 4.3+
 - [SV-272](https://stakevault.atlassian.net/browse/SV-272) - CHANGELOG e verificacao final
+- [SV-280](https://stakevault.atlassian.net/browse/SV-280) - Dockerfile para imagem de producao
+- [SV-281](https://stakevault.atlassian.net/browse/SV-281) - Dockerfile multi-stage + verificacao real do container contra a infra
