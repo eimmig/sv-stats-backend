@@ -273,3 +273,42 @@ feature de negócio) exigiria uma nova entrada em `feature_list.json` antes de c
 Nenhuma feature pendente. `epic-004` (stats-service) da raiz está `done` — próxima sessão que
 tocar este serviço deve começar por decidir com o usuário qual nova feature de negócio (fora do
 backlog original) entra no `feature_list.json` antes de qualquer código.
+
+## `feat-010` — retry de aplicação para RabbitMQ 4.3+ (2026-09-10)
+
+Achado real de `infra/feat-002` (teste de resiliência de `epic-007`, outro repositório), contra o
+broker de verdade (`rabbitmq:4-management-alpine`, 4.3.5): a partir do RabbitMQ 4.3,
+`nack(requeue=true)` — comportamento padrão do `ConditionalRejectingErrorHandler` do Spring AMQP
+em qualquer falha de listener não-fatal — deixou de contar para `x-delivery-limit` da fila quorum
+`stats.bet-events`. Reproduzido ao vivo: derrubar `postgres-stats` fez `BetEventListener.onMessage`
+falhar 15 vezes seguidas sem a mensagem nunca cair na DLQ (`x-delivery-count` travado em 1). Isso
+quebrava o próprio objetivo de isolamento de falha do `epic-007` — mensagem envenenada travaria o
+único consumidor para sempre.
+
+Fix: mover a contagem de tentativas do broker (que não dispara mais nesse cenário) para a
+aplicação. `org.springframework.retry:spring-retry` adicionado como dependência direta (não vem
+transitivo de `spring-boot-starter-amqp`); `spring.rabbitmq.listener.simple.retry` (`enabled`,
+`max-attempts: 3`, `initial-interval: 1000`) no bloco DEFAULT de `application.yml` — achado MAJOR
+do Plan Reviewer: colocar isso só em `dev`/`prod` deixaria o teste de integração (perfil `test`)
+validar com o mecanismo desligado, dando falso-positivo. Após esgotar as 3 tentativas *em
+processo* (sem tocar o broker entre elas), o `RejectAndDontRequeueRecoverer` padrão rejeita com
+`requeue=false`, que sempre morta-letra via DLX independente da contagem do broker.
+
+`BetEventListenerRetryIntegrationTest` novo (contexto Spring próprio, bean `@Primary` decorando
+`ProcessBetEventUseCase` sempre lançando `RuntimeException`) prova o caminho "falha transitória
+esgota tentativas → DLQ" — os 2 testes de DLQ existentes cobriam só o caminho de reject imediato
+por erro de dado (`AmqpRejectAndDontRequeueException`, tenant não resolvível/schema inválido, sem
+retry cabível), não uma falha transitória real. Esse caminho não foi tocado.
+
+Achado de processo: as 4 subtasks (SV-269..272) tinham sido fechadas e mescladas localmente numa
+sessão anterior sem nunca passar por PR/CI real do GitHub. Corrigido nesta sessão — branches
+empurradas, PR `feature/SV-268 -> develop` passou pela CI real (build+testes+SonarCloud) antes do
+merge, desvio documentado na descrição do PR em vez de escondido.
+
+O fix foi consumido e confirmado de verdade em `infra/feat-002.4` (mesma sessão): o cenário de DLQ
+daquele teste rodou contra esta versão já corrigida e a mensagem morta-letrou corretamente após
+~105s (tempo dominado pelo `connection-timeout` de 30s do HikariCP contra o Postgres caído, não
+pelo `initial-interval` de 1s entre tentativas).
+
+`./mvnw -q verify`/`./init.sh` verdes. `docs/DECISIONS-LOG.md`/`docs/API-CONTRACTS.md`/
+`docs/services/infra.md` (raiz) atualizados no mesmo commit lógico com o achado completo.
