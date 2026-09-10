@@ -887,7 +887,7 @@
           ],
           "validation": "mvn -B verify verde; teste de idempotencia/ordem de mensagem (BetSettled antes de BetCreated) continua passando com o residual documentado.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-294"
         },
         {
