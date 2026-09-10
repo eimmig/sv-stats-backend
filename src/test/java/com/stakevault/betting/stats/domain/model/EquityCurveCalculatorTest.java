@@ -62,4 +62,16 @@ class EquityCurveCalculatorTest {
 
 		assertThat(metrics.sharpeRatio()).isEqualByComparingTo(BigDecimal.valueOf(1.5));
 	}
+
+	@Test
+	void shouldComputeCumulativeTimeline() {
+		List<SettledBetPoint> series = List.of(point(1, 100), point(2, -50), point(3, 30));
+
+		List<TimelinePoint> timeline = EquityCurveCalculator.timeline(series);
+
+		assertThat(timeline).hasSize(3);
+		assertThat(timeline.get(0).cumulativeProfit()).isEqualByComparingTo(BigDecimal.valueOf(100));
+		assertThat(timeline.get(1).cumulativeProfit()).isEqualByComparingTo(BigDecimal.valueOf(50));
+		assertThat(timeline.get(2).cumulativeProfit()).isEqualByComparingTo(BigDecimal.valueOf(80));
+	}
 }

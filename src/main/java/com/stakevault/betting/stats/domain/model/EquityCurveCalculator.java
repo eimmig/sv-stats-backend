@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.domain.model;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 // Calculo puro, sem I/O (domain - ver docs/STATISTICS.md "Drawdown maximo"/"Indice de Sharpe
@@ -17,6 +18,19 @@ public final class EquityCurveCalculator {
 
 	public static EquityCurveMetrics calculate(List<SettledBetPoint> orderedPoints) {
 		return new EquityCurveMetrics(maxDrawdown(orderedPoints), sharpeRatio(orderedPoints));
+	}
+
+	// Lucro acumulado ponto a ponto - a mesma serie que maxDrawdown() itera internamente, exposta
+	// aqui para alimentar o campo "timeline" da resposta HTTP (equity curve) sem uma segunda
+	// consulta ao repositorio.
+	public static List<TimelinePoint> timeline(List<SettledBetPoint> orderedPoints) {
+		List<TimelinePoint> timeline = new ArrayList<>(orderedPoints.size());
+		BigDecimal cumulative = BigDecimal.ZERO;
+		for (SettledBetPoint point : orderedPoints) {
+			cumulative = cumulative.add(point.profit());
+			timeline.add(new TimelinePoint(point.date(), cumulative));
+		}
+		return timeline;
 	}
 
 	// Maior queda pico-a-vale no lucro acumulado, em valor absoluto (mesma unidade de
