@@ -1008,6 +1008,56 @@
         }
       ],
       "evidence": "Fechado em 2026-09-10 (feat-013.1..013.3, story SV-299, PRs #36/#37/#39 subtask->feature + merge final feature->develop). DIM_TEAM ganha sportId (FK DIM_SPORT, NOT NULL) - chave natural vira (name, sportId), UNIQUE(name) trocada por UNIQUE(name, sportId); DimensionResolver.resolveTeam(name, sportId) mantem o mesmo padrao check-then-act de resolveDate, sem regressao de concorrencia. GET /api/v1/statistics/teams?sportId=<uuid> (sportId obrigatorio, 400 RFC 7807 via MissingRequiredStatisticsFilterException reaproveitada de feat-012) nested em StatisticsController (desvio aceito do plano original 'TeamsController novo' - mesmo limite hexagonal adapter/in->port/in->port/out, sem duplicar classe). Delivery Reviewer: PASS, um desvio de plano aceito (endpoint no controller existente em vez de um novo), sem achado bloqueante. Test Suite Auditor: CONCERNS, achado real corrigido no mesmo escopo (feat-013.3) - constraint UNIQUE(name, sport_id) nao tinha teste DB-level, so prova indireta via caminho de aplicacao; teste novo adicionado (shouldRejectDuplicateNameAndSportAtTheDatabaseLevel), mesmo padrao de JpaProcessedEventRepositoryIntegrationTest. Persistence Auditor: CONCERNS nao-bloqueante - 2 achados P3 informativos (indice composto com sport_id como coluna nao-lider, aceitavel para tabela de baixo volume por tenant; race de check-then-act e padrao pre-existente, nao introduzido por esta feature) e 1 P2 documentado (ADD COLUMN NOT NULL sem DEFAULT falharia se algum tenant ja tivesse migrado so ate V120000 com dados reais - consistente com a premissa explicita do plano de que dim_team nunca foi usada em tenant real nesta sessao, sem acao corretiva necessaria). mvn verify e ./init.sh do servico e da raiz verdes. Libera epic-012 (web)."
+    },
+    {
+      "id": "feat-014",
+      "name": "CI: build e push da imagem Docker pro GHCR",
+      "goal": "Publicar a imagem deste servico em ghcr.io/eimmig/sv-stats-backend a cada push estavel em main, pra viabilizar deploy real fora do cluster kind local.",
+      "scope": [
+        "Job novo build-and-push-image no ci.yml, condicionado a pipeline (todos os passos de qualidade) ja ter passado e a branch ser main",
+        "Nao inclui gerar o PAT/imagePullSecrets do cluster que vai consumir a imagem - isso e acao no lado do servidor de deploy, fora deste repositorio"
+      ],
+      "description": "Ate agora a imagem deste servico so existia como ghcr.io/eimmig/sv-stats-backend:local, carregada manualmente num cluster kind de teste (infra/feat-004, epic-010 da raiz). Sem publicar num registry, nao ha como um servidor de producao real puxar essa imagem. Job novo no ci.yml: docker/setup-buildx-action + docker/login-action (ghcr.io, github.actor/secrets.GITHUB_TOKEN) + docker/build-push-action, tags <sha> e latest, needs: pipeline, if restrito a push em main.",
+      "dependencies": [
+        "feat-011"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) - READY WITH CONCERNS. Achados: MAJOR - packages: write no permissions do job so e concedido se o repositorio tiver 'Workflow permissions' = Read and write em Settings > Actions > General (default de repositorio novo costuma vir restrito a leitura, e nesse caso o job-level permissions e limitado silenciosamente, push falha com 403 em vez de erro de sintaxe) - verificar/configurar antes do primeiro push em main. MINOR (confirmado contra a documentacao oficial do docker/build-push-action) - nao obrigatorio mas recomendado adicionar docker/setup-buildx-action antes do build, incluido no plano corrigido. Escopo confirmado: PAT/imagePullSecrets do cluster de deploy fica fora desta feature.",
+      "jira": "SV-328",
+      "subtasks": [
+        {
+          "id": "feat-014.1",
+          "name": "Job build-and-push-image no ci.yml",
+          "detail": "Publica a imagem no GHCR so depois da pipeline de qualidade inteira ja ter passado, so na branch main - nunca em PR/subtask, pra nao pushar imagem de codigo nao revisado.",
+          "checklist": [
+            "docker/setup-buildx-action antes do login/build",
+            "docker/login-action contra ghcr.io com github.actor + secrets.GITHUB_TOKEN",
+            "docker/build-push-action com tags <sha> e latest",
+            "needs: pipeline + if restrito a push em main",
+            "permissions do job: contents: read, packages: write"
+          ],
+          "validation": "Push em main dispara o job, imagem aparece em ghcr.io/eimmig/sv-stats-backend (packages do repositorio) com as 2 tags.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-329"
+        },
+        {
+          "id": "feat-014.2",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal: CHANGELOG.md, init.sh, confirmar que o Workflow permissions do repositorio permite packages: write (achado do Plan Reviewer), e o item fixo de vault desta feature.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Settings > Actions > General > Workflow permissions = Read and write confirmado neste repositorio",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit"
+          ],
+          "validation": "Push real em main confirmado no GitHub Actions (job verde) e imagem visivel no pacote do repositorio.",
+          "owner": "agente",
+          "status": "not-started",
+          "jira": "SV-330"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }
