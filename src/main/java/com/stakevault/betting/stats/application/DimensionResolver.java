@@ -12,18 +12,21 @@ import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
+import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.model.DimTipster;
 import com.stakevault.betting.stats.domain.port.out.DimBettingHouseRepository;
 import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
+import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTipsterRepository;
 
 // Resolve o id de cada dimensao do esquema estrela a partir do payload do evento, criando a
 // linha sob demanda na primeira aposta que a referencia (upsert-if-missing) - id e o mesmo uuid
-// do catalogo em bets-service para as 5 dimensoes nominais; DimDate e a excecao, localizada por
-// chave natural (dia/mes/ano) porque o evento nao carrega um id de data proprio.
+// do catalogo em bets-service para as 5 dimensoes nominais; DimDate/DimTeam sao a excecao,
+// localizadas por chave natural (dia/mes/ano; name) porque o evento nao carrega um id proprio
+// pra elas (team1/team2 sao texto livre em bets-service, sem catalogo - ver docs/DATA-MODEL.md).
 @Service
 public class DimensionResolver {
 
@@ -33,16 +36,19 @@ public class DimensionResolver {
 	private final DimMarketRepository marketRepository;
 	private final DimTipsterRepository tipsterRepository;
 	private final DimDateRepository dateRepository;
+	private final DimTeamRepository teamRepository;
 
 	public DimensionResolver(DimBettingHouseRepository bettingHouseRepository, DimSportRepository sportRepository,
 			DimLeagueRepository leagueRepository, DimMarketRepository marketRepository,
-			DimTipsterRepository tipsterRepository, DimDateRepository dateRepository) {
+			DimTipsterRepository tipsterRepository, DimDateRepository dateRepository,
+			DimTeamRepository teamRepository) {
 		this.bettingHouseRepository = bettingHouseRepository;
 		this.sportRepository = sportRepository;
 		this.leagueRepository = leagueRepository;
 		this.marketRepository = marketRepository;
 		this.tipsterRepository = tipsterRepository;
 		this.dateRepository = dateRepository;
+		this.teamRepository = teamRepository;
 	}
 
 	public UUID resolveBettingHouse(UUID id, String name) {
@@ -89,6 +95,17 @@ public class DimensionResolver {
 				.map(DimDate::id)
 				.orElseGet(() -> dateRepository.save(new DimDate(UUID.randomUUID(), date.getDayOfMonth(),
 						date.getMonthValue(), date.getYear(), quarterOf(date), date.getDayOfWeek().name())).id());
+	}
+
+	// team1/team2 nao tem catalogo em bets-service (texto livre por aposta) - sem id proprio no
+	// evento, resolvida por chave natural (name), mesmo padrao de resolveDate. Nem toda aposta
+	// referencia os 2 lados (ex. mercado sem confronto de dois lados) - null passa direto.
+	public UUID resolveTeam(String name) {
+		if (name == null) {
+			return null;
+		}
+		return teamRepository.findByName(name).map(DimTeam::id)
+				.orElseGet(() -> teamRepository.save(new DimTeam(UUID.randomUUID(), name)).id());
 	}
 
 	private static int quarterOf(LocalDate date) {

@@ -53,11 +53,13 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 			UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
 
+			// team1Id/team2Id/odd: mapeamento do evento chega em feat-012.2 (BetCreatedEvent ainda
+			// nao carrega team1/team2/odd) - null por enquanto, sem quebrar o build.
 			// Sem evict aqui: RN06 exclui status=pending de toda agregacao, entao este insert e
 			// invisivel para as metricas cacheadas - invalidar agora seria desperdicio (mesmo
 			// valor antes/depois). So processSettled muda o que as queries RN06 realmente veem.
 			factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-					tipsterId, event.stake(), null, null, BetStatus.PENDING, 1));
+					tipsterId, null, null, event.stake(), null, null, null, BetStatus.PENDING, 1));
 		}
 
 		markProcessed(eventId);
@@ -77,8 +79,11 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
 
+		// team1Id/team2Id/odd: mapeamento do evento chega em feat-012.2 (BetSettledEvent ainda nao
+		// carrega team1/team2/odd) - null por enquanto, sem quebrar o build.
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-				tipsterId, event.stake(), event.profit(), event.status() == BetStatus.WON, event.status(), 1));
+				tipsterId, null, null, event.stake(), null, event.profit(), event.status() == BetStatus.WON,
+				event.status(), 1));
 		evictMetricsFor(event.settledAt());
 
 		markProcessed(eventId);
