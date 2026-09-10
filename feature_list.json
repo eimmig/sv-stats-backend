@@ -901,7 +901,7 @@
           ],
           "validation": "Teste de integracao com apostas em times diferentes confirma teamId casando os 2 lados (mandante e visitante).",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-295"
         },
         {
