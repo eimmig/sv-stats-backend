@@ -7,8 +7,11 @@ import java.util.UUID;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
+import com.stakevault.betting.stats.domain.model.SearchAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
+import com.stakevault.betting.stats.domain.model.SettledBetPoint;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
+import com.stakevault.betting.stats.domain.model.StatisticsSearchFilter;
 
 public interface FactBetRepository {
 
@@ -27,4 +30,13 @@ public interface FactBetRepository {
 	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
+
+	// epic-011 (RF09 estendido): agregado + serie ordenada especificos de GET
+	// /api/v1/statistics/search - separados dos 5 metodos acima (dashboard consolidado, feat-006)
+	// porque o filtro exige sportId/leagueId e adiciona teamId (team1Id OR team2Id).
+	SearchAggregate aggregateForSearch(StatisticsSearchFilter filter);
+
+	// Ordenada por date crescente - base do calculo de drawdown/Sharpe (domain, feat-012.4) e do
+	// campo "timeline" da resposta HTTP (feat-012.5).
+	List<SettledBetPoint> findOrderedSettledProfits(StatisticsSearchFilter filter);
 }
