@@ -915,7 +915,7 @@
           ],
           "validation": "Testes unitarios verdes, sem Testcontainers (calculo puro).",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-296"
         },
         {
