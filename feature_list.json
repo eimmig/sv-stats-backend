@@ -828,6 +828,26 @@
         }
       ],
       "evidence": "Fechada em 2026-09-10 (branch feature/SV-268, story SV-268, subtasks SV-269..272). org.springframework.retry:spring-retry adicionado como dependencia direta (pom.xml); spring.rabbitmq.listener.simple.retry (enabled=true, max-attempts=3, initial-interval=1000) movido para o bloco DEFAULT de application.yml (sem on-profile), nao duplicado por dev/test/prod - achado MAJOR do Plan Reviewer, sem isso o teste de integracao (perfil test) validaria com o mecanismo desligado. BetEventListenerRetryIntegrationTest novo (contexto Spring proprio, @Primary decorando ProcessBetEventUseCase sempre lancando RuntimeException) prova o caminho que os 2 testes de DLQ existentes nao cobriam: falha transitoria esgotando as 3 tentativas ate cair em stats.bet-events.dlq via RejectAndDontRequeueRecoverer. ./mvnw -q verify verde (gate JaCoCo incluso), os 6 testes de BetEventListenerIntegrationTest ja existentes continuam passando - caminho AmqpRejectAndDontRequeueException (erro de dado, sem retry cabivel) nao foi tocado. docs/DECISIONS-LOG.md/docs/API-CONTRACTS.md/docs/services/infra.md (raiz) atualizados no mesmo commit logico com o achado completo (RabbitMQ 4.3+ nao conta nack-requeue para x-delivery-limit). Fix consumido e confirmado de verdade em infra/feat-002.4 (epic-007): o cenario de DLQ rodou contra esta versao ja corrigida e a mensagem morta-letrou apos ~105s, sem o travamento indefinido observado antes do fix."
+    },
+    {
+      "id": "feat-011",
+      "name": "Dockerfile para imagem de producao",
+      "description": "Achado real de infra/feat-004 (epic-010 da raiz, migracao para Kubernetes): este servico nunca teve Dockerfile proprio. Mesmo precedente das features de 'porta HTTP fixa' - decisao cross-service implementada como pequena feature dedicada em cada repositorio de servico, para infra/feat-004 so precisar referenciar a imagem ja construida.",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-10, achado durante infra/feat-004 - nao um plan review dedicado (mesmo build multi-stage ja validado em auth-service feat-011, risco baixo). Grounding: pom.xml confirmado com spring-boot-maven-plugin e java.version=25, sem finalName customizado.",
+      "jira": "SV-280",
+      "subtasks": [
+        {
+          "id": "feat-011.1",
+          "name": "Dockerfile multi-stage + verificacao real do container contra a infra",
+          "status": "done",
+          "jira": "SV-281"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-10. Dockerfile multi-stage identico ao padrao de auth-service feat-011 (build eclipse-temurin:25-jdk-alpine, runtime 25-jre-alpine, usuario nao-root, porta 8083) + .dockerignore. Build real e execucao real testados contra a infra (postgres-stats, rabbitmq, redis): GET /actuator/health respondeu 200. Imagem usada de fato por infra/feat-004 para os manifests Kubernetes."
     }
   ]
 }
