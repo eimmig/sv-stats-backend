@@ -1,6 +1,7 @@
 package com.stakevault.betting.stats.adapter.in.web;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,12 +9,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.model.MissingRequiredStatisticsFilterException;
 import com.stakevault.betting.stats.domain.model.StatisticsDashboard;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.model.StatisticsSearchFilter;
 import com.stakevault.betting.stats.domain.model.StatisticsSearchResult;
 import com.stakevault.betting.stats.domain.port.in.GetStatisticsDashboardUseCase;
+import com.stakevault.betting.stats.domain.port.in.ListTeamsUseCase;
 import com.stakevault.betting.stats.domain.port.in.SearchStatisticsUseCase;
 
 @RestController
@@ -22,11 +25,13 @@ public class StatisticsController {
 
 	private final GetStatisticsDashboardUseCase getStatisticsDashboard;
 	private final SearchStatisticsUseCase searchStatistics;
+	private final ListTeamsUseCase listTeams;
 
 	public StatisticsController(GetStatisticsDashboardUseCase getStatisticsDashboard,
-			SearchStatisticsUseCase searchStatistics) {
+			SearchStatisticsUseCase searchStatistics, ListTeamsUseCase listTeams) {
 		this.getStatisticsDashboard = getStatisticsDashboard;
 		this.searchStatistics = searchStatistics;
+		this.listTeams = listTeams;
 	}
 
 	@GetMapping
@@ -59,5 +64,17 @@ public class StatisticsController {
 		StatisticsSearchFilter filter = new StatisticsSearchFilter(sportId, leagueId, teamId, bettingHouseId,
 				marketId, tipsterId, from, to);
 		return searchStatistics.search(filter);
+	}
+
+	// feat-013: DIM_TEAM nao tem catalogo em bets-service (texto livre por aposta) - autocomplete
+	// da tela "Buscar Estatisticas" precisa desta listagem pra oferecer os times ja vistos.
+	// sportId obrigatorio (mesmo padrao de erro do endpoint acima) porque a chave natural de
+	// DIM_TEAM e composta (name, sportId) - trocar de esporte na UI refiltra a lista.
+	@GetMapping("/teams")
+	public List<DimTeam> teams(@RequestParam(required = false) UUID sportId) {
+		if (sportId == null) {
+			throw new MissingRequiredStatisticsFilterException("sportId");
+		}
+		return listTeams.listBySport(sportId);
 	}
 }
