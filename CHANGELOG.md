@@ -77,3 +77,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-355](https://stakevault.atlassian.net/browse/SV-355) - Agregacao diaria (domain + port + query JPQL + repository) com teste de integracao real
 - [SV-356](https://stakevault.atlassian.net/browse/SV-356) - Endpoint GET /api/v1/statistics/daily (roi + controller)
 - [SV-357](https://stakevault.atlassian.net/browse/SV-357) - CHANGELOG e verificacao final
+- [SV-358](https://stakevault.atlassian.net/browse/SV-358) - Segmentos byLeague/byTipster em GET /api/v1/statistics
+- [SV-359](https://stakevault.atlassian.net/browse/SV-359) - Agregacao byLeague/byTipster (domain + port + query JPQL + repository) com testes de integracao reais
+- [SV-360](https://stakevault.atlassian.net/browse/SV-360) - calculateByLeague/calculateByTipster, StatisticsDashboard, cache-aside (getByLeague/getByTipster + evict) e teste HTTP end-to-end
+- [SV-361](https://stakevault.atlassian.net/browse/SV-361) - CHANGELOG e verificacao final

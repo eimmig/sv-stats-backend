@@ -1266,6 +1266,80 @@
         }
       ],
       "evidence": "Fechada em 2026-09-11 (story SV-354, 3 subtasks SV-355..357, PRs #51/#52/#53 subtask->feature). GET /api/v1/statistics/daily novo: mesmos 7 filtros opcionais de GET /api/v1/statistics, granularidade diaria (DimDate.day/month/year), array esparso ordenado por data ascendente (so dias com pelo menos 1 aposta liquidada), sem cache-aside. aggregateByDay via JPQL com FUNCTION('make_date', d.year, d.month, d.day) no SELECT + GROUP BY nas colunas cruas - combinacao nova neste codebase, confirmada funcional pelo teste de integracao real (Testcontainers Postgres), sem precisar do fallback de LocalDate.of(year,month,day) previsto no plan_review. calculateDaily reaproveita a mesma regra RN04 de roi=ZERO-se-totalStaked=0 via helper privado estatico roiOf, extraido de toMetrics (elimina duplicacao). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao em GET /api/v1/statistics/GET /api/v1/statistics/search existentes, filtro from/to reaproveita os mesmos sentinelas MIN_DATE/MAX_DATE ja usados pelos outros endpoints. Test Suite Auditor: PASS - testes de integracao reais provam array esparso, exclusao RN06 (dia so com aposta pending fica de fora), filtro from/to, ordenacao ascendente; teste HTTP end-to-end confirma o shape exato do contrato; teste unitario cobre roi=ZERO isolado. Persistence Auditor: PASS - mesmo padrao de join/filtro ja aceito em aggregateByMonth/aggregateOverall (sem indice novo em date_id/status, baixo volume por tenant, nao e risco introduzido por esta feature). ./init.sh do servico e da raiz verdes. docs/CONVENTIONS.md atualizado (padrao FUNCTION(make_date)+GROUP BY confirmado, reaproveitavel por agregacoes por data futuras). docs/STATISTICS.md/docs/API-CONTRACTS.md ja escritos antes do codigo (sessao de planejamento do epic-016) - implementacao final confirmada aderente, sem divergencia. Fecha epic-016 da raiz."
+    },
+    {
+      "id": "feat-017",
+      "name": "Segmentos byLeague/byTipster em GET /api/v1/statistics",
+      "goal": "GET /api/v1/statistics ganha 2 novos arrays no bundle (byLeague, byTipster), mesmo formato de bySport/byMarket/byBettingHouse - fecha a lacuna documentada desde feat-006 (leagueId/tipsterId so estreitavam os outros segmentos como filtro, nunca tiveram agrupamento proprio). Fonte de dados para os 5 dashboards por cadastro de apps/web (epic-019).",
+      "scope": [
+        "aggregateByLeague/aggregateByTipster em FactBetRepository, mirror exato de aggregateBySport/aggregateByMarket (join DimLeagueJpaEntity/DimTipsterJpaEntity + DimDateJpaEntity)",
+        "aggregateByTipster exclui f.tipsterId IS NULL (tipster_id nullable em FACT_BET, diferente de league_id NOT NULL) - mesmo padrao ja usado por aggregateByBetType (f.betType IS NOT NULL)",
+        "calculateByLeague/calculateByTipster em CalculateMetricsUseCase/Service, reaproveitando toSegmentedMetrics existente",
+        "StatisticsDashboard ganha campos byLeague/byTipster, GetStatisticsDashboardService popula os 2 nos 2 branches (cache-aside sem filtro, calculo direto com filtro)",
+        "Cache-aside: getByLeague/getByTipster em GetDashboardMetricsUseCase/Service + MetricsCacheRepository/RedisMetricsCacheRepository (chaves segment:league/segment:tipster, mesmo padrao sport/market/house), evict() passa a incluir as 2 chaves novas",
+        "Sem migration nova (DIM_LEAGUE/DIM_TIPSTER ja existem desde feat-002), sem endpoint novo (mesmo GET /api/v1/statistics)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-018 da raiz, pedido do usuario 2026-09-10, reestruturacao de menu por cadastro em apps/web). Contrato ja escrito antes do codigo em docs/API-CONTRACTS.md e docs/services/stats-service.md (secao 'Segmentos byLeague/byTipster', sessao de planejamento anterior) - mesmo formato de {dimensionId, dimensionName, metrics: SegmentedBetMetrics} dos 3 segmentos existentes, sem campo novo em SegmentedBetMetrics. Depende so de feat-004 (agregacao existente, done).",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, nenhum achado MAJOR/BLOCKER, nenhuma decisao do usuario necessaria - padrao ja validado 4x neste servico (bySport/byMarket/byBettingHouse desde feat-006, byBetType em feat-015), risco baixo por precedente direto. (MINOR #1) Nomeacao das chaves de cache: RedisMetricsCacheRepository usa constantes curtas (SPORT_SEGMENT='sport', MARKET_SEGMENT='market', HOUSE_SEGMENT='house') exceto BET_TYPE_SEGMENT='byBetType' (unica excecao ja existente ao padrao). Novas chaves seguem o padrao majoritario: LEAGUE_SEGMENT='league', TIPSTER_SEGMENT='tipster' (nao 'byLeague'/'byTipster'), consistente com 3 das 4 chaves existentes. (MINOR #2) evict() precisa incluir as 2 chaves novas na mesma chamada redisTemplate.delete(List.of(...)) - se esquecido, byLeague/byTipster cacheados ficam obsoletos apos BetSettled ate o TTL de seguranca de 1h expirar (bug silencioso, sem teste falhando via compilacao); RedisMetricsCacheRepositoryIntegrationTest e CacheInvalidationOnEventIntegrationTest existentes sao o lugar natural pra estender cobertura, garantindo que o teste falha se a chave for esquecida. Escopo confirmado (sem decisao do usuario necessaria): aggregateByTipster exclui tipsterId nulo do agrupamento (mesmo padrao de aggregateByBetType.betType IS NOT NULL) - decisao ja implicita no precedente do codebase, nao uma nova regra de negocio. Unico ponto de atencao tecnico (nao MAJOR): FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest, StatisticsControllerIntegrationTest e RedisMetricsCacheRepositoryIntegrationTest sao os 5 arquivos de teste que precisam de casos novos (mesmo padrao de extensao ja seguido em feat-015/feat-016).",
+      "jira": "SV-358",
+      "subtasks": [
+        {
+          "id": "feat-017.1",
+          "name": "Agregacao byLeague/byTipster (domain + port + query JPQL + repository) com testes de integracao reais",
+          "status": "done",
+          "jira": "SV-359",
+          "detail": "Mirror exato de aggregateBySport/aggregateByMarket (feat-006) - 2 metodos novos no mesmo arquivo/interface, mesma estrutura de predicados opcionais. aggregateByTipster adiciona f.tipsterId IS NOT NULL (unica diferenca estrutural em relacao aos outros 3 segmentos, mesmo padrao de aggregateByBetType.betType IS NOT NULL).",
+          "checklist": [
+            "domain/port/out/FactBetRepository.java - aggregateByLeague(StatisticsFilter filter)/aggregateByTipster(StatisticsFilter filter): List<SegmentedBetAggregate>.",
+            "adapter/out/persistence/FactBetSpringDataRepository.java - 2 novas @Query (SegmentedAggregateProjection reaproveitada), join DimLeagueJpaEntity/DimTipsterJpaEntity + DimDateJpaEntity, mesmos 5 predicados opcionais + from/to, GROUP BY id+name; aggregateByTipster com f.tipsterId IS NOT NULL adicional.",
+            "adapter/out/persistence/JpaFactBetRepository.java - implementa os 2 metodos delegando aos equivalentes do jpaRepository, mesmo padrao de toBetTypeSegment/toAggregate para mapear a projecao.",
+            "Teste de integracao (FactBetAggregationIntegrationTest, Testcontainers Postgres): byLeague agrega corretamente por liga; byTipster exclui apostas sem tipster do agrupamento (aposta com tipsterId null nao aparece em nenhum bucket); ambos respeitam RN06 (status pending excluido) e os filtros opcionais existentes."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 2 agregados reais via SQL, incluindo a exclusao de tipster nulo.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-017.2",
+          "name": "calculateByLeague/calculateByTipster, StatisticsDashboard, cache-aside (getByLeague/getByTipster + evict) e teste HTTP end-to-end",
+          "status": "done",
+          "jira": "SV-360",
+          "detail": "Achado MINOR do Plan Reviewer: chaves de cache 'league'/'tipster' (nao 'byLeague'/'byTipster'), consistente com sport/market/house; evict() precisa incluir as 2 chaves novas na mesma lista, com teste provando que ficam obsoletas se esquecidas.",
+          "checklist": [
+            "domain/port/in/CalculateMetricsUseCase.java + application/CalculateMetricsService.java - calculateByLeague/calculateByTipster, reaproveitando toSegmentedMetrics existente.",
+            "domain/model/StatisticsDashboard.java - campos byLeague/byTipster (List<SegmentedBetMetrics>).",
+            "application/GetStatisticsDashboardService.java - popula os 2 campos novos nos 2 branches (filtro.isEmpty() via dashboardMetrics.getByLeague()/getByTipster(); filtro presente via calculateMetrics.calculateByLeague(filter)/calculateByTipster(filter)).",
+            "domain/port/in/GetDashboardMetricsUseCase.java + application/GetDashboardMetricsService.java - getByLeague/getByTipster (mesmo padrao cache-aside de getBySport/getByMarket).",
+            "domain/port/out/MetricsCacheRepository.java + adapter/out/cache/RedisMetricsCacheRepository.java - findByLeague/saveByLeague/findByTipster/saveByTipster (constantes LEAGUE_SEGMENT='league'/TIPSTER_SEGMENT='tipster'); evict() inclui as 2 chaves novas na mesma lista.",
+            "Teste unitario (CalculateMetricsServiceTest): calculateByLeague/calculateByTipster com caso normal + tipster nulo excluido.",
+            "Teste unitario (GetDashboardMetricsServiceTest): getByLeague/getByTipster hit/miss cache-aside, mesmo padrao dos 3 segmentos existentes.",
+            "Teste de integracao (RedisMetricsCacheRepositoryIntegrationTest): save/find real das 2 chaves novas contra Redis real (Testcontainers); evict real remove as 2 chaves novas junto das 4 existentes - prova que a lacuna do achado MINOR #2 nao existe no codigo final.",
+            "Teste de integracao HTTP (StatisticsControllerIntegrationTest): GET /api/v1/statistics real devolve byLeague/byTipster no bundle com o shape esperado (docs/API-CONTRACTS.md)."
+          ],
+          "validation": "./init.sh verde - GET /api/v1/statistics real devolve os 2 arrays novos; cache-aside e evicao dos 2 provados por teste real, nao so ausencia de excecao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-017.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-361",
+          "detail": "Fecha a feature - docs/API-CONTRACTS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar aderencia, atualizar o marcador 'planejado' -> 'done' da secao correspondente).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "docs/services/stats-service.md: secao 'Segmentos byLeague/byTipster' marcada done, com nota de implementacao (mesmo padrao das secoes de feat-014/015/016).",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-11 (story SV-358, 3 subtasks SV-359..361, PRs #55/#56 subtask->feature). GET /api/v1/statistics ganha byLeague/byTipster, mesmo formato {dimensionId, dimensionName, metrics} de bySport/byMarket/byBettingHouse. aggregateByLeague e mirror exato de aggregateBySport/aggregateByMarket; aggregateByTipster exclui f.tipsterId IS NULL (campo opcional, diferente de leagueId sempre presente), mesmo padrao de aggregateByBetType. Cache-aside estendido (chaves segment:league/segment:tipster, nomeacao consistente com sport/market/house - achado MINOR #1 do plan review resolvido) - evict() passa a incluir as 2 chaves novas (achado MINOR #2 resolvido, coberto por teste de integracao dedicado que prova a lacuna nao existe). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao nos 4 segmentos existentes (bySport/byMarket/byBettingHouse/byBetType), os 2 achados MINOR do plan review confirmados resolvidos no codigo final. Test Suite Auditor: PASS - testes de integracao reais (Testcontainers Postgres) provam agrupamento por liga e exclusao de tipster nulo; testes de cache-aside (hit/miss) mirror do padrao existente; teste HTTP end-to-end confirma os 2 arrays no bundle e a exclusao de tipster nulo ponta a ponta; teste de integracao dedicado prova evict() real remove as 2 chaves novas junto das existentes. Persistence Auditor: PASS - mesmo padrao de join/predicado ja aceito nos 3 segmentos existentes, sem indice novo necessario (baixo volume por tenant, risco identico ja avaliado). ./init.sh do servico e da raiz verdes. docs/API-CONTRACTS.md/docs/services/stats-service.md (repositorio raiz) atualizados confirmando implementacao aderente ao planejado, secao marcada done. Fecha epic-018 da raiz. Libera epic-019 (web - menu por cadastro)."
     }
   ]
 }

@@ -95,6 +95,37 @@ class CalculateMetricsServiceTest {
 		assertThat(segment.metrics().winRate()).isEqualByComparingTo(BigDecimal.ONE);
 	}
 
+	// epic-018: calculateByLeague/calculateByTipster reaproveitam a mesma toSegmentedMetrics de
+	// calculateBySport - este teste prova so a fiacao (metodo certo do repositorio chamado), a
+	// formula ja esta provada por shouldMapSegmentedAggregatesPreservingDimensionIdentity acima.
+	@Test
+	void shouldMapByLeagueSegmentFromTheLeagueAggregate() {
+		String leagueId = UUID.randomUUID().toString();
+		when(factBetRepository.aggregateByLeague(StatisticsFilter.none())).thenReturn(
+				List.of(new SegmentedBetAggregate(leagueId, "Premier League",
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1))));
+
+		List<SegmentedBetMetrics> result = service.calculateByLeague(StatisticsFilter.none());
+
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).dimensionId()).isEqualTo(leagueId);
+		assertThat(result.get(0).dimensionName()).isEqualTo("Premier League");
+	}
+
+	@Test
+	void shouldMapByTipsterSegmentFromTheTipsterAggregate() {
+		String tipsterId = UUID.randomUUID().toString();
+		when(factBetRepository.aggregateByTipster(StatisticsFilter.none())).thenReturn(
+				List.of(new SegmentedBetAggregate(tipsterId, "Tipster",
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1))));
+
+		List<SegmentedBetMetrics> result = service.calculateByTipster(StatisticsFilter.none());
+
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).dimensionId()).isEqualTo(tipsterId);
+		assertThat(result.get(0).dimensionName()).isEqualTo("Tipster");
+	}
+
 	// epic-014: dimensionId de byBetType e o proprio valor do enum ("PRE"/"LIVE"), nao um uuid -
 	// mesmo caminho de mapeamento dos outros segmentos, so a fonte do agregado muda.
 	@Test
