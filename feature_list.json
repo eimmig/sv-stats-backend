@@ -1087,7 +1087,7 @@
       "dependencies": [
         "feat-004"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, 3 achados MAJOR corrigidos no plano, nenhum exigiu decisao do usuario. (MAJOR #1) Comparacao de enum em JPQL deve usar parametro ligado (@Param tipado BetStatus/BetType), nunca literal de string solto (CASE WHEN f.status = 'LOST') - confirmado por grep que o codebase inteiro ja evita esse padrao (so usa :pending como parametro), literal de string arriscaria o AttributeConverter (@Converter(autoApply=true), BetStatusAttributeConverter/novo BetTypeAttributeConverter) nao ser aplicado de forma garantida, zerando silenciosamente lostCount/voidCount/preCount/liveCount. (MAJOR #2) Projecao de byBetType deve expor o getter no tipo real do enum (BetTypeAggregateProjection.getBetType(): BetType), com a conversao pra String (PRE/LIVE, .name()) feita explicitamente no adapter (JpaFactBetRepository), nao pedir a uma interface de projecao Spring Data um getDimensionId():String direto de uma expressao JPQL tipada BetType (conversao implicita que o resto do codigo nunca faz). (MAJOR #3) Mudanca de tipo dimensionId UUID->String em SegmentedBetAggregate/SegmentedBetMetrics (necessaria pra PRE/LIVE nao serem uuid) exige atualizar 5 arquivos de teste que ja referenciam esse tipo (StatisticsControllerIntegrationTest, RedisMetricsCacheRepositoryIntegrationTest, FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) - listado explicitamente pra nao subestimar o escopo da subtask. Achado do proprio autor do plano refutado com evidencia: preocupacao de que o cache Redis quebraria deserializacao pos-deploy (BetMetrics ganhando campos novos) nao se confirma - Jackson 3 (tools.jackson, autoconfiguracao padrao do Spring Boot 4, sem override de estrita neste repositorio) preenche componente de record ausente no JSON com o default do tipo (0/0L, null) em vez de lancar excecao; risco residual aceito (ate 1h de TTL com campos novos zerados/nulos num cache pre-deploy), nao virou subtask. Decisao confirmada sem necessidade de pergunta ao usuario: byBetType reaproveita o mesmo record BetMetrics (incluindo preCount/liveCount, mesmo triviais dentro do proprio bucket) em vez de um tipo apartado - consistente com 'mesmo formato dos outros 5 segmentos' de docs/API-CONTRACTS.md e evita duplicar SegmentedBetMetrics.",
       "jira": "SV-343",
       "subtasks": [
@@ -1160,7 +1160,41 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-09-11 (feat-015.1..015.4, story SV-343 com 4 subtasks SV-344..347, 4 PRs de subtask mergeadas). GET /api/v1/statistics ganha wonCount/lostCount/voidCount/preCount/liveCount/avgOdd em overall/bySport/byMarket/byBettingHouse/monthly, mais um 6o segmento byBetType (2 buckets fixos PRE/LIVE). FACT_BET.betType (nullable) gravado so no insert de BetCreated, preservado no upsert de BetSettled (mesmo padrao ja usado por dateId).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify, JaCoCo 80% incluso) verde localmente com Docker ativo, em cada uma das 4 subtasks.",
+              "CI verde nas 4 PRs de subtask (subtask/SV-344..347 -> feature/SV-343).",
+              "Testes reais de integracao (Testcontainers Postgres): betType preservado no upsert (insert com PRE/LIVE/null, liquidacao nao perde o valor), lostCount/voidCount/preCount/liveCount/avgOdd provados com valores conferidos (nao so ausencia de excecao), byBetType com exatamente 2 buckets fixos e aposta sem betType classificado fora dos dois, teste HTTP end-to-end do bundle completo incluindo byBetType.",
+              "Teste unitario complementar (ProcessBetEventServiceTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) prova os mesmos ramos com mocks - falha rapida e localizada."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review - as 3 correcoes MAJOR do Plan Reviewer (parametro tipado em vez de literal de string em comparacao de enum JPQL; getter no tipo real do enum na projecao de byBetType, conversao pra String explicita no adapter; mudanca de tipo dimensionId UUID->String com os 5 arquivos de teste afetados listados) foram aplicadas no plano antes do codigo, sem descoberta nova durante a implementacao."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 3 MAJOR corrigidos no plano - ver campo plan_review desta feature para o detalhe completo de cada achado.",
+              "Achado real do Delivery Reviewer (feat-015.4): o exemplo JSON de byBetType em docs/API-CONTRACTS.md (escrito antes do codigo, na sessao de planejamento do epic-014) nao mostrava preCount/liveCount nos itens do segmento - a decisao de implementacao (reaproveitar o mesmo record BetMetrics dos outros 5 segmentos, ja confirmada no plan_review) inclui esses 2 campos ali tambem, ainda que triviais dentro do proprio bucket. Doc corrigido para bater com a implementacao real, com a nota do racional (evita duplicar SegmentedBetMetrics so pra omitir 2 campos redundantes-mas-inofensivos).",
+              "Achado do self-review durante a implementacao (nao do Plan Reviewer): o rascunho original propunha tratamento de excecao no cache Redis para deserializacao de entradas antigas pos-deploy - verificado com evidencia (Jackson 3/tools.jackson, autoconfiguracao padrao do Spring Boot 4, sem override de estrita neste repositorio) que o comportamento default de record com campo ausente e preencher com o default do tipo, nao lancar excecao - achado refutado, nao virou subtask, documentado como risco residual aceito (ate 1h de TTL com campos novos zerados/nulos)."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (3 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer (PASS, achado real de drift doc/codigo corrigido), Test Suite Auditor (PASS, oraculo forte em todos os testes novos) e Persistence Auditor (PASS, ADD COLUMN sem DEFAULT confirmado seguro, sem indice novo necessario) rodados contra o diff completo da feature (37 arquivos) - passe proprio, sem subagentes, independencia reduzida declarada, mesmo padrao ja usado nas demais features deste servico.",
+              "docs/API-CONTRACTS.md e docs/services/stats-service.md (repositorio raiz sv-harness) atualizados no commit de fechamento (feat-015.4) - secao do epic-014 marcada done, exemplo de byBetType corrigido."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
