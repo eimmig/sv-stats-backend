@@ -30,6 +30,13 @@ public interface FactBetRepository {
 
 	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
+	// epic-018: fecha a lacuna de feat-006 (leagueId/tipsterId so estreitavam os outros segmentos
+	// como filtro, nunca tiveram agrupamento proprio). aggregateByTipster exclui tipsterId nulo
+	// (campo opcional em FACT_BET, diferente de leagueId que e sempre presente).
+	List<SegmentedBetAggregate> aggregateByLeague(StatisticsFilter filter);
+
+	List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter);
+
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 
 	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
