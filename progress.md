@@ -3,7 +3,38 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-11
-**Feature ativa:** nenhuma — `feat-001`..`feat-016` `done`. Fecha `epic-016` da raiz.
+**Feature ativa:** nenhuma — `feat-001`..`feat-017` `done`. Fecha `epic-018` da raiz.
+
+## `feat-017` fechada — segmentos byLeague/byTipster (2026-09-11)
+
+Fecha `epic-018` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). `GET /api/v1/statistics` ganha 2 novos arrays no bundle — `byLeague`/`byTipster`,
+mesmo formato `{dimensionId, dimensionName, metrics}` de `bySport`/`byMarket`/`byBettingHouse`
+(`feat-006`) — fechando a lacuna documentada desde aquela feature (`leagueId`/`tipsterId` só
+estreitavam os outros segmentos como filtro, nunca tiveram agrupamento próprio).
+
+3 subtasks (story SV-358): `feat-017.1` (SV-359, `aggregateByLeague`/`aggregateByTipster` —
+mirror exato de `aggregateBySport`/`aggregateByMarket`; `aggregateByTipster` exclui
+`f.tipsterId IS NULL`, mesmo padrão de `aggregateByBetType.betType IS NOT NULL`, já que
+`tipsterId` é opcional em `FACT_BET` diferente de `leagueId`), `feat-017.2` (SV-360,
+`calculateByLeague`/`calculateByTipster` + `StatisticsDashboard` + cache-aside completo —
+`getByLeague`/`getByTipster` com chaves `segment:league`/`segment:tipster`, `evict()` estendido
+para incluir as 2 chaves novas), `feat-017.3` (SV-361, fechamento formal).
+
+**2 achados MINOR do Plan Reviewer, ambos resolvidos no código**: (1) nomeação das chaves de
+cache — seguiu o padrão majoritário `sport`/`market`/`house` (não `byBetType`, a única exceção
+já existente) — `league`/`tipster`. (2) `evict()` precisava incluir as 2 chaves novas ou
+`byLeague`/`byTipster` cacheados ficariam obsoletos após `BetSettled` até o TTL de segurança de
+1h expirar — coberto por teste de integração dedicado
+(`RedisMetricsCacheRepositoryIntegrationTest`) que prova a lacuna não existe, em vez de só
+confiar na revisão manual.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (18 arquivos): todos `PASS`.
+`./init.sh` verde. CI+SonarCloud verdes nas 3 PRs de subtask (#55/#56/#57) e na PR
+`feature/SV-358 -> develop` (#58). `docs/API-CONTRACTS.md`/`docs/services/stats-service.md`
+(repositório raiz) atualizados confirmando aderência ao planejado. Libera `epic-019` (web —
+menu por cadastro).
 
 ## `feat-016` fechada — GET /api/v1/statistics/daily (2026-09-11)
 
