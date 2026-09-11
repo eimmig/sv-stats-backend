@@ -1252,7 +1252,7 @@
         {
           "id": "feat-016.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-357",
           "detail": "Fecha a feature - docs/STATISTICS.md e docs/API-CONTRACTS.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
           "checklist": [
@@ -1265,7 +1265,7 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": "Fechada em 2026-09-11 (story SV-354, 3 subtasks SV-355..357, PRs #51 SV-355 e #52 SV-356 subtask->feature; merge final feature->develop pendente). GET /api/v1/statistics/daily novo: mesmos 7 filtros opcionais de GET /api/v1/statistics, granularidade diaria (DimDate.day/month/year), array esparso ordenado por data ascendente (so dias com pelo menos 1 aposta liquidada), sem cache-aside. aggregateByDay via JPQL com FUNCTION('make_date', d.year, d.month, d.day) no SELECT + GROUP BY nas colunas cruas - combinacao nova neste codebase, confirmada funcional pelo teste de integracao real (Testcontainers Postgres), sem precisar do fallback de LocalDate.of(year,month,day) previsto no plan_review. calculateDaily reaproveita a mesma regra RN04 de roi=ZERO-se-totalStaked=0 via helper privado estatico roiOf, extraido de toMetrics (elimina duplicacao). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao em GET /api/v1/statistics/GET /api/v1/statistics/search existentes, filtro from/to reaproveita os mesmos sentinelas MIN_DATE/MAX_DATE ja usados pelos outros endpoints. Test Suite Auditor: PASS - testes de integracao reais provam array esparso, exclusao RN06 (dia so com aposta pending fica de fora), filtro from/to, ordenacao ascendente; teste HTTP end-to-end confirma o shape exato do contrato; teste unitario cobre roi=ZERO isolado. Persistence Auditor: PASS - mesmo padrao de join/filtro ja aceito em aggregateByMonth/aggregateOverall (sem indice novo em date_id/status, baixo volume por tenant, nao e risco introduzido por esta feature). ./init.sh do servico e da raiz verdes. docs/CONVENTIONS.md atualizado (padrao FUNCTION(make_date)+GROUP BY confirmado, reaproveitavel por agregacoes por data futuras). docs/STATISTICS.md/docs/API-CONTRACTS.md ja escritos antes do codigo (sessao de planejamento do epic-016) - implementacao final confirmada aderente, sem divergencia. Fecha epic-016 da raiz."
     }
   ]
 }
