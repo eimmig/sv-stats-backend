@@ -74,16 +74,23 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveBySport(segments);
 			cacheRepository.saveByMarket(segments);
 			cacheRepository.saveByBettingHouse(segments);
+			cacheRepository.saveByLeague(segments);
+			cacheRepository.saveByTipster(segments);
 			cacheRepository.saveByBetType(segments);
 
 			assertThat(cacheRepository.findBySport().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findBySport().orElseThrow().get(0).dimensionId()).isEqualTo(sportId);
 			assertThat(cacheRepository.findByMarket().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByBettingHouse().orElseThrow()).hasSize(1);
+			assertThat(cacheRepository.findByLeague().orElseThrow()).hasSize(1);
+			assertThat(cacheRepository.findByTipster().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByBetType().orElseThrow()).hasSize(1);
 		}
 	}
 
+	// epic-018 (achado do plan review): prova que evict() inclui as 2 chaves novas - byLeague/
+	// byTipster obsoletos apos BetSettled seriam um bug silencioso (sem excecao, so cache
+	// desatualizado ate o TTL de seguranca de 1h) se esquecidos aqui.
 	@Test
 	void shouldEvictOverallSegmentsAndTheGivenMonth() {
 		try (var _ = TenantContextScope.open(newTenant())) {
@@ -92,6 +99,8 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveBySport(segments);
 			cacheRepository.saveByMarket(segments);
 			cacheRepository.saveByBettingHouse(segments);
+			cacheRepository.saveByLeague(segments);
+			cacheRepository.saveByTipster(segments);
 			cacheRepository.saveByBetType(segments);
 			cacheRepository.saveMonthly(2026, 9, sampleMetrics());
 
@@ -101,6 +110,8 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			assertThat(cacheRepository.findBySport()).isEmpty();
 			assertThat(cacheRepository.findByMarket()).isEmpty();
 			assertThat(cacheRepository.findByBettingHouse()).isEmpty();
+			assertThat(cacheRepository.findByLeague()).isEmpty();
+			assertThat(cacheRepository.findByTipster()).isEmpty();
 			assertThat(cacheRepository.findByBetType()).isEmpty();
 			assertThat(cacheRepository.findMonthly(2026, 9)).isEmpty();
 		}
