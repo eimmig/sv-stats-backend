@@ -3,7 +3,38 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-11
-**Feature ativa:** nenhuma — `feat-001`..`feat-015` `done`. Fecha `epic-014` da raiz.
+**Feature ativa:** nenhuma — `feat-001`..`feat-016` `done`. Fecha `epic-016` da raiz.
+
+## `feat-016` fechada — GET /api/v1/statistics/daily (2026-09-11)
+
+Fecha `epic-016` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). Novo endpoint `GET /api/v1/statistics/daily`: mesmos 7 filtros opcionais de
+`GET /api/v1/statistics`, granularidade diária (`DimDate.day/month/year`, mesma mecânica de
+`aggregateByMonth`), array esparso (só dias com pelo menos 1 aposta liquidada) ordenado por data
+ascendente, sem cache-aside. Contrato já escrito antes do código em `docs/STATISTICS.md`/
+`docs/API-CONTRACTS.md` (sessão de planejamento anterior) — implementação final confirmada
+aderente, sem divergência.
+
+3 subtasks (story SV-354): `feat-016.1` (SV-355, agregação diária via JPQL — `aggregateByDay`),
+`feat-016.2` (SV-356, `calculateDaily`/controller — reaproveita a regra RN04 de roi=ZERO via
+helper `roiOf` extraído de `toMetrics`), `feat-016.3` (SV-357, fechamento formal).
+
+**Achado MINOR do Plan Reviewer, confirmado sem problema**: `FUNCTION('make_date', d.year,
+d.month, d.day)` no `SELECT` combinado com `GROUP BY` nas colunas cruas era uma combinação nova
+neste codebase (`findOrderedSettledProfits` já usava `FUNCTION()` sem agregação;
+`aggregateByMonth` já usava `GROUP BY` sem `FUNCTION()`) — funcionou de primeira no teste de
+integração real (Testcontainers Postgres), sem precisar do fallback (`LocalDate.of` client-side)
+previsto no `plan_review`. Documentado em `docs/CONVENTIONS.md` (raiz) para reaproveitamento
+direto por futura agregação por data.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (14 arquivos): todos `PASS`.
+`./init.sh` verde. CI+SonarCloud verdes nas PRs #51/#52/#53 (subtask→feature) e #54
+(feature→develop). Achado de processo corrigido durante o fechamento desta sessão: a primeira
+tentativa marcou `feat-016.3` e `feat-016` `done` na mesma edição do JSON — corrigido antes do
+commit (regra "não pular o estado Review", ver `CLAUDE.md` raiz), separando em duas
+edições/`--sync-status` (subtask `done` → story `Review`; feature `done` numa edição posterior →
+story `Done`).
 
 ## `feat-014` fechada — build/push de imagem Docker pro GHCR, validado de verdade (2026-09-10)
 
