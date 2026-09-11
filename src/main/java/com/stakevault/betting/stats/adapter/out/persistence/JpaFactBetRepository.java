@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SearchAggregate;
@@ -52,12 +53,14 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public BetAggregate aggregateOverall(StatisticsFilter filter) {
-		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, resolve(filter)));
+		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID,
+				BetType.PRE, BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter) {
-		return jpaRepository.aggregateBySport(BetStatus.PENDING, resolve(filter))
+		return jpaRepository.aggregateBySport(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -65,7 +68,8 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByMarket(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMarket(BetStatus.PENDING, resolve(filter))
+		return jpaRepository.aggregateByMarket(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -73,7 +77,8 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter) {
-		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, resolve(filter))
+		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
 				.stream()
 				.map(JpaFactBetRepository::toSegment)
 				.toList();
@@ -81,7 +86,8 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMonth(BetStatus.PENDING, resolve(filter))
+		return jpaRepository.aggregateByMonth(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
 				.stream()
 				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
 						toAggregate(projection)))
@@ -113,13 +119,20 @@ public class JpaFactBetRepository implements FactBetRepository {
 				entity.getStatus(), entity.getBetType(), entity.getBetCount());
 	}
 
-	// SUM sobre um grupo vazio (nenhuma aposta liquidada) retorna null em SQL, nao zero.
+	// SUM/COUNT sobre um grupo vazio (nenhuma aposta liquidada) retorna null em SQL, nao zero -
+	// avgOdd e a excecao deliberada (fica null, nunca coalescido pra ZERO, mesmo tratamento ja
+	// usado por SearchAggregate.avgOdd).
 	private static BetAggregate toAggregate(AggregateProjection projection) {
 		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
 		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
 		long wonCount = projection.getWonCount() != null ? projection.getWonCount() : 0L;
+		long lostCount = projection.getLostCount() != null ? projection.getLostCount() : 0L;
+		long voidCount = projection.getVoidCount() != null ? projection.getVoidCount() : 0L;
+		long preCount = projection.getPreCount() != null ? projection.getPreCount() : 0L;
+		long liveCount = projection.getLiveCount() != null ? projection.getLiveCount() : 0L;
 		long settledCount = projection.getSettledCount() != null ? projection.getSettledCount() : 0L;
-		return new BetAggregate(totalStaked, netProfit, wonCount, settledCount);
+		return new BetAggregate(totalStaked, netProfit, wonCount, lostCount, voidCount, preCount, liveCount,
+				projection.getAvgOdd(), settledCount);
 	}
 
 	private static SegmentedBetAggregate toSegment(SegmentedAggregateProjection projection) {

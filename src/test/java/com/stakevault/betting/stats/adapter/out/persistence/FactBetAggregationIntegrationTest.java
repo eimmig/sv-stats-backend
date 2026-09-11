@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -85,6 +86,12 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 	private FactBet voidBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
 				null, null, stake, null, BigDecimal.ZERO, false, BetStatus.VOID, null, 1);
+	}
+
+	private FactBet settledBetWithTypeAndOdd(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake,
+			BigDecimal odd, BigDecimal profit, BetStatus status, BetType betType) {
+		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
+				null, null, stake, odd, profit, status == BetStatus.WON, status, betType, 1);
 	}
 
 	@Test
@@ -220,6 +227,51 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(100));
 			assertThat(aggregate.settledCount()).isEqualTo(1);
 			assertThat(aggregate.wonCount()).isEqualTo(1);
+		}
+	}
+
+	// epic-014: lostCount/voidCount/preCount/liveCount/avgOdd - campos novos sobre o mesmo
+	// agregado. wonCount continua vindo de isWin (nao duplicado via status = :won).
+	@Test
+	void shouldComputeLostVoidPreLiveAndAvgOddOnOverallAggregate() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), BetStatus.WON, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.5), BigDecimal.valueOf(-100), BetStatus.LOST, BetType.LIVE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100), null,
+					BigDecimal.ZERO, BetStatus.VOID, null));
+
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.wonCount()).isEqualTo(1);
+			assertThat(aggregate.lostCount()).isEqualTo(1);
+			assertThat(aggregate.voidCount()).isEqualTo(1);
+			assertThat(aggregate.preCount()).isEqualTo(1);
+			assertThat(aggregate.liveCount()).isEqualTo(1);
+			assertThat(aggregate.settledCount()).isEqualTo(3);
+			// AVG ignora null (so 2 das 3 apostas tem odd) - (2.0 + 1.5) / 2 = 1.75.
+			assertThat(aggregate.avgOdd()).isEqualByComparingTo(BigDecimal.valueOf(1.75));
+		}
+	}
+
+	@Test
+	void shouldReturnNullAvgOddWhenNoSettledBetHasOdd() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBet(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(50), true));
+
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.avgOdd()).isNull();
+			assertThat(aggregate.preCount()).isZero();
+			assertThat(aggregate.liveCount()).isZero();
 		}
 	}
 
