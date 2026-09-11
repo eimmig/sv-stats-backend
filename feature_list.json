@@ -1325,7 +1325,7 @@
         {
           "id": "feat-017.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-361",
           "detail": "Fecha a feature - docs/API-CONTRACTS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar aderencia, atualizar o marcador 'planejado' -> 'done' da secao correspondente).",
           "checklist": [
@@ -1339,7 +1339,7 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": "Fechada em 2026-09-11 (story SV-358, 3 subtasks SV-359..361, PRs #55/#56 subtask->feature). GET /api/v1/statistics ganha byLeague/byTipster, mesmo formato {dimensionId, dimensionName, metrics} de bySport/byMarket/byBettingHouse. aggregateByLeague e mirror exato de aggregateBySport/aggregateByMarket; aggregateByTipster exclui f.tipsterId IS NULL (campo opcional, diferente de leagueId sempre presente), mesmo padrao de aggregateByBetType. Cache-aside estendido (chaves segment:league/segment:tipster, nomeacao consistente com sport/market/house - achado MINOR #1 do plan review resolvido) - evict() passa a incluir as 2 chaves novas (achado MINOR #2 resolvido, coberto por teste de integracao dedicado que prova a lacuna nao existe). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao nos 4 segmentos existentes (bySport/byMarket/byBettingHouse/byBetType), os 2 achados MINOR do plan review confirmados resolvidos no codigo final. Test Suite Auditor: PASS - testes de integracao reais (Testcontainers Postgres) provam agrupamento por liga e exclusao de tipster nulo; testes de cache-aside (hit/miss) mirror do padrao existente; teste HTTP end-to-end confirma os 2 arrays no bundle e a exclusao de tipster nulo ponta a ponta; teste de integracao dedicado prova evict() real remove as 2 chaves novas junto das existentes. Persistence Auditor: PASS - mesmo padrao de join/predicado ja aceito nos 3 segmentos existentes, sem indice novo necessario (baixo volume por tenant, risco identico ja avaliado). ./init.sh do servico e da raiz verdes. docs/API-CONTRACTS.md/docs/services/stats-service.md (repositorio raiz) atualizados confirmando implementacao aderente ao planejado, secao marcada done. Fecha epic-018 da raiz. Libera epic-019 (web - menu por cadastro)."
     }
   ]
 }
