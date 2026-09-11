@@ -1129,7 +1129,7 @@
         {
           "id": "feat-015.3",
           "name": "Segmento byBetType (6o segmento, dimensionId String)",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-346",
           "detail": "Achados MAJOR do Plan Reviewer: dimensionId de SegmentedBetAggregate/SegmentedBetMetrics muda de UUID pra String (PRE/LIVE nao sao uuid de catalogo) - atualizar os 5 arquivos de teste que ja referenciam esse tipo; projecao de byBetType expoe o getter no tipo real do enum (BetTypeAggregateProjection.getBetType():BetType), conversao pra String (.name()) feita explicitamente no adapter, nao implicita na projecao Spring Data.",
           "checklist": [

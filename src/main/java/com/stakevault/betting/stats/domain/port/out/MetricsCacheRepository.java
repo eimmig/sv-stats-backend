@@ -27,6 +27,10 @@ public interface MetricsCacheRepository {
 
 	void saveByBettingHouse(List<SegmentedBetMetrics> metrics);
 
+	Optional<List<SegmentedBetMetrics>> findByBetType();
+
+	void saveByBetType(List<SegmentedBetMetrics> metrics);
+
 	Optional<BetMetrics> findMonthly(int year, int month);
 
 	void saveMonthly(int year, int month, BetMetrics metrics);

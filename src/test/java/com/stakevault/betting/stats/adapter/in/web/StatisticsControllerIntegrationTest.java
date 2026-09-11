@@ -20,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -77,6 +78,10 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	private UUID seedSettledBet(String sportName) {
+		return seedSettledBet(sportName, null);
+	}
+
+	private UUID seedSettledBet(String sportName, BetType betType) {
 		try (var _ = TenantContextScope.open(schema)) {
 			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), sportName)).id();
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
@@ -84,7 +89,8 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 			UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
 			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
-					null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50), true, BetStatus.WON, null, 1));
+					null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50), true, BetStatus.WON, betType,
+					1));
 			return sportId;
 		}
 	}
@@ -113,6 +119,33 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		try (var _ = TenantContextScope.open(schema)) {
 			assertThat(redisTemplate.hasKey("tenant:" + tenantSlug + ":dashboard:consolidated")).isTrue();
 		}
+	}
+
+	// epic-014: byBetType e o 6o segmento, so 2 buckets fixos - a aposta sem betType classificado
+	// (seedSettledBet default) nao aparece em nenhum dos dois.
+	@Test
+	void shouldReturnByBetTypeSegmentWithExactlyTwoBuckets() throws Exception {
+		seedSettledBet("Soccer", BetType.PRE);
+		seedSettledBet("Soccer", BetType.LIVE);
+		seedSettledBet("Soccer");
+
+		HttpResponse<String> response = get(null, "X-Tenant-Id", tenantSlug);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		JsonNode body = objectMapper.readTree(response.body());
+		assertThat(body.path("byBetType")).hasSize(2);
+		JsonNode pre = findByDimensionId(body.path("byBetType"), "PRE");
+		assertThat(pre.path("dimensionName").asString()).isEqualTo("PRE");
+		assertThat(pre.path("metrics").path("settledCount").asInt()).isEqualTo(1);
+	}
+
+	private static JsonNode findByDimensionId(JsonNode array, String dimensionId) {
+		for (JsonNode node : array) {
+			if (dimensionId.equals(node.path("dimensionId").asString())) {
+				return node;
+			}
+		}
+		throw new AssertionError("dimensionId not found: " + dimensionId);
 	}
 
 	@Test

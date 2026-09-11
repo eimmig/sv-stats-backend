@@ -94,6 +94,18 @@ public class JpaFactBetRepository implements FactBetRepository {
 				.toList();
 	}
 
+	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
+	// ficam de fora dos dois (WHERE f.betType IS NOT NULL na query). dimensionId/dimensionName =
+	// o proprio valor do enum (.name()), unico segmento sem uuid de catalogo por tras.
+	@Override
+	public List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter) {
+		return jpaRepository.aggregateByBetType(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
+				.stream()
+				.map(JpaFactBetRepository::toBetTypeSegment)
+				.toList();
+	}
+
 	@Override
 	public SearchAggregate aggregateForSearch(StatisticsSearchFilter filter) {
 		AggregateWithOddProjection projection = jpaRepository.aggregateForSearch(BetStatus.PENDING, resolve(filter));
@@ -136,7 +148,12 @@ public class JpaFactBetRepository implements FactBetRepository {
 	}
 
 	private static SegmentedBetAggregate toSegment(SegmentedAggregateProjection projection) {
-		return new SegmentedBetAggregate(projection.getDimensionId(), projection.getDimensionName(),
+		return new SegmentedBetAggregate(projection.getDimensionId().toString(), projection.getDimensionName(),
+				toAggregate(projection));
+	}
+
+	private static SegmentedBetAggregate toBetTypeSegment(BetTypeAggregateProjection projection) {
+		return new SegmentedBetAggregate(projection.getBetType().name(), projection.getBetType().name(),
 				toAggregate(projection));
 	}
 

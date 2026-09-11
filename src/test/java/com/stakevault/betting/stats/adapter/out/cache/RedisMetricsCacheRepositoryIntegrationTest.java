@@ -68,17 +68,19 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 	@Test
 	void shouldRoundTripSegmentedList() {
 		try (var _ = TenantContextScope.open(newTenant())) {
-			UUID sportId = UUID.randomUUID();
+			String sportId = UUID.randomUUID().toString();
 			List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(sportId, "Soccer", sampleMetrics()));
 
 			cacheRepository.saveBySport(segments);
 			cacheRepository.saveByMarket(segments);
 			cacheRepository.saveByBettingHouse(segments);
+			cacheRepository.saveByBetType(segments);
 
 			assertThat(cacheRepository.findBySport().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findBySport().orElseThrow().get(0).dimensionId()).isEqualTo(sportId);
 			assertThat(cacheRepository.findByMarket().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByBettingHouse().orElseThrow()).hasSize(1);
+			assertThat(cacheRepository.findByBetType().orElseThrow()).hasSize(1);
 		}
 	}
 
@@ -90,6 +92,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveBySport(segments);
 			cacheRepository.saveByMarket(segments);
 			cacheRepository.saveByBettingHouse(segments);
+			cacheRepository.saveByBetType(segments);
 			cacheRepository.saveMonthly(2026, 9, sampleMetrics());
 
 			cacheRepository.evict(2026, 9);
@@ -98,6 +101,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			assertThat(cacheRepository.findBySport()).isEmpty();
 			assertThat(cacheRepository.findByMarket()).isEmpty();
 			assertThat(cacheRepository.findByBettingHouse()).isEmpty();
+			assertThat(cacheRepository.findByBetType()).isEmpty();
 			assertThat(cacheRepository.findMonthly(2026, 9)).isEmpty();
 		}
 	}
