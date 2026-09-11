@@ -1021,9 +1021,10 @@
       "dependencies": [
         "feat-011"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) - READY WITH CONCERNS. Achados: MAJOR - packages: write no permissions do job so e concedido se o repositorio tiver 'Workflow permissions' = Read and write em Settings > Actions > General (default de repositorio novo costuma vir restrito a leitura, e nesse caso o job-level permissions e limitado silenciosamente, push falha com 403 em vez de erro de sintaxe) - verificar/configurar antes do primeiro push em main. MINOR (confirmado contra a documentacao oficial do docker/build-push-action) - nao obrigatorio mas recomendado adicionar docker/setup-buildx-action antes do build, incluido no plano corrigido. Escopo confirmado: PAT/imagePullSecrets do cluster de deploy fica fora desta feature.",
       "jira": "SV-328",
+      "evidence": "",
       "subtasks": [
         {
           "id": "feat-014.1",
@@ -1055,9 +1056,21 @@
           "owner": "agente",
           "status": "done",
           "jira": "SV-330"
+        },
+        {
+          "id": "feat-014.3",
+          "name": "Corrigir SHA pin (S7637) e guard de qualitygate.wait achados na verificacao",
+          "detail": "2 achados reais descobertos so ao verificar de ponta a ponta contra o GitHub de verdade (nao previstos no Plan Review original): SonarCloud reprovou o quality gate por actions de terceiro pinadas por tag mutavel (@v3/@v6, regra githubactions:S7637 - risco de supply-chain); e o guard que pula sonar.qualitygate.wait em push direto cobria so ref_name == develop, mas a mesma causa raiz (primeira analise de uma branch longa sem leak period, API devolve status NONE tratado como reprovado) tambem acontece na primeira analise de main.",
+          "checklist": [
+            "3 actions (setup-buildx-action/login-action/build-push-action) pinadas por SHA completo do commit, versao em comentario",
+            "Guard do passo 5/6 ampliado de 'push para develop' para qualquer push direto (github.event_name == 'push')"
+          ],
+          "validation": "SonarCloud Code Analysis verde no PR develop->main; push real em main sem reprovar o quality gate.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-336"
         }
-      ],
-      "evidence": ""
+      ]
     }
   ]
 }

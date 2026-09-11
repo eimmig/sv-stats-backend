@@ -59,7 +59,10 @@ jobs:
         run: mvn -B verify
 
       # 5. SonarCloud - pulado em PR de subtask, ver docs/CI-CD.md. qualitygate.wait pulado em
-      # push p/ develop (API recusa computar gate pra branch != main, mesma causa raiz do passo 6)
+      # qualquer push direto (nao so develop - achado real feat-014, 2026-09-10: a primeira
+      # analise de uma branch longa nova, main incluso, nao tem leak period definido, API
+      # devolve status "NONE" em vez de "OK"/"ERROR" e o plugin trata isso como reprovado; o
+      # ponto de bloqueio real sempre foi a PR, nao o push)
       - name: SonarCloud
         if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true'
         env:
@@ -67,7 +70,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           WAIT_FLAG="-Dsonar.qualitygate.wait=true"
-          if [ "${{ github.event_name == 'push' && github.ref_name == 'develop' }}" = "true" ]; then
+          if [ "${{ github.event_name == 'push' }}" = "true" ]; then
             WAIT_FLAG=""
           fi
           mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
@@ -76,9 +79,9 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             $WAIT_FLAG
 
-      # 6. Gate de issue/hotspot do SonarCloud - pulado em push p/ develop (API bloqueia branch != main)
+      # 6. Gate de issue/hotspot do SonarCloud - pulado em qualquer push direto (mesmo racional do passo 5)
       - name: Validar zero issues no SonarCloud
-        if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true' && !(github.event_name == 'push' && github.ref_name == 'develop')
+        if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true' && github.event_name != 'push'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >

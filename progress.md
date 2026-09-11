@@ -3,8 +3,34 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-10
-**Feature ativa:** nenhuma — `feat-001`..`feat-013` `done` (`feat-013` fechada nesta sessão,
-addendum sobre `epic-011` da raiz, descoberto planejando `apps/web feat-012`).
+**Feature ativa:** nenhuma — `feat-001`..`feat-014` `done`.
+
+## `feat-014` fechada — build/push de imagem Docker pro GHCR, validado de verdade (2026-09-10)
+
+`feat-014.1`/`feat-014.2` já estavam `done` de uma sessão anterior (job no `ci.yml`, permissions
+conferidas, CHANGELOG), mas a validação real ("push em main, job verde, imagem publicada") nunca
+tinha ocorrido — a branch `main` deste serviço nunca tinha recebido merge de `develop`. Fechado
+nesta sessão retomando o trabalho: encontrado como feature `in-progress` bloqueando o WIP deste
+harness ao tentar iniciar `epic-014` da raiz (extensão do dashboard), decisão confirmada com o
+usuário antes de agir (fechar isso primeiro em vez de deixar pendente).
+
+`develop` promovido pra `main` por PR (mesmo padrão já usado por `auth-service`). O push real
+revelou um achado de verdade, não hipotético: a etapa SonarCloud do `pipeline` falhou **só** na
+branch `main` ("QUALITY GATE STATUS: FAILED"), bloqueando `build-and-push-image`
+(`needs: pipeline`). Investigado a fundo via API do SonarCloud (token de `tools/.sonar.env`) em
+vez de assumir causa: `qualitygates/project_status?analysisId=...` devolveu `status: "NONE"` com
+`conditions: []` — zero condições reprovadas, não é problema de qualidade real. Confirmado contra
+o código-fonte oficial do SonarQube (`ProjectStatusAction.java`) que `NONE` "é retornado quando
+não há quality gate associada àquela análise", e contra o `sonar-scanner-engine`
+(`QualityGateCheck.java`) que trata qualquer status != `OK` (inclusive `NONE`) como `FAILED` —
+por isso o log mostrava falha sem nenhuma condição real. Causa: primeira análise de sempre da
+branch `main`, sem baseline de "New Code" pra comparar. `gh run rerun` no mesmo commit **não**
+resolveu (testado, descarta race condition simples) — corrigido só depois do usuário ajustar o
+New Code Definition do projeto no dashboard do SonarCloud (sem API pública de escrita pra essa
+config). Novo push (commit vazio) passou limpo, imagem confirmada no log do próprio job
+(`ghcr.io/eimmig/sv-stats-backend:latest`+`:<sha>`, digest `sha256:e47e6424...`). Achado
+registrado em `docs/CI-CD.md` (raiz) — outros serviços que ainda não fizeram o primeiro merge
+`develop`→`main` podem bater no mesmo problema.
 
 ## `feat-013` fechada — DIM_TEAM escopado por esporte + GET /api/v1/statistics/teams (2026-09-10)
 
