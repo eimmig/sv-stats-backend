@@ -1218,7 +1218,7 @@
         {
           "id": "feat-016.1",
           "name": "Agregacao diaria (domain + port + query JPQL + repository) com teste de integracao real",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-355",
           "detail": "Mirror de MonthlyBetAggregate/aggregateByMonth, shape mais enxuto (so totalStaked/netProfit/betCount, sem os campos que overall/monthly carregam e que a resposta de /daily nao expoe). Achado MINOR do Plan Reviewer: a combinacao FUNCTION(make_date)+GROUP BY nas colunas cruas e nova - o teste de integracao real e quem confirma que funciona, com fallback documentado no plan_review se nao funcionar.",
           "checklist": [
@@ -1235,7 +1235,7 @@
         {
           "id": "feat-016.2",
           "name": "Endpoint GET /api/v1/statistics/daily (roi + controller)",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-356",
           "detail": "calculateDaily entra em CalculateMetricsUseCase/CalculateMetricsService (mesma familia de calculateMonthly), reaproveitando a regra de roi=ZERO-se-totalStaked=0 via helper privado estatico compartilhado com toMetrics (evita duplicacao).",
           "checklist": [
