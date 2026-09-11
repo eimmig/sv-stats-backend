@@ -69,7 +69,11 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	private HttpResponse<String> get(String query, String... headers) throws Exception {
-		String uri = "http://localhost:" + port + "/api/v1/statistics" + (query == null ? "" : "?" + query);
+		return getPath("/api/v1/statistics", query, headers);
+	}
+
+	private HttpResponse<String> getPath(String path, String query, String... headers) throws Exception {
+		String uri = "http://localhost:" + port + path + (query == null ? "" : "?" + query);
 		HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(uri)).GET();
 		for (int i = 0; i < headers.length; i += 2) {
 			builder.header(headers[i], headers[i + 1]);
@@ -167,5 +171,33 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		HttpResponse<String> response = get(null);
 
 		assertThat(response.statusCode()).isEqualTo(400);
+	}
+
+	// epic-016: shape enxuto (date/totalStaked/netProfit/roi/betCount), array com 1 item pro
+	// unico dia semeado - confirma o contrato real de docs/API-CONTRACTS.md via HTTP end-to-end.
+	@Test
+	void shouldReturnDailyBreakdownForSettledBet() throws Exception {
+		seedSettledBet("Soccer");
+
+		HttpResponse<String> response = getPath("/api/v1/statistics/daily", null, "X-Tenant-Id", tenantSlug);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		JsonNode body = objectMapper.readTree(response.body());
+		assertThat(body).hasSize(1);
+		JsonNode day = body.get(0);
+		assertThat(day.path("date").asString()).isEqualTo("2026-09-06");
+		assertThat(day.path("totalStaked").asDouble()).isEqualTo(100.0);
+		assertThat(day.path("netProfit").asDouble()).isEqualTo(50.0);
+		assertThat(day.path("roi").asDouble()).isEqualTo(0.5);
+		assertThat(day.path("betCount").asInt()).isEqualTo(1);
+	}
+
+	@Test
+	void shouldReturnEmptyArrayFromDailyBreakdownWhenNoSettledBetExists() throws Exception {
+		HttpResponse<String> response = getPath("/api/v1/statistics/daily", null, "X-Tenant-Id", tenantSlug);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		JsonNode body = objectMapper.readTree(response.body());
+		assertThat(body).isEmpty();
 	}
 }

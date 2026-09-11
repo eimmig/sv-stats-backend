@@ -17,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
+import com.stakevault.betting.stats.domain.model.DailyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
@@ -107,5 +109,23 @@ class CalculateMetricsServiceTest {
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).dimensionId()).isEqualTo("PRE");
 		assertThat(result.get(0).dimensionName()).isEqualTo("PRE");
+	}
+
+	// epic-016: mesma regra RN04 de calculateOverall (roi=ZERO se totalStaked=0), reaproveitada
+	// pelo helper privado roiOf - shape enxuto (sem wonCount/avgOdd/etc).
+	@Test
+	void shouldComputeDailyRoiReusingTheSameZeroSafeDivision() {
+		java.time.LocalDate day = java.time.LocalDate.of(2026, 9, 6);
+		when(factBetRepository.aggregateByDay(StatisticsFilter.none())).thenReturn(List.of(
+				new DailyBetAggregate(day, BigDecimal.valueOf(200), BigDecimal.valueOf(-50), 2),
+				new DailyBetAggregate(day.plusDays(1), BigDecimal.ZERO, BigDecimal.ZERO, 0)));
+
+		List<DailyBetMetrics> result = service.calculateDaily(StatisticsFilter.none());
+
+		assertThat(result).hasSize(2);
+		assertThat(result.get(0).date()).isEqualTo(day);
+		assertThat(result.get(0).roi()).isEqualByComparingTo(BigDecimal.valueOf(-0.25));
+		assertThat(result.get(0).betCount()).isEqualTo(2);
+		assertThat(result.get(1).roi()).isEqualByComparingTo(BigDecimal.ZERO);
 	}
 }
