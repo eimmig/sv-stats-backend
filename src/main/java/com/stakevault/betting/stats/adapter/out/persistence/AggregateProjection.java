@@ -10,5 +10,15 @@ interface AggregateProjection {
 
 	Long getWonCount();
 
+	Long getLostCount();
+
+	Long getVoidCount();
+
+	Long getPreCount();
+
+	Long getLiveCount();
+
+	BigDecimal getAvgOdd();
+
 	Long getSettledCount();
 }

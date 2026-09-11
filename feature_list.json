@@ -1112,7 +1112,7 @@
         {
           "id": "feat-015.2",
           "name": "wonCount/lostCount/voidCount/preCount/liveCount/avgOdd nos 5 agregados existentes",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-345",
           "detail": "Achado MAJOR do Plan Reviewer: toda comparacao de enum nas 5 queries JPQL usa parametro @Param tipado (BetStatus/BetType), nunca literal de string solto - mesma convencao ja usada por :pending, garante que o AttributeConverter seja aplicado corretamente.",
           "checklist": [

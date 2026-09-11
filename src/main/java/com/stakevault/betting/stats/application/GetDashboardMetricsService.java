@@ -17,7 +17,7 @@ import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 
 	private static final BetMetrics ZERO_METRICS = new BetMetrics(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-			BigDecimal.ZERO, 0);
+			BigDecimal.ZERO, 0, 0, 0, 0, 0, 0, null);
 
 	private final CalculateMetricsUseCase calculateMetrics;
 	private final MetricsCacheRepository cache;

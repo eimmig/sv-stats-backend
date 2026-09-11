@@ -41,7 +41,7 @@ class GetDashboardMetricsServiceTest {
 
 	private BetMetrics sampleMetrics() {
 		return new BetMetrics(BigDecimal.valueOf(100), BigDecimal.valueOf(50), BigDecimal.valueOf(0.5),
-				BigDecimal.valueOf(0.5), 1);
+				BigDecimal.valueOf(0.5), 1, 1, 0, 0, 0, 0, BigDecimal.valueOf(1.92));
 	}
 
 	@Test
@@ -132,6 +132,6 @@ class GetDashboardMetricsServiceTest {
 		service.getMonthly(2026, 1);
 
 		verify(cache).saveMonthly(2026, 1, new BetMetrics(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-				BigDecimal.ZERO, 0));
+				BigDecimal.ZERO, 0, 0, 0, 0, 0, 0, null));
 	}
 }
