@@ -2,8 +2,8 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-10
-**Feature ativa:** nenhuma — `feat-001`..`feat-014` `done`.
+**Última atualização:** 2026-09-11
+**Feature ativa:** nenhuma — `feat-001`..`feat-015` `done`. Fecha `epic-014` da raiz.
 
 ## `feat-014` fechada — build/push de imagem Docker pro GHCR, validado de verdade (2026-09-10)
 
@@ -416,3 +416,54 @@ Build real e execução real testados contra a infra (`postgres-stats`, `rabbitm
 `/actuator/health` UP. Imagem usada de fato pelos manifests Kubernetes de `infra/feat-004`. 1
 subtask (SV-281, story SV-280), 2 PRs (#37 subtask->feature, #38 feature->develop), CI+SonarCloud
 verdes nos dois.
+
+## `feat-015` fechada — extensão do dashboard consolidado: PRE/LIVE, avgOdd, won/lost/void, byBetType (2026-09-11)
+
+Fecha `epic-014` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). `GET /api/v1/statistics` ganha `wonCount`/`lostCount`/`voidCount`/`preCount`/
+`liveCount`/`avgOdd` em `overall`/`bySport`/`byMarket`/`byBettingHouse`/`monthly`, mais um 6º
+segmento `byBetType` (2 buckets fixos `PRE`/`LIVE`). Contrato já escrito antes do código em
+`docs/API-CONTRACTS.md`/`docs/STATISTICS.md`/`docs/services/stats-service.md` (sessão de
+planejamento anterior) — esta feature foi puramente implementação contra um design já fechado.
+
+4 subtasks (story SV-343): `feat-015.1` (SV-344, `FACT_BET.betType` persistido — gravado só no
+*insert* de `BetCreated`, preservado no *upsert* de `BetSettled` porque aquele payload não carrega
+`betType`, mesmo padrão exato já usado para `dateId`; enum `BetType` com `AttributeConverter`
+dedicado, mesmo padrão de `BetStatusAttributeConverter`), `feat-015.2` (SV-345, campos novos nas 5
+queries JPQL existentes), `feat-015.3` (SV-346, segmento `byBetType` — `dimensionId` migrado de
+`UUID` para `String` em `SegmentedBetAggregate`/`SegmentedBetMetrics`, único segmento sem uuid de
+catálogo por trás), `feat-015.4` (SV-347, fechamento formal).
+
+**3 achados MAJOR do Plan Reviewer, corrigidos antes do código** (não exigiram decisão do
+usuário): (1) toda comparação de enum nas queries JPQL deve usar `@Param` tipado, nunca literal de
+string solto (`f.status = 'LOST'`) — o codebase já evitava esse padrão desde `feat-006`
+(`:pending`), aqui só ficou explícito o porquê: literal de string arriscaria o
+`AttributeConverter` não ser aplicado de forma garantida. (2) projeção de `byBetType` expõe o
+getter no tipo real do enum (`BetTypeAggregateProjection.getBetType(): BetType`), conversão pra
+`String` feita explicitamente no adapter (`JpaFactBetRepository`), não implícita numa projeção
+Spring Data. (3) mudança de tipo `dimensionId` exigiu atualizar 5 arquivos de teste que já
+referenciavam `UUID` — listado explicitamente no plano pra não subestimar o escopo.
+
+**Achado real do Delivery Reviewer** (self-review, sem subagentes — independência reduzida,
+declarada, mesmo padrão já usado nas demais features deste serviço): o exemplo JSON de
+`byBetType` em `docs/API-CONTRACTS.md` (escrito na sessão de planejamento, antes do código) não
+mostrava `preCount`/`liveCount` nos itens do segmento — a decisão de implementação (reaproveitar o
+mesmo `record` `BetMetrics` dos outros 5 segmentos em vez de um tipo apartado, já confirmada no
+`plan_review`) inclui esses 2 campos ali também, ainda que triviais dentro do próprio bucket
+(`PRE` sempre tem `preCount == settledCount`). Doc corrigido pra bater com a implementação real,
+no mesmo commit de fechamento.
+
+**Achado do self-review durante a implementação, refutado com evidência** (não virou subtask): a
+preocupação de que estender `BetMetrics` quebraria a deserialização de entradas já cacheadas no
+Redis de antes do deploy não se confirmou — Jackson 3 (`tools.jackson`, autoconfiguração padrão do
+Spring Boot 4, sem override de estrita neste repositório) preenche componente de `record` ausente
+no JSON com o *default* do tipo (`0`/`0L`, `null`) em vez de lançar exceção. Risco residual aceito
+(até 1h de TTL com campos novos zerados/nulos num cache pré-deploy), documentado mas não corrigido
+— não é um problema introduzido por esta feature, é comportamento pré-existente do framework.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (37 arquivos): todos `PASS`.
+`./init.sh` (`mvn verify`, JaCoCo 80%) verde localmente com Docker ativo em cada uma das 4
+subtasks. CI+SonarCloud verdes nas 4 PRs de subtask e na PR `feature/SV-343 -> develop` (#50).
+`docs/API-CONTRACTS.md`/`docs/services/stats-service.md` (repositório raiz) atualizados no commit
+de fechamento. Fecha `epic-014` da raiz.

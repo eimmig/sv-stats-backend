@@ -2,32 +2,27 @@
 
 ## Current Objective
 
-- `epic-004` (raiz) `done`. `epic-014` (raiz, extensão do dashboard consolidado) `in-progress` —
-  claimed nesta sessão, ainda sem feature granular criada aqui (próximo passo).
-- Branch / commit: `develop` @ `8582fef` (close de `feat-014`, Docker/GHCR).
+- `epic-004` e `epic-014` (raiz) `done`. Nenhuma feature em andamento neste serviço.
+- Branch / commit: `develop` @ `d9112c8` (merge de `feature/SV-343`, fecha `feat-015`).
 
-## Completed This Session (2026-09-10)
+## Completed This Session (2026-09-11)
 
-- [x] **`feat-014` fechada** (Docker/GHCR publish, story SV-328) — encontrada `in-progress` de
-      uma sessão anterior (subtasks já `done`, mas validação real nunca tinha ocorrido) enquanto
-      tentando iniciar `epic-014` da raiz aqui — WIP máximo 1 por serviço bloqueava. Fechado:
-      primeiro merge `develop`→`main` deste serviço (PR #42, depois #44), imagem confirmada
-      publicada em `ghcr.io/eimmig/sv-stats-backend`.
-- [x] **Resolvido o "não investigado" da sessão anterior** sobre o SonarCloud usar janela de "New
-      Code" por tempo: não era isso. O problema real era a **primeira análise de sempre da branch
-      `main`** sem baseline de New Code, retornando `status: "NONE"` (confirmado via API do
-      SonarCloud + código-fonte do `sonar-scanner-engine`) que o scanner mal-interpreta como
-      `FAILED`. Corrigido ajustando o New Code Definition do projeto no dashboard SonarCloud
-      (usuário). Documentado em `docs/CI-CD.md` (raiz) — outros serviços sem merge pra `main`
-      ainda podem bater no mesmo problema.
+- [x] **`feat-015` fechada** (extensão do dashboard consolidado, story SV-343, 4 subtasks
+      SV-344..347) — `GET /api/v1/statistics` ganha `wonCount`/`lostCount`/`voidCount`/
+      `preCount`/`liveCount`/`avgOdd` em `overall`/`bySport`/`byMarket`/`byBettingHouse`/
+      `monthly`, mais 6º segmento `byBetType` (2 buckets fixos `PRE`/`LIVE`). `FACT_BET.betType`
+      persistido (insert-only em `BetCreated`, preservado no upsert de `BetSettled`). Fecha
+      `epic-014` da raiz. Ver `progress.md` para o detalhe completo (3 achados MAJOR do Plan
+      Reviewer, 1 achado real do Delivery Reviewer — doc drift em `docs/API-CONTRACTS.md`
+      corrigido).
 
 ## Verification Evidence
 
 | Check | Command | Result | Notes |
 |---|---|---|---|
-| `./init.sh` | — | pass | Nenhum código tocado nesta sessão, só CI/CD e docs. |
-| CI real em `main` | GitHub Actions | pass | PR #44, `pipeline` + `build-and-push-image` verdes após o fix do SonarCloud. |
-| Imagem no GHCR | log do job `build-and-push-image` | confirmado | `ghcr.io/eimmig/sv-stats-backend:latest`+`:<sha>`, digest `sha256:e47e6424...`. |
+| `./init.sh` | `mvn verify`, JaCoCo 80% | pass | Verde em cada uma das 4 subtasks. |
+| CI+SonarCloud | GitHub Actions | pass | 4 PRs de subtask + PR `feature/SV-343 -> develop` (#50), todos verdes. |
+| Delivery/Test Suite/Persistence Auditor | passe próprio, sem subagentes | PASS/PASS/PASS | Achado real corrigido: doc `byBetType` sem `preCount`/`liveCount`. |
 
 ## Blockers / Risks
 
@@ -36,18 +31,16 @@ Nenhum.
 ## Next Session Startup
 
 1. Ler `../../CLAUDE.md` e o `CLAUDE.md` deste serviço.
-2. Ler `docs/STATISTICS.md` (raiz) antes de codificar `epic-014` — as fórmulas novas
-   (wonCount/lostCount/voidCount/preCount/liveCount/avgOdd/byBetType) precisam estar lá antes do
-   código, por convenção do harness.
-3. Rodar `./init.sh` (deve passar).
-4. Criar a feature granular (`feat-015`) em `feature_list.json` deste serviço pra `epic-014` da
-   raiz, com Plan Reviewer antes de codificar — ver descrição completa do epic em
-   `../../feature_list.json`.
+2. Rodar `./init.sh` (deve passar).
+3. Backlog deste serviço esgotado (`feat-001`..`feat-015` `done`). Próximos epics elegíveis da
+   raiz sobre `stats-service`: `epic-016` (quebra diária, `GET /api/v1/statistics/daily`) e
+   `epic-018` (segmentos `byLeague`/`byTipster`) — ambos só dependem de `epic-004` (`done`),
+   podem avançar em qualquer ordem. Ver `../../feature_list.json` para a descrição completa e
+   `../../session-handoff.md` (raiz) pro racional de escolha entre os epics elegíveis de todos os
+   serviços.
 
 ## Recommended Next Step
 
-- **`epic-014` (raiz)**: `GET /api/v1/statistics` ganha `wonCount`/`lostCount`/`voidCount`,
-  `preCount`/`liveCount` (a partir de `FACT_BET.betType`, populado só no insert de `BetCreated`),
-  `avgOdd`, e o segmento novo `byBetType` (2 buckets fixos PRE/LIVE). Atenção ao risco de colisão
-  de coluna já sinalizado na descrição do epic: se `epic-011`/`epic-018` (mesma raiz) também
-  tocarem `FACT_BET.odd`, confirmar no Plan Reviewer quem chega primeiro.
+Nenhuma feature de negócio pendente neste serviço até que o usuário/raiz decida qual dos epics
+elegíveis (`epic-016`/`epic-018`) entra em seguida — criar a feature granular (`feat-016`) em
+`feature_list.json` deste serviço com Plan Reviewer antes de codificar.
