@@ -47,6 +47,11 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 	}
 
 	@Override
+	public List<SegmentedBetMetrics> calculateByBetType(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateByBetType(filter));
+	}
+
+	@Override
 	public List<MonthlyBetMetrics> calculateMonthly(StatisticsFilter filter) {
 		return factBetRepository.aggregateByMonth(filter)
 				.stream()
@@ -70,6 +75,8 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 		BigDecimal winRate = aggregate.settledCount() == 0 ? BigDecimal.ZERO
 				: BigDecimal.valueOf(aggregate.wonCount())
 						.divide(BigDecimal.valueOf(aggregate.settledCount()), SCALE, RoundingMode.HALF_UP);
-		return new BetMetrics(aggregate.totalStaked(), aggregate.netProfit(), roi, winRate, aggregate.settledCount());
+		return new BetMetrics(aggregate.totalStaked(), aggregate.netProfit(), roi, winRate, aggregate.settledCount(),
+				aggregate.wonCount(), aggregate.lostCount(), aggregate.voidCount(), aggregate.preCount(),
+				aggregate.liveCount(), aggregate.avgOdd());
 	}
 }

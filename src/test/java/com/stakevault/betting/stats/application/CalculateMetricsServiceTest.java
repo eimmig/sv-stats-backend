@@ -49,7 +49,7 @@ class CalculateMetricsServiceTest {
 	void shouldComputeRoiAndWinRateFromAggregate(String staked, String profit, long won, long settled, String roi,
 			String winRate) {
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
-				new BetAggregate(new BigDecimal(staked), new BigDecimal(profit), won, settled));
+				new BetAggregate(new BigDecimal(staked), new BigDecimal(profit), won, 0, 0, 0, 0, null, settled));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 
@@ -58,12 +58,30 @@ class CalculateMetricsServiceTest {
 		assertThat(metrics.settledCount()).isEqualTo(settled);
 	}
 
+	// epic-014: os campos novos so precisam ser copiados do agregado bruto pra metrica de negocio
+	// - a formula/decisao de negocio (contagem/media) ja e provada no repositorio.
+	@Test
+	void shouldCopyNewCountsAndAvgOddFromAggregateToMetrics() {
+		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
+				new BetAggregate(BigDecimal.valueOf(300), BigDecimal.valueOf(-50), 1, 1, 1, 1, 1,
+						BigDecimal.valueOf(1.75), 3));
+
+		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
+
+		assertThat(metrics.wonCount()).isEqualTo(1);
+		assertThat(metrics.lostCount()).isEqualTo(1);
+		assertThat(metrics.voidCount()).isEqualTo(1);
+		assertThat(metrics.preCount()).isEqualTo(1);
+		assertThat(metrics.liveCount()).isEqualTo(1);
+		assertThat(metrics.avgOdd()).isEqualByComparingTo(BigDecimal.valueOf(1.75));
+	}
+
 	@Test
 	void shouldMapSegmentedAggregatesPreservingDimensionIdentity() {
-		UUID sportId = UUID.randomUUID();
+		String sportId = UUID.randomUUID().toString();
 		when(factBetRepository.aggregateBySport(StatisticsFilter.none())).thenReturn(
 				List.of(new SegmentedBetAggregate(sportId, "Soccer",
-						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 1))));
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1))));
 
 		List<SegmentedBetMetrics> result = service.calculateBySport(StatisticsFilter.none());
 
@@ -73,5 +91,21 @@ class CalculateMetricsServiceTest {
 		assertThat(segment.dimensionName()).isEqualTo("Soccer");
 		assertThat(segment.metrics().roi()).isEqualByComparingTo(BigDecimal.valueOf(0.5));
 		assertThat(segment.metrics().winRate()).isEqualByComparingTo(BigDecimal.ONE);
+	}
+
+	// epic-014: dimensionId de byBetType e o proprio valor do enum ("PRE"/"LIVE"), nao um uuid -
+	// mesmo caminho de mapeamento dos outros segmentos, so a fonte do agregado muda.
+	@Test
+	void shouldMapByBetTypeSegmentUsingEnumNameAsDimensionId() {
+		when(factBetRepository.aggregateByBetType(StatisticsFilter.none())).thenReturn(
+				List.of(new SegmentedBetAggregate("PRE", "PRE",
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 1, 0,
+								BigDecimal.valueOf(1.9), 1))));
+
+		List<SegmentedBetMetrics> result = service.calculateByBetType(StatisticsFilter.none());
+
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).dimensionId()).isEqualTo("PRE");
+		assertThat(result.get(0).dimensionName()).isEqualTo("PRE");
 	}
 }

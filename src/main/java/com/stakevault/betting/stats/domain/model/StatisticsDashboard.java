@@ -6,5 +6,5 @@ import java.util.List;
 // AskUserQuestion) entre bundle unico/resposta minima+groupBy/endpoints separados por segmento.
 public record StatisticsDashboard(BetMetrics overall, List<SegmentedBetMetrics> bySport,
 		List<SegmentedBetMetrics> byMarket, List<SegmentedBetMetrics> byBettingHouse,
-		List<MonthlyBetMetrics> monthly) {
+		List<MonthlyBetMetrics> monthly, List<SegmentedBetMetrics> byBetType) {
 }

@@ -18,4 +18,6 @@ public interface CalculateMetricsUseCase {
 	List<SegmentedBetMetrics> calculateByBettingHouse(StatisticsFilter filter);
 
 	List<MonthlyBetMetrics> calculateMonthly(StatisticsFilter filter);
+
+	List<SegmentedBetMetrics> calculateByBetType(StatisticsFilter filter);
 }

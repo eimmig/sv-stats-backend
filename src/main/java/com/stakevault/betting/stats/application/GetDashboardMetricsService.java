@@ -17,7 +17,7 @@ import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 
 	private static final BetMetrics ZERO_METRICS = new BetMetrics(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-			BigDecimal.ZERO, 0);
+			BigDecimal.ZERO, 0, 0, 0, 0, 0, 0, null);
 
 	private final CalculateMetricsUseCase calculateMetrics;
 	private final MetricsCacheRepository cache;
@@ -59,6 +59,15 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 		return cache.findByBettingHouse().orElseGet(() -> {
 			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBettingHouse(StatisticsFilter.none());
 			cache.saveByBettingHouse(metrics);
+			return metrics;
+		});
+	}
+
+	@Override
+	public List<SegmentedBetMetrics> getByBetType() {
+		return cache.findByBetType().orElseGet(() -> {
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBetType(StatisticsFilter.none());
+			cache.saveByBetType(metrics);
 			return metrics;
 		});
 	}

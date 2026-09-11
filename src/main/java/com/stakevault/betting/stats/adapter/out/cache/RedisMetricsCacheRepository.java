@@ -26,6 +26,7 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	private static final String SPORT_SEGMENT = "sport";
 	private static final String MARKET_SEGMENT = "market";
 	private static final String HOUSE_SEGMENT = "house";
+	private static final String BET_TYPE_SEGMENT = "byBetType";
 
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
@@ -76,6 +77,16 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	@Override
+	public Optional<List<SegmentedBetMetrics>> findByBetType() {
+		return findSegmentList(segmentKey(BET_TYPE_SEGMENT));
+	}
+
+	@Override
+	public void saveByBetType(List<SegmentedBetMetrics> metrics) {
+		save(segmentKey(BET_TYPE_SEGMENT), metrics);
+	}
+
+	@Override
 	public Optional<BetMetrics> findMonthly(int year, int month) {
 		return find(monthlyKey(year, month), BetMetrics.class);
 	}
@@ -89,7 +100,7 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	public void evict(int year, int month) {
 		redisTemplate.delete(
 				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
-						monthlyKey(year, month)));
+						segmentKey(BET_TYPE_SEGMENT), monthlyKey(year, month)));
 	}
 
 	private Optional<List<SegmentedBetMetrics>> findSegmentList(String key) {

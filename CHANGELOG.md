@@ -68,3 +68,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-329](https://stakevault.atlassian.net/browse/SV-329) - Job build-and-push-image no ci.yml
 - [SV-330](https://stakevault.atlassian.net/browse/SV-330) - CHANGELOG e verificacao final
 - [SV-336](https://stakevault.atlassian.net/browse/SV-336) - Corrigir SHA pin (S7637) e guard de qualitygate.wait achados na verificacao
+- [SV-343](https://stakevault.atlassian.net/browse/SV-343) - Extensao do dashboard consolidado - PRE/LIVE, odd media, vitorias/derrotas, byBetType
+- [SV-344](https://stakevault.atlassian.net/browse/SV-344) - BetType persistido em FACT_BET (migration + insert/preservacao no upsert)
+- [SV-345](https://stakevault.atlassian.net/browse/SV-345) - wonCount/lostCount/voidCount/preCount/liveCount/avgOdd nos 5 agregados existentes
+- [SV-346](https://stakevault.atlassian.net/browse/SV-346) - Segmento byBetType (6o segmento, dimensionId String)
+- [SV-347](https://stakevault.atlassian.net/browse/SV-347) - CHANGELOG e verificacao final

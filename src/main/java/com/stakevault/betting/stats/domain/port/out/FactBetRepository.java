@@ -31,6 +31,10 @@ public interface FactBetRepository {
 
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 
+	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
+	// ficam de fora dos dois.
+	List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter);
+
 	// epic-011 (RF09 estendido): agregado + serie ordenada especificos de GET
 	// /api/v1/statistics/search - separados dos 5 metodos acima (dashboard consolidado, feat-006)
 	// porque o filtro exige sportId/leagueId e adiciona teamId (team1Id OR team2Id).

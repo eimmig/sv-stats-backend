@@ -29,10 +29,11 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 		if (filter.isEmpty()) {
 			return new StatisticsDashboard(dashboardMetrics.getOverall(), dashboardMetrics.getBySport(),
 					dashboardMetrics.getByMarket(), dashboardMetrics.getByBettingHouse(),
-					calculateMetrics.calculateMonthly(filter));
+					calculateMetrics.calculateMonthly(filter), dashboardMetrics.getByBetType());
 		}
 		return new StatisticsDashboard(calculateMetrics.calculateOverall(filter),
 				calculateMetrics.calculateBySport(filter), calculateMetrics.calculateByMarket(filter),
-				calculateMetrics.calculateByBettingHouse(filter), calculateMetrics.calculateMonthly(filter));
+				calculateMetrics.calculateByBettingHouse(filter), calculateMetrics.calculateMonthly(filter),
+				calculateMetrics.calculateByBetType(filter));
 	}
 }
