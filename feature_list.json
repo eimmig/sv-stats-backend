@@ -1305,7 +1305,7 @@
         {
           "id": "feat-017.2",
           "name": "calculateByLeague/calculateByTipster, StatisticsDashboard, cache-aside (getByLeague/getByTipster + evict) e teste HTTP end-to-end",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-360",
           "detail": "Achado MINOR do Plan Reviewer: chaves de cache 'league'/'tipster' (nao 'byLeague'/'byTipster'), consistente com sport/market/house; evict() precisa incluir as 2 chaves novas na mesma lista, com teste provando que ficam obsoletas se esquecidas.",
           "checklist": [
