@@ -156,6 +156,28 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
+	// epic-016 (GET /api/v1/statistics/daily): shape enxuto (so totalStaked/netProfit/betCount -
+	// a resposta HTTP nao expoe wonCount/lostCount/avgOdd/etc, entao a query nao os calcula).
+	// FUNCTION('make_date', d.year, d.month, d.day) no SELECT agrupado pelas 3 colunas cruas -
+	// expressao deterministica so das colunas do GROUP BY, permitido por SQL padrao mesmo sem
+	// repetir a expressao no GROUP BY; combinacao provada pelo teste de integracao real.
+	@Query("""
+			SELECT FUNCTION('make_date', d.year, d.month, d.day) AS date, SUM(f.stake) AS totalStaked,
+			       SUM(f.profit) AS netProfit, COUNT(f) AS betCount
+			FROM FactBetJpaEntity f, DimDateJpaEntity d
+			WHERE f.dateId = d.id AND f.status <> :pending
+			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
+			  AND (:#{#filter.sportId()} IS NULL OR f.sportId = :#{#filter.sportId()})
+			  AND (:#{#filter.leagueId()} IS NULL OR f.leagueId = :#{#filter.leagueId()})
+			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
+			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
+			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
+			GROUP BY d.year, d.month, d.day
+			ORDER BY d.year, d.month, d.day
+			""")
+	List<DailyAggregateProjection> aggregateByDay(@Param("pending") BetStatus pending,
+			@Param("filter") ResolvedStatisticsFilter filter);
+
 	// epic-011: sportId/leagueId sempre presentes (igualdade direta, sem "IS NULL OR" - o filtro
 	// de dominio garante isso via requireNonNull); teamId casa contra qualquer um dos 2 lados.
 	@Query("""

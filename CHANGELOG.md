@@ -73,3 +73,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-345](https://stakevault.atlassian.net/browse/SV-345) - wonCount/lostCount/voidCount/preCount/liveCount/avgOdd nos 5 agregados existentes
 - [SV-346](https://stakevault.atlassian.net/browse/SV-346) - Segmento byBetType (6o segmento, dimensionId String)
 - [SV-347](https://stakevault.atlassian.net/browse/SV-347) - CHANGELOG e verificacao final
+- [SV-354](https://stakevault.atlassian.net/browse/SV-354) - Quebra diaria de metricas (GET /api/v1/statistics/daily)
+- [SV-355](https://stakevault.atlassian.net/browse/SV-355) - Agregacao diaria (domain + port + query JPQL + repository) com teste de integracao real
+- [SV-356](https://stakevault.atlassian.net/browse/SV-356) - Endpoint GET /api/v1/statistics/daily (roi + controller)
+- [SV-357](https://stakevault.atlassian.net/browse/SV-357) - CHANGELOG e verificacao final
