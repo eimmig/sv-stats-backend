@@ -136,6 +136,56 @@ class GetDashboardMetricsServiceTest {
 	}
 
 	@Test
+	void shouldReturnCachedByLeagueWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "League A",
+				sampleMetrics()));
+		when(cache.findByLeague()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByLeague();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByLeague(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByLeagueOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "League A",
+				sampleMetrics()));
+		when(cache.findByLeague()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByLeague(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByLeague();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByLeague(segments);
+	}
+
+	@Test
+	void shouldReturnCachedByTipsterWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Tipster", sampleMetrics()));
+		when(cache.findByTipster()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByTipster();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByTipster(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByTipsterOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Tipster", sampleMetrics()));
+		when(cache.findByTipster()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByTipster(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByTipster();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByTipster(segments);
+	}
+
+	@Test
 	void shouldReturnCachedByBetTypeWithoutCallingCalculateOnHit() {
 		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics("PRE", "PRE", sampleMetrics()));
 		when(cache.findByBetType()).thenReturn(Optional.of(segments));

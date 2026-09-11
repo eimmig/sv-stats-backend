@@ -26,6 +26,8 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	private static final String SPORT_SEGMENT = "sport";
 	private static final String MARKET_SEGMENT = "market";
 	private static final String HOUSE_SEGMENT = "house";
+	private static final String LEAGUE_SEGMENT = "league";
+	private static final String TIPSTER_SEGMENT = "tipster";
 	private static final String BET_TYPE_SEGMENT = "byBetType";
 
 	private final StringRedisTemplate redisTemplate;
@@ -77,6 +79,26 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	@Override
+	public Optional<List<SegmentedBetMetrics>> findByLeague() {
+		return findSegmentList(segmentKey(LEAGUE_SEGMENT));
+	}
+
+	@Override
+	public void saveByLeague(List<SegmentedBetMetrics> metrics) {
+		save(segmentKey(LEAGUE_SEGMENT), metrics);
+	}
+
+	@Override
+	public Optional<List<SegmentedBetMetrics>> findByTipster() {
+		return findSegmentList(segmentKey(TIPSTER_SEGMENT));
+	}
+
+	@Override
+	public void saveByTipster(List<SegmentedBetMetrics> metrics) {
+		save(segmentKey(TIPSTER_SEGMENT), metrics);
+	}
+
+	@Override
 	public Optional<List<SegmentedBetMetrics>> findByBetType() {
 		return findSegmentList(segmentKey(BET_TYPE_SEGMENT));
 	}
@@ -100,7 +122,8 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	public void evict(int year, int month) {
 		redisTemplate.delete(
 				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
-						segmentKey(BET_TYPE_SEGMENT), monthlyKey(year, month)));
+						segmentKey(LEAGUE_SEGMENT), segmentKey(TIPSTER_SEGMENT), segmentKey(BET_TYPE_SEGMENT),
+						monthlyKey(year, month)));
 	}
 
 	private Optional<List<SegmentedBetMetrics>> findSegmentList(String key) {

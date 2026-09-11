@@ -48,6 +48,16 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 	}
 
 	@Override
+	public List<SegmentedBetMetrics> calculateByLeague(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateByLeague(filter));
+	}
+
+	@Override
+	public List<SegmentedBetMetrics> calculateByTipster(StatisticsFilter filter) {
+		return toSegmentedMetrics(factBetRepository.aggregateByTipster(filter));
+	}
+
+	@Override
 	public List<SegmentedBetMetrics> calculateByBetType(StatisticsFilter filter) {
 		return toSegmentedMetrics(factBetRepository.aggregateByBetType(filter));
 	}

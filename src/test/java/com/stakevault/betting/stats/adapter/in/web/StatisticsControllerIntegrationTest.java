@@ -116,6 +116,11 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		assertThat(sportSegment.path("metrics").path("totalStaked").asDouble()).isEqualTo(100.0);
 		assertThat(body.path("byMarket").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
 		assertThat(body.path("byBettingHouse").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
+		// epic-018: byLeague segue o mesmo formato; byTipster fica vazio porque seedSettledBet nao
+		// atribui tipster (tipsterId opcional em FACT_BET) - prova a exclusao ponta a ponta.
+		assertThat(body.path("byLeague").get(0).path("dimensionName").asString()).isEqualTo("League");
+		assertThat(body.path("byLeague").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
+		assertThat(body.path("byTipster")).isEmpty();
 		JsonNode monthEntry = body.path("monthly").get(0);
 		assertThat(monthEntry.path("year").asInt()).isEqualTo(2026);
 		assertThat(monthEntry.path("month").asInt()).isEqualTo(9);
