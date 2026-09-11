@@ -147,7 +147,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var bySport = factBetRepository.aggregateBySport(StatisticsFilter.none());
 
 			SegmentedBetAggregate soccer = bySport.stream()
-					.filter(segment -> segment.dimensionId().equals(soccerId))
+					.filter(segment -> segment.dimensionId().equals(soccerId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(soccer.dimensionName()).isEqualTo("Soccer");
@@ -157,7 +157,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(soccer.aggregate().settledCount()).isEqualTo(2);
 
 			SegmentedBetAggregate tennis = bySport.stream()
-					.filter(segment -> segment.dimensionId().equals(tennisId))
+					.filter(segment -> segment.dimensionId().equals(tennisId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(tennis.dimensionName()).isEqualTo("Tennis");
@@ -178,7 +178,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var byMarket = factBetRepository.aggregateByMarket(StatisticsFilter.none());
 
 			SegmentedBetAggregate segment = byMarket.stream()
-					.filter(s -> s.dimensionId().equals(marketId))
+					.filter(s -> s.dimensionId().equals(marketId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(segment.dimensionName()).isEqualTo("Over/Under");
@@ -199,7 +199,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var byHouse = factBetRepository.aggregateByBettingHouse(StatisticsFilter.none());
 
 			SegmentedBetAggregate segment = byHouse.stream()
-					.filter(s -> s.dimensionId().equals(houseId))
+					.filter(s -> s.dimensionId().equals(houseId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(segment.dimensionName()).isEqualTo("Bet365");
@@ -272,6 +272,42 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(aggregate.avgOdd()).isNull();
 			assertThat(aggregate.preCount()).isZero();
 			assertThat(aggregate.liveCount()).isZero();
+		}
+	}
+
+	// epic-014: 6o segmento, so 2 buckets fixos (PRE/LIVE) - void sem betType classificado nao
+	// entra em nenhum dos dois.
+	@Test
+	void shouldAggregateByBetTypeWithExactlyTwoBuckets() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), BetStatus.WON, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.8), BigDecimal.valueOf(-100), BetStatus.LOST, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), BetStatus.WON, BetType.LIVE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100), null,
+					BigDecimal.ZERO, BetStatus.VOID, null));
+
+			var byBetType = factBetRepository.aggregateByBetType(StatisticsFilter.none());
+
+			assertThat(byBetType).hasSize(2);
+			SegmentedBetAggregate pre = byBetType.stream()
+					.filter(segment -> segment.dimensionId().equals("PRE"))
+					.findFirst()
+					.orElseThrow();
+			assertThat(pre.dimensionName()).isEqualTo("PRE");
+			assertThat(pre.aggregate().settledCount()).isEqualTo(2);
+			assertThat(pre.aggregate().totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(200));
+
+			SegmentedBetAggregate live = byBetType.stream()
+					.filter(segment -> segment.dimensionId().equals("LIVE"))
+					.findFirst()
+					.orElseThrow();
+			assertThat(live.aggregate().settledCount()).isEqualTo(1);
 		}
 	}
 

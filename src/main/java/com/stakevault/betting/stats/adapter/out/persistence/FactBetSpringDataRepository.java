@@ -131,6 +131,31 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre, @Param("live") BetType live,
 			@Param("filter") ResolvedStatisticsFilter filter);
 
+	// 6o segmento (epic-014): so 2 buckets fixos (PRE/LIVE) - f.betType IS NOT NULL exclui apostas
+	// sem classificacao de qualquer um dos dois. betType nunca e filtro de negocio, so o campo de
+	// agrupamento em si.
+	@Query("""
+			SELECT f.betType AS betType, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
+			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
+			       SUM(CASE WHEN f.status = :lost THEN 1L ELSE 0L END) AS lostCount,
+			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
+			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
+			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			FROM FactBetJpaEntity f, DimDateJpaEntity d
+			WHERE f.dateId = d.id AND f.status <> :pending AND f.betType IS NOT NULL
+			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
+			  AND (:#{#filter.sportId()} IS NULL OR f.sportId = :#{#filter.sportId()})
+			  AND (:#{#filter.leagueId()} IS NULL OR f.leagueId = :#{#filter.leagueId()})
+			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
+			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
+			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
+			GROUP BY f.betType
+			""")
+	List<BetTypeAggregateProjection> aggregateByBetType(@Param("pending") BetStatus pending,
+			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
+			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
+
 	// epic-011: sportId/leagueId sempre presentes (igualdade direta, sem "IS NULL OR" - o filtro
 	// de dominio garante isso via requireNonNull); teamId casa contra qualquer um dos 2 lados.
 	@Query("""

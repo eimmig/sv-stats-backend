@@ -64,6 +64,15 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	}
 
 	@Override
+	public List<SegmentedBetMetrics> getByBetType() {
+		return cache.findByBetType().orElseGet(() -> {
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBetType(StatisticsFilter.none());
+			cache.saveByBetType(metrics);
+			return metrics;
+		});
+	}
+
+	@Override
 	public BetMetrics getMonthly(int year, int month) {
 		return cache.findMonthly(year, month).orElseGet(() -> {
 			// Um miss recalcula e cacheia a serie inteira de uma vez (poucos meses com dados,

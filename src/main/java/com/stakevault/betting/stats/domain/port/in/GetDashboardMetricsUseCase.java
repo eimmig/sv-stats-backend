@@ -18,4 +18,6 @@ public interface GetDashboardMetricsUseCase {
 	List<SegmentedBetMetrics> getByBettingHouse();
 
 	BetMetrics getMonthly(int year, int month);
+
+	List<SegmentedBetMetrics> getByBetType();
 }

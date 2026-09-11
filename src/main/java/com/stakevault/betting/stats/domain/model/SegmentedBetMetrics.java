@@ -1,6 +1,6 @@
 package com.stakevault.betting.stats.domain.model;
 
-import java.util.UUID;
-
-public record SegmentedBetMetrics(UUID dimensionId, String dimensionName, BetMetrics metrics) {
+// dimensionId e String desde epic-014 (byBetType usa "PRE"/"LIVE", nao uuid) - ver
+// SegmentedBetAggregate.
+public record SegmentedBetMetrics(String dimensionId, String dimensionName, BetMetrics metrics) {
 }
