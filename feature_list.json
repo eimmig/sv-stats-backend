@@ -1021,10 +1021,9 @@
       "dependencies": [
         "feat-011"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) - READY WITH CONCERNS. Achados: MAJOR - packages: write no permissions do job so e concedido se o repositorio tiver 'Workflow permissions' = Read and write em Settings > Actions > General (default de repositorio novo costuma vir restrito a leitura, e nesse caso o job-level permissions e limitado silenciosamente, push falha com 403 em vez de erro de sintaxe) - verificar/configurar antes do primeiro push em main. MINOR (confirmado contra a documentacao oficial do docker/build-push-action) - nao obrigatorio mas recomendado adicionar docker/setup-buildx-action antes do build, incluido no plano corrigido. Escopo confirmado: PAT/imagePullSecrets do cluster de deploy fica fora desta feature.",
       "jira": "SV-328",
-      "evidence": "",
       "subtasks": [
         {
           "id": "feat-014.1",
@@ -1070,7 +1069,8 @@
           "status": "done",
           "jira": "SV-336"
         }
-      ]
+      ],
+      "evidence": "Fechada em 2026-09-10. Job build-and-push-image no ci.yml publicando de verdade em ghcr.io/eimmig/sv-stats-backend - confirmado via log real (containerimage.digest: sha256:0a09207...). 2 achados reais so descobertos verificando ponta a ponta contra o GitHub de verdade (feat-014.3): actions de terceiro pinadas por SHA completo (SonarCloud S7637, risco de supply-chain) e guard de sonar.qualitygate.wait ampliado de 'push para develop' pra qualquer push direto (primeira analise de uma branch longa sem leak period faz a API devolver status NONE, tratado como reprovado pelo plugin). Achado de processo: status da feature foi gravado 'done' por engano antes da evidencia existir, corrigido de volta pra 'in-progress' e a story do Jira devolvida de Done pra Review antes de fechar de verdade. Delivery Reviewer: CONCERNS -> PASS depois de confirmado o push real. Workflow permissions do repositorio confirmado 'Read and write'. ./init.sh do servico e da raiz verdes. docs/CI-CD.md atualizado com os achados."
     }
   ]
 }
