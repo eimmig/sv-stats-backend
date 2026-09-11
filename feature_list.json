@@ -1235,7 +1235,7 @@
         {
           "id": "feat-016.2",
           "name": "Endpoint GET /api/v1/statistics/daily (roi + controller)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-356",
           "detail": "calculateDaily entra em CalculateMetricsUseCase/CalculateMetricsService (mesma familia de calculateMonthly), reaproveitando a regra de roi=ZERO-se-totalStaked=0 via helper privado estatico compartilhado com toMetrics (evita duplicacao).",
           "checklist": [
@@ -1252,7 +1252,7 @@
         {
           "id": "feat-016.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-357",
           "detail": "Fecha a feature - docs/STATISTICS.md e docs/API-CONTRACTS.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
           "checklist": [
