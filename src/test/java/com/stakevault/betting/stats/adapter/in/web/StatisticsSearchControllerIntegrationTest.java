@@ -127,10 +127,10 @@ class StatisticsSearchControllerIntegrationTest extends TenantSchemaIntegrationS
 
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
 					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,
-					BetStatus.WON, 1));
+					BetStatus.WON, null, 1));
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date2, houseId, sportId, leagueId, marketId, null,
 					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(-100), false,
-					BetStatus.LOST, 1));
+					BetStatus.LOST, null, 1));
 		}
 
 		HttpResponse<String> response = get("sportId=" + sportId + "&leagueId=" + leagueId, "X-Tenant-Id",
