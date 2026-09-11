@@ -110,7 +110,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 		return new FactBet(entity.getId(), entity.getDateId(), entity.getBettingHouseId(), entity.getSportId(),
 				entity.getLeagueId(), entity.getMarketId(), entity.getTipsterId(), entity.getTeam1Id(),
 				entity.getTeam2Id(), entity.getStake(), entity.getOdd(), entity.getProfit(), entity.getIsWin(),
-				entity.getStatus(), entity.getBetCount());
+				entity.getStatus(), entity.getBetType(), entity.getBetCount());
 	}
 
 	// SUM sobre um grupo vazio (nenhuma aposta liquidada) retorna null em SQL, nao zero.

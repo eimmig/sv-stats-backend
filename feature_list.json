@@ -1071,6 +1071,96 @@
         }
       ],
       "evidence": "Fechada em 2026-09-10. Job build-and-push-image no ci.yml publicando de verdade em ghcr.io/eimmig/sv-stats-backend - confirmado via log real (containerimage.digest: sha256:0a09207...). 2 achados reais so descobertos verificando ponta a ponta contra o GitHub de verdade (feat-014.3): actions de terceiro pinadas por SHA completo (SonarCloud S7637, risco de supply-chain) e guard de sonar.qualitygate.wait ampliado de 'push para develop' pra qualquer push direto (primeira analise de uma branch longa sem leak period faz a API devolver status NONE, tratado como reprovado pelo plugin). Achado de processo: status da feature foi gravado 'done' por engano antes da evidencia existir, corrigido de volta pra 'in-progress' e a story do Jira devolvida de Done pra Review antes de fechar de verdade. Delivery Reviewer: CONCERNS -> PASS depois de confirmado o push real. Workflow permissions do repositorio confirmado 'Read and write'. ./init.sh do servico e da raiz verdes. docs/CI-CD.md atualizado com os achados."
+    },
+    {
+      "id": "feat-015",
+      "name": "Extensao do dashboard consolidado - PRE/LIVE, odd media, vitorias/derrotas, byBetType",
+      "goal": "GET /api/v1/statistics ganha contagens brutas (wonCount/lostCount/voidCount), contagem por tipo de aposta (preCount/liveCount), odd media (avgOdd) em todos os agregados existentes, e um 6o segmento byBetType (2 buckets fixos PRE/LIVE).",
+      "scope": [
+        "FACT_BET.betType (nullable) gravado so no insert de BetCreated, preservado no upsert de BetSettled",
+        "wonCount/lostCount/voidCount/preCount/liveCount/avgOdd em overall/bySport/byMarket/byBettingHouse/monthly",
+        "Novo segmento byBetType (dimensionId/dimensionName = PRE/LIVE, sem FK de catalogo)",
+        "Cache-aside estendido (chave segment:byBetType, evict simetrico aos demais segmentos)",
+        "Nao inclui saldo inicial/final nem unidades apostadas (bets-service/apps/web, epic-013/epic-015)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-014 da raiz, pedido do usuario 2026-09-10). Formulas em docs/STATISTICS.md, contrato de resposta em docs/API-CONTRACTS.md, mecanismo em docs/services/stats-service.md - os 3 ja escritos antes do codigo. Depende de feat-004 (agregacao existente, done) e bets-service epic-013 (BET.betType enum PRE/LIVE, done, ja publicado no evento BetCreated).",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, 3 achados MAJOR corrigidos no plano, nenhum exigiu decisao do usuario. (MAJOR #1) Comparacao de enum em JPQL deve usar parametro ligado (@Param tipado BetStatus/BetType), nunca literal de string solto (CASE WHEN f.status = 'LOST') - confirmado por grep que o codebase inteiro ja evita esse padrao (so usa :pending como parametro), literal de string arriscaria o AttributeConverter (@Converter(autoApply=true), BetStatusAttributeConverter/novo BetTypeAttributeConverter) nao ser aplicado de forma garantida, zerando silenciosamente lostCount/voidCount/preCount/liveCount. (MAJOR #2) Projecao de byBetType deve expor o getter no tipo real do enum (BetTypeAggregateProjection.getBetType(): BetType), com a conversao pra String (PRE/LIVE, .name()) feita explicitamente no adapter (JpaFactBetRepository), nao pedir a uma interface de projecao Spring Data um getDimensionId():String direto de uma expressao JPQL tipada BetType (conversao implicita que o resto do codigo nunca faz). (MAJOR #3) Mudanca de tipo dimensionId UUID->String em SegmentedBetAggregate/SegmentedBetMetrics (necessaria pra PRE/LIVE nao serem uuid) exige atualizar 5 arquivos de teste que ja referenciam esse tipo (StatisticsControllerIntegrationTest, RedisMetricsCacheRepositoryIntegrationTest, FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) - listado explicitamente pra nao subestimar o escopo da subtask. Achado do proprio autor do plano refutado com evidencia: preocupacao de que o cache Redis quebraria deserializacao pos-deploy (BetMetrics ganhando campos novos) nao se confirma - Jackson 3 (tools.jackson, autoconfiguracao padrao do Spring Boot 4, sem override de estrita neste repositorio) preenche componente de record ausente no JSON com o default do tipo (0/0L, null) em vez de lancar excecao; risco residual aceito (ate 1h de TTL com campos novos zerados/nulos num cache pre-deploy), nao virou subtask. Decisao confirmada sem necessidade de pergunta ao usuario: byBetType reaproveita o mesmo record BetMetrics (incluindo preCount/liveCount, mesmo triviais dentro do proprio bucket) em vez de um tipo apartado - consistente com 'mesmo formato dos outros 5 segmentos' de docs/API-CONTRACTS.md e evita duplicar SegmentedBetMetrics.",
+      "jira": "SV-343",
+      "subtasks": [
+        {
+          "id": "feat-015.1",
+          "name": "BetType persistido em FACT_BET (migration + insert/preservacao no upsert)",
+          "status": "done",
+          "jira": "SV-344",
+          "detail": "Mesmo padrao ja usado por dateId em processSettled: BetSettledEvent nao carrega betType (payload do evento so tem isso em BetCreated), entao a liquidacao precisa preservar o valor ja gravado, nao recalcula-lo/perde-lo.",
+          "checklist": [
+            "Migration ADD COLUMN bet_type VARCHAR(4) nullable em fact_bet (sem CHECK - este servico so reflete o que chegou no evento, nao valida entrada).",
+            "Enum de dominio BetType (PRE/LIVE, @JsonProperty lowercase, mesmo padrao de BetStatus).",
+            "BetTypeAttributeConverter (@Converter(autoApply=true), armazena lowercase pre/live, mesmo padrao de BetStatusAttributeConverter).",
+            "FactBet/FactBetJpaEntity ganham campo betType (applyFrom grava); BetCreatedEvent ganha betType (nullable).",
+            "BetEventListener.toBetCreatedEvent parseia payload.path(\"betType\") (nullable, case-insensitive).",
+            "ProcessBetEventService.processCreated passa event.betType(); processSettled preserva existing.map(FactBet::betType).orElse(null) em vez de recalcular/perder.",
+            "Teste de integracao: insert com PRE/LIVE/null: upsert via BetSettled preserva o valor gravado no insert."
+          ],
+          "validation": "./init.sh verde - teste prova que betType sobrevive ao upsert de liquidacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.2",
+          "name": "wonCount/lostCount/voidCount/preCount/liveCount/avgOdd nos 5 agregados existentes",
+          "status": "not-started",
+          "jira": "SV-345",
+          "detail": "Achado MAJOR do Plan Reviewer: toda comparacao de enum nas 5 queries JPQL usa parametro @Param tipado (BetStatus/BetType), nunca literal de string solto - mesma convencao ja usada por :pending, garante que o AttributeConverter seja aplicado corretamente.",
+          "checklist": [
+            "BetAggregate/BetMetrics ganham lostCount/voidCount/preCount/liveCount (long) e avgOdd (BigDecimal nullable).",
+            "AggregateProjection/SegmentedAggregateProjection/MonthlyAggregateProjection ganham os getters correspondentes.",
+            "As 5 queries JPQL (aggregateOverall/BySport/ByMarket/ByBettingHouse/ByMonth) ganham SUM(CASE WHEN f.status = :lost ...)/:voidStatus, SUM(CASE WHEN f.betType = :pre ...)/:live, AVG(f.odd) AS avgOdd - todos via @Param tipado.",
+            "CalculateMetricsService.toMetrics mapeia os campos novos (contagens null->0L; avgOdd passa direto sem coalescer pra ZERO, mesmo tratamento de SearchAggregate.avgOdd).",
+            "ZERO_METRICS em GetDashboardMetricsService atualizado com os campos novos.",
+            "Teste: aposta won/lost/void/pre/live/sem-betType misturadas provam cada contagem isolada, incluindo odd media com apostas sem odd (nullable)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 6 campos novos via SQL real, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.3",
+          "name": "Segmento byBetType (6o segmento, dimensionId String)",
+          "status": "not-started",
+          "jira": "SV-346",
+          "detail": "Achados MAJOR do Plan Reviewer: dimensionId de SegmentedBetAggregate/SegmentedBetMetrics muda de UUID pra String (PRE/LIVE nao sao uuid de catalogo) - atualizar os 5 arquivos de teste que ja referenciam esse tipo; projecao de byBetType expoe o getter no tipo real do enum (BetTypeAggregateProjection.getBetType():BetType), conversao pra String (.name()) feita explicitamente no adapter, nao implicita na projecao Spring Data.",
+          "checklist": [
+            "SegmentedBetAggregate/SegmentedBetMetrics.dimensionId muda de UUID para String (UUID.toString() no adapter para os 3 segmentos existentes).",
+            "Atualizar StatisticsControllerIntegrationTest, RedisMetricsCacheRepositoryIntegrationTest, FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest para o novo tipo.",
+            "Nova projecao BetTypeAggregateProjection (getBetType():BetType) + query aggregateByBetType (WHERE f.betType IS NOT NULL AND f.status <> :pending, GROUP BY f.betType) - dimensionId/dimensionName = betType.name() (\"PRE\"/\"LIVE\").",
+            "StatisticsDashboard ganha byBetType (List<SegmentedBetMetrics>, reaproveita o mesmo BetMetrics dos outros 5 segmentos, incluindo preCount/liveCount mesmo triviais ali).",
+            "GetStatisticsDashboardService inclui byBetType nos dois ramos (com/sem filtro).",
+            "Cache: findByBetType/saveByBetType + chave segment:byBetType em MetricsCacheRepository/RedisMetricsCacheRepository, evictada junto das outras 4 em evict() - simetria com bySport/byMarket/byBettingHouse.",
+            "Teste: byBetType retorna no maximo 2 itens (PRE/LIVE); aposta sem betType classificado nao aparece em nenhum dos dois."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 2 buckets fixos via SQL real.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-347",
+          "detail": "Fecha a feature - docs/API-CONTRACTS.md, docs/STATISTICS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }
