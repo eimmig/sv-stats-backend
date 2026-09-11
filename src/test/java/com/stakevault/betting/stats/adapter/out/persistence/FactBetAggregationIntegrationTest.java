@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.adapter.out.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
+import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -331,6 +333,70 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(100));
 			assertThat(aggregate.settledCount()).isEqualTo(1);
 			assertThat(aggregate.wonCount()).isEqualTo(1);
+		}
+	}
+
+	// epic-016: array esparso - dias com aposta liquidada aparecem, agregados separadamente e
+	// ordenados por data ascendente; dia so com pending nao gera linha.
+	@Test
+	void shouldAggregateByDayAsSparseArrayOrderedAscendingExcludingPendingOnlyDays() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID day1 = newDateId(10, 6, 2026);
+			UUID day3 = newDateId(12, 6, 2026);
+			UUID pendingOnlyDay = newDateId(11, 6, 2026);
+			factBetRepository.save(
+					settledBet(day1, houseId, sportId, marketId, BigDecimal.valueOf(100), BigDecimal.valueOf(50), true));
+			factBetRepository.save(
+					settledBet(day1, houseId, sportId, marketId, BigDecimal.valueOf(50), BigDecimal.valueOf(-50), false));
+			factBetRepository.save(
+					settledBet(day3, houseId, sportId, marketId, BigDecimal.valueOf(200), BigDecimal.valueOf(100), true));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), pendingOnlyDay, houseId, sportId, newLeagueId(),
+					marketId, null, null, null, BigDecimal.valueOf(999), null, null, null, BetStatus.PENDING, null, 1));
+
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(StatisticsFilter.none());
+
+			assertThat(daily).hasSize(2);
+			assertThat(daily.get(0).date()).isEqualTo(java.time.LocalDate.of(2026, 6, 10));
+			assertThat(daily.get(0).totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(150));
+			assertThat(daily.get(0).netProfit()).isEqualByComparingTo(BigDecimal.ZERO);
+			assertThat(daily.get(0).betCount()).isEqualTo(2);
+			assertThat(daily.get(1).date()).isEqualTo(java.time.LocalDate.of(2026, 6, 12));
+			assertThat(daily.get(1).totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(200));
+			assertThat(daily.get(1).betCount()).isEqualTo(1);
+		}
+	}
+
+	@Test
+	void shouldRestrictDailyAggregateToTheFromToRange() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID januaryDate = newDateId(15, 1, 2026);
+			UUID marchDate = newDateId(15, 3, 2026);
+			factBetRepository.save(settledBet(januaryDate, houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(50), true));
+			factBetRepository.save(settledBet(marchDate, houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(-100), false));
+
+			StatisticsFilter januaryOnly = new StatisticsFilter(null, null, null, null, null,
+					java.time.LocalDate.of(2026, 1, 1), java.time.LocalDate.of(2026, 1, 31));
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(januaryOnly);
+
+			assertThat(daily).hasSize(1);
+			assertThat(daily.get(0).date()).isEqualTo(java.time.LocalDate.of(2026, 1, 15));
+		}
+	}
+
+	@Test
+	void shouldReturnEmptyDailyAggregateWhenNoSettledBetExists() {
+		try (var _ = TenantContextScope.open(schema)) {
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(StatisticsFilter.none());
+
+			assertThat(daily).isEmpty();
 		}
 	}
 }

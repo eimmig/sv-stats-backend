@@ -1195,6 +1195,77 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-016",
+      "name": "Quebra diaria de metricas (GET /api/v1/statistics/daily)",
+      "goal": "Novo endpoint GET /api/v1/statistics/daily devolve {date, totalStaked, netProfit, roi, betCount} por dia liquidado do recorte filtrado - fonte de dados para a pagina 'Relatorio do periodo' e a grade de graficos mensais de drawdown de apps/web.",
+      "scope": [
+        "Agregacao por dia (DimDate.day/month/year), mesma mecanica ja usada por MonthlyBetMetrics/aggregateByMonth",
+        "Array esparso: so dias com pelo menos 1 aposta liquidada, ordenado por data ascendente",
+        "Mesmos 7 filtros opcionais de GET /api/v1/statistics (bettingHouseId/sportId/leagueId/marketId/tipsterId/from/to)",
+        "Sem cache-aside - sempre calculado direto, nenhum caso (mesmo sem filtro) usa Redis",
+        "Nao inclui nenhum campo alem de date/totalStaked/netProfit/roi/betCount - sem wonCount/lostCount/avgOdd/etc (isso fica no endpoint overall, epic-014)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-016 da raiz, pedido do usuario 2026-09-10). Formulas/contrato de resposta ja escritos antes do codigo em docs/STATISTICS.md ('Quebra diaria') e docs/API-CONTRACTS.md (exemplo JSON completo). Depende so de feat-004 (agregacao existente, done) - nao usa betType/odd/saldo, entao nao depende de feat-013/014/015 nem de bets-service epic-013.",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, nenhum achado MAJOR/BLOCKER, nenhuma decisao do usuario necessaria. (MINOR #1) FUNCTION('make_date', d.year, d.month, d.day) no SELECT combinado com GROUP BY nas colunas cruas (d.year/d.month/d.day) e uma combinacao nova neste codebase - findOrderedSettledProfits (feat-012) ja usa FUNCTION('make_date',...) no SELECT mas sem agregacao/GROUP BY (linha a linha); aggregateByMonth ja usa GROUP BY mas seleciona d.year/d.month crus, sem FUNCTION(). SQL padrao permite (expressao deterministica so das colunas agrupadas nao precisa repetir no GROUP BY), mas a combinacao especifica com a traducao JPQL->SQL do Hibernate neste repositorio ainda nao foi exercitada - risco baixo, nao bloqueia, verificado pelo teste de integracao real (Testcontainers Postgres) antes do merge. Fallback trivial se falhar: DailyAggregateProjection expoe getYear()/getMonth()/getDay() (como MonthlyAggregateProjection) e JpaFactBetRepository constroi LocalDate.of(year,month,day) no mapeamento, em vez de depender de FUNCTION() no SELECT. (MINOR #2) Item do plano original que previa atualizar docs/API-CONTRACTS.md era redundante - a nota ja documenta o contrato completo (exemplo JSON identico ao shape implementado) desde a sessao de planejamento do epic-016, so confirmar aderencia na subtask de fechamento, sem reescrever. Escopo confirmado (sem decisao do usuario necessaria): calculateDaily entra em CalculateMetricsUseCase (ao lado de calculateMonthly, mesma familia - agregacao bruta + roi) em vez de um port dedicado, e StatisticsController passa a injetar CalculateMetricsUseCase diretamente (hoje so GetStatisticsDashboardService o injeta) - decisao aceitavel dado o precedente do proprio codebase, sem quebra de camada. roi=ZERO quando totalStaked=0 reaproveita a MESMA regra ja usada em CalculateMetricsService.toMetrics (RN04) - extrair helper privado estatico compartilhado, evitando duplicacao que o SonarCloud ja flagou em padroes analogos neste servico.",
+      "jira": "SV-354",
+      "subtasks": [
+        {
+          "id": "feat-016.1",
+          "name": "Agregacao diaria (domain + port + query JPQL + repository) com teste de integracao real",
+          "status": "in-progress",
+          "jira": "SV-355",
+          "detail": "Mirror de MonthlyBetAggregate/aggregateByMonth, shape mais enxuto (so totalStaked/netProfit/betCount, sem os campos que overall/monthly carregam e que a resposta de /daily nao expoe). Achado MINOR do Plan Reviewer: a combinacao FUNCTION(make_date)+GROUP BY nas colunas cruas e nova - o teste de integracao real e quem confirma que funciona, com fallback documentado no plan_review se nao funcionar.",
+          "checklist": [
+            "domain/model/DailyBetAggregate.java - record (LocalDate date, BigDecimal totalStaked, BigDecimal netProfit, long betCount).",
+            "domain/port/out/FactBetRepository.java - novo metodo aggregateByDay(StatisticsFilter filter): List<DailyBetAggregate>.",
+            "adapter/out/persistence/DailyAggregateProjection.java (package-private, mesmo padrao de MonthlyAggregateProjection) - getDate()/getTotalStaked()/getNetProfit()/getBetCount().",
+            "FactBetSpringDataRepository.java - query aggregateByDay: SELECT FUNCTION('make_date', d.year, d.month, d.day) AS date, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit, COUNT(f) AS betCount FROM FactBetJpaEntity f, DimDateJpaEntity d WHERE f.dateId = d.id AND f.status <> :pending + os mesmos 5 predicados opcionais 'IS NULL OR' de aggregateByMonth + intervalo from/to, GROUP BY d.year, d.month, d.day ORDER BY d.year, d.month, d.day. So @Param(\"pending\") e @Param(\"filter\") - sem lost/voidStatus/pre/live.",
+            "JpaFactBetRepository.java - implementa aggregateByDay(filter) delegando a jpaRepository.aggregateByDay(BetStatus.PENDING, resolve(filter)), null-safety SUM/COUNT (mesmo padrao de toAggregate).",
+            "Teste de integracao (Testcontainers Postgres, FactBetAggregationIntegrationTest): apostas em dias diferentes agregadas separadamente; dia sem aposta liquidada ausente do resultado; status=pending excluido; filtro from/to restringe o intervalo; resultado ordenado por data ascendente."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova a agregacao diaria real via SQL (nao mock), incluindo o array esparso e a ordenacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-016.2",
+          "name": "Endpoint GET /api/v1/statistics/daily (roi + controller)",
+          "status": "not-started",
+          "jira": "SV-356",
+          "detail": "calculateDaily entra em CalculateMetricsUseCase/CalculateMetricsService (mesma familia de calculateMonthly), reaproveitando a regra de roi=ZERO-se-totalStaked=0 via helper privado estatico compartilhado com toMetrics (evita duplicacao).",
+          "checklist": [
+            "domain/model/DailyBetMetrics.java - record (LocalDate date, BigDecimal totalStaked, BigDecimal netProfit, BigDecimal roi, long betCount).",
+            "domain/port/in/CalculateMetricsUseCase.java - novo metodo calculateDaily(StatisticsFilter filter): List<DailyBetMetrics>.",
+            "CalculateMetricsService.java - implementa calculateDaily mapeando DailyBetAggregate->DailyBetMetrics; extrai helper privado estatico roiOf(BigDecimal netProfit, BigDecimal totalStaked) reaproveitado por toMetrics() e calculateDaily.",
+            "StatisticsController.java - novo @GetMapping(\"/daily\") injetando CalculateMetricsUseCase, mesmos 7 @RequestParam opcionais do endpoint GET /api/v1/statistics.",
+            "Teste unitario em CalculateMetricsServiceTest (roi=ZERO quando totalStaked=0, caso normal, mesmo padrao ParameterizedTest ja usado para calculateOverall).",
+            "Teste de integracao HTTP no controller (200 com array esperado, filtros aplicados, array vazio quando nenhum dia liquidado no recorte)."
+          ],
+          "validation": "./init.sh verde - GET /api/v1/statistics/daily real (Testcontainers) devolve o shape exato documentado em docs/API-CONTRACTS.md.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-016.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-357",
+          "detail": "Fecha a feature - docs/STATISTICS.md e docs/API-CONTRACTS.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

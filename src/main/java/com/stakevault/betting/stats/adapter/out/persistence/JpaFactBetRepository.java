@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
+import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SearchAggregate;
@@ -107,6 +108,14 @@ public class JpaFactBetRepository implements FactBetRepository {
 	}
 
 	@Override
+	public List<DailyBetAggregate> aggregateByDay(StatisticsFilter filter) {
+		return jpaRepository.aggregateByDay(BetStatus.PENDING, resolve(filter))
+				.stream()
+				.map(JpaFactBetRepository::toDailyAggregate)
+				.toList();
+	}
+
+	@Override
 	public SearchAggregate aggregateForSearch(StatisticsSearchFilter filter) {
 		AggregateWithOddProjection projection = jpaRepository.aggregateForSearch(BetStatus.PENDING, resolve(filter));
 		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
@@ -150,6 +159,15 @@ public class JpaFactBetRepository implements FactBetRepository {
 	private static SegmentedBetAggregate toSegment(SegmentedAggregateProjection projection) {
 		return new SegmentedBetAggregate(projection.getDimensionId().toString(), projection.getDimensionName(),
 				toAggregate(projection));
+	}
+
+	// SUM/COUNT sobre um grupo vazio nunca ocorre aqui (a linha so existe se GROUP BY produziu
+	// pelo menos 1 aposta liquidada naquele dia) - null-safety mantida por simetria com toAggregate.
+	private static DailyBetAggregate toDailyAggregate(DailyAggregateProjection projection) {
+		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
+		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
+		long betCount = projection.getBetCount() != null ? projection.getBetCount() : 0L;
+		return new DailyBetAggregate(projection.getDate(), totalStaked, netProfit, betCount);
 	}
 
 	private static SegmentedBetAggregate toBetTypeSegment(BetTypeAggregateProjection projection) {
