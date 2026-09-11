@@ -109,6 +109,54 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
+	// epic-018: fecha a lacuna de feat-006 (leagueId so estreitava os outros segmentos como
+	// filtro). Mirror exato de aggregateBySport, trocando a dimensao.
+	@Query("""
+			SELECT l.id AS dimensionId, l.name AS dimensionName, SUM(f.stake) AS totalStaked,
+			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
+			       SUM(CASE WHEN f.status = :lost THEN 1L ELSE 0L END) AS lostCount,
+			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
+			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
+			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			FROM FactBetJpaEntity f, DimLeagueJpaEntity l, DimDateJpaEntity d
+			WHERE f.leagueId = l.id AND f.dateId = d.id AND f.status <> :pending
+			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
+			  AND (:#{#filter.sportId()} IS NULL OR f.sportId = :#{#filter.sportId()})
+			  AND (:#{#filter.leagueId()} IS NULL OR f.leagueId = :#{#filter.leagueId()})
+			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
+			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
+			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
+			GROUP BY l.id, l.name
+			""")
+	List<SegmentedAggregateProjection> aggregateByLeague(@Param("pending") BetStatus pending,
+			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
+			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
+
+	// epic-018: tipsterId e opcional em FACT_BET (diferente de leagueId) - apostas sem tipster
+	// ficam de fora do agrupamento, mesmo padrao de aggregateByBetType.betType IS NOT NULL.
+	@Query("""
+			SELECT t.id AS dimensionId, t.name AS dimensionName, SUM(f.stake) AS totalStaked,
+			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
+			       SUM(CASE WHEN f.status = :lost THEN 1L ELSE 0L END) AS lostCount,
+			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
+			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
+			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			FROM FactBetJpaEntity f, DimTipsterJpaEntity t, DimDateJpaEntity d
+			WHERE f.tipsterId = t.id AND f.dateId = d.id AND f.status <> :pending AND f.tipsterId IS NOT NULL
+			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
+			  AND (:#{#filter.sportId()} IS NULL OR f.sportId = :#{#filter.sportId()})
+			  AND (:#{#filter.leagueId()} IS NULL OR f.leagueId = :#{#filter.leagueId()})
+			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
+			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
+			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
+			GROUP BY t.id, t.name
+			""")
+	List<SegmentedAggregateProjection> aggregateByTipster(@Param("pending") BetStatus pending,
+			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
+			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
+
 	@Query("""
 			SELECT d.year AS year, d.month AS month, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
 			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,

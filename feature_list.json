@@ -1290,7 +1290,7 @@
         {
           "id": "feat-017.1",
           "name": "Agregacao byLeague/byTipster (domain + port + query JPQL + repository) com testes de integracao reais",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-359",
           "detail": "Mirror exato de aggregateBySport/aggregateByMarket (feat-006) - 2 metodos novos no mesmo arquivo/interface, mesma estrutura de predicados opcionais. aggregateByTipster adiciona f.tipsterId IS NOT NULL (unica diferenca estrutural em relacao aos outros 3 segmentos, mesmo padrao de aggregateByBetType.betType IS NOT NULL).",
           "checklist": [
