@@ -1147,7 +1147,7 @@
         {
           "id": "feat-015.4",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-347",
           "detail": "Fecha a feature - docs/API-CONTRACTS.md, docs/STATISTICS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
           "checklist": [
