@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.adapter.out.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -11,11 +12,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
+import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
+import com.stakevault.betting.stats.domain.model.DimTipster;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
@@ -25,6 +29,7 @@ import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
+import com.stakevault.betting.stats.domain.port.out.DimTipsterRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
@@ -36,11 +41,13 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 	private final DimSportRepository dimSportRepository;
 	private final DimLeagueRepository dimLeagueRepository;
 	private final DimMarketRepository dimMarketRepository;
+	private final DimTipsterRepository dimTipsterRepository;
 
 	FactBetAggregationIntegrationTest(ProvisionTenantSchemaUseCase provisionTenantSchema, JdbcTemplate jdbcTemplate,
 			FactBetRepository factBetRepository, DimDateRepository dimDateRepository,
 			DimBettingHouseRepository dimBettingHouseRepository, DimSportRepository dimSportRepository,
-			DimLeagueRepository dimLeagueRepository, DimMarketRepository dimMarketRepository) {
+			DimLeagueRepository dimLeagueRepository, DimMarketRepository dimMarketRepository,
+			DimTipsterRepository dimTipsterRepository) {
 		super(provisionTenantSchema, jdbcTemplate);
 		this.factBetRepository = factBetRepository;
 		this.dimDateRepository = dimDateRepository;
@@ -48,6 +55,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		this.dimSportRepository = dimSportRepository;
 		this.dimLeagueRepository = dimLeagueRepository;
 		this.dimMarketRepository = dimMarketRepository;
+		this.dimTipsterRepository = dimTipsterRepository;
 	}
 
 	private UUID newDateId() {
@@ -72,19 +80,34 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 	private FactBet settledBet(UUID dateId, UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake,
 			BigDecimal profit, boolean isWin) {
 		return new FactBet(UUID.randomUUID(), dateId, bettingHouseId, sportId, newLeagueId(), marketId, null, null,
-				null, stake, null, profit, isWin, isWin ? BetStatus.WON : BetStatus.LOST, 1);
+				null, stake, null, profit, isWin, isWin ? BetStatus.WON : BetStatus.LOST, null, 1);
 	}
 
 	private FactBet pendingBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
-				null, null, stake, null, null, null, BetStatus.PENDING, 1);
+				null, null, stake, null, null, null, BetStatus.PENDING, null, 1);
 	}
 
 	// RN06 inclui explicitamente void nas agregacoes (aposta devolvida) - stake volta pro
 	// apostador, profit=0, nao conta como vitoria nem derrota.
 	private FactBet voidBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
-				null, null, stake, null, BigDecimal.ZERO, false, BetStatus.VOID, 1);
+				null, null, stake, null, BigDecimal.ZERO, false, BetStatus.VOID, null, 1);
+	}
+
+	private FactBet settledBetWithTypeAndOdd(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake,
+			BigDecimal odd, BigDecimal profit, BetStatus status, BetType betType) {
+		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
+				null, null, stake, odd, profit, status == BetStatus.WON, status, betType, 1);
+	}
+
+	// epic-018: leagueId/tipsterId explicitos (nao gerados internamente como no settledBet
+	// generico) - necessario pra provar que 2+ apostas caem no MESMO bucket de agrupamento.
+	// tipsterId nullable (mesma FactBet.tipsterId opcional).
+	private FactBet settledBetForLeagueAndTipster(UUID leagueId, UUID tipsterId, UUID bettingHouseId, UUID sportId,
+			UUID marketId, BigDecimal stake, BigDecimal profit, boolean isWin) {
+		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, leagueId, marketId, tipsterId,
+				null, null, stake, null, profit, isWin, isWin ? BetStatus.WON : BetStatus.LOST, null, 1);
 	}
 
 	@Test
@@ -140,7 +163,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var bySport = factBetRepository.aggregateBySport(StatisticsFilter.none());
 
 			SegmentedBetAggregate soccer = bySport.stream()
-					.filter(segment -> segment.dimensionId().equals(soccerId))
+					.filter(segment -> segment.dimensionId().equals(soccerId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(soccer.dimensionName()).isEqualTo("Soccer");
@@ -150,7 +173,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(soccer.aggregate().settledCount()).isEqualTo(2);
 
 			SegmentedBetAggregate tennis = bySport.stream()
-					.filter(segment -> segment.dimensionId().equals(tennisId))
+					.filter(segment -> segment.dimensionId().equals(tennisId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(tennis.dimensionName()).isEqualTo("Tennis");
@@ -171,7 +194,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var byMarket = factBetRepository.aggregateByMarket(StatisticsFilter.none());
 
 			SegmentedBetAggregate segment = byMarket.stream()
-					.filter(s -> s.dimensionId().equals(marketId))
+					.filter(s -> s.dimensionId().equals(marketId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(segment.dimensionName()).isEqualTo("Over/Under");
@@ -192,7 +215,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			var byHouse = factBetRepository.aggregateByBettingHouse(StatisticsFilter.none());
 
 			SegmentedBetAggregate segment = byHouse.stream()
-					.filter(s -> s.dimensionId().equals(houseId))
+					.filter(s -> s.dimensionId().equals(houseId.toString()))
 					.findFirst()
 					.orElseThrow();
 			assertThat(segment.dimensionName()).isEqualTo("Bet365");
@@ -223,6 +246,148 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
+	// epic-014: lostCount/voidCount/preCount/liveCount/avgOdd - campos novos sobre o mesmo
+	// agregado. wonCount continua vindo de isWin (nao duplicado via status = :won).
+	@Test
+	void shouldComputeLostVoidPreLiveAndAvgOddOnOverallAggregate() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), BetStatus.WON, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.5), BigDecimal.valueOf(-100), BetStatus.LOST, BetType.LIVE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100), null,
+					BigDecimal.ZERO, BetStatus.VOID, null));
+
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.wonCount()).isEqualTo(1);
+			assertThat(aggregate.lostCount()).isEqualTo(1);
+			assertThat(aggregate.voidCount()).isEqualTo(1);
+			assertThat(aggregate.preCount()).isEqualTo(1);
+			assertThat(aggregate.liveCount()).isEqualTo(1);
+			assertThat(aggregate.settledCount()).isEqualTo(3);
+			// AVG ignora null (so 2 das 3 apostas tem odd) - (2.0 + 1.5) / 2 = 1.75.
+			assertThat(aggregate.avgOdd()).isEqualByComparingTo(BigDecimal.valueOf(1.75));
+		}
+	}
+
+	@Test
+	void shouldReturnNullAvgOddWhenNoSettledBetHasOdd() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBet(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(50), true));
+
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.avgOdd()).isNull();
+			assertThat(aggregate.preCount()).isZero();
+			assertThat(aggregate.liveCount()).isZero();
+		}
+	}
+
+	// epic-014: 6o segmento, so 2 buckets fixos (PRE/LIVE) - void sem betType classificado nao
+	// entra em nenhum dos dois.
+	@Test
+	void shouldAggregateByBetTypeWithExactlyTwoBuckets() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), BetStatus.WON, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.8), BigDecimal.valueOf(-100), BetStatus.LOST, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), BetStatus.WON, BetType.LIVE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100), null,
+					BigDecimal.ZERO, BetStatus.VOID, null));
+
+			var byBetType = factBetRepository.aggregateByBetType(StatisticsFilter.none());
+
+			assertThat(byBetType).hasSize(2);
+			SegmentedBetAggregate pre = byBetType.stream()
+					.filter(segment -> segment.dimensionId().equals("PRE"))
+					.findFirst()
+					.orElseThrow();
+			assertThat(pre.dimensionName()).isEqualTo("PRE");
+			assertThat(pre.aggregate().settledCount()).isEqualTo(2);
+			assertThat(pre.aggregate().totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(200));
+
+			SegmentedBetAggregate live = byBetType.stream()
+					.filter(segment -> segment.dimensionId().equals("LIVE"))
+					.findFirst()
+					.orElseThrow();
+			assertThat(live.aggregate().settledCount()).isEqualTo(1);
+		}
+	}
+
+	// epic-018: fecha a lacuna de feat-006 - leagueId ganha agrupamento proprio, mirror exato
+	// do teste de aggregateBySport/aggregateByMarket.
+	@Test
+	void shouldAggregateByLeague() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID leagueA = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League A")).id();
+			UUID leagueB = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League B")).id();
+			factBetRepository.save(settledBetForLeagueAndTipster(leagueA, null, houseId, sportId, marketId,
+					BigDecimal.valueOf(100), BigDecimal.valueOf(50), true));
+			factBetRepository.save(settledBetForLeagueAndTipster(leagueA, null, houseId, sportId, marketId,
+					BigDecimal.valueOf(50), BigDecimal.valueOf(-50), false));
+			factBetRepository.save(settledBetForLeagueAndTipster(leagueB, null, houseId, sportId, marketId,
+					BigDecimal.valueOf(200), BigDecimal.valueOf(100), true));
+
+			List<SegmentedBetAggregate> byLeague = factBetRepository.aggregateByLeague(StatisticsFilter.none());
+
+			assertThat(byLeague).hasSize(2);
+			SegmentedBetAggregate a = byLeague.stream()
+					.filter(segment -> segment.dimensionId().equals(leagueA.toString()))
+					.findFirst()
+					.orElseThrow();
+			assertThat(a.dimensionName()).isEqualTo("League A");
+			assertThat(a.aggregate().settledCount()).isEqualTo(2);
+			assertThat(a.aggregate().totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(150));
+			SegmentedBetAggregate b = byLeague.stream()
+					.filter(segment -> segment.dimensionId().equals(leagueB.toString()))
+					.findFirst()
+					.orElseThrow();
+			assertThat(b.aggregate().settledCount()).isEqualTo(1);
+		}
+	}
+
+	// epic-018: tipsterId e opcional em FACT_BET (diferente de leagueId) - aposta sem tipster
+	// nao aparece em nenhum bucket, mesmo padrao ja provado por shouldAggregateByBetType... acima
+	// (f.betType IS NOT NULL).
+	@Test
+	void shouldAggregateByTipsterExcludingBetsWithoutTipster() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID leagueId = newLeagueId();
+			UUID tipsterId = dimTipsterRepository.save(new DimTipster(UUID.randomUUID(), "Tipster")).id();
+			factBetRepository.save(settledBetForLeagueAndTipster(leagueId, tipsterId, houseId, sportId, marketId,
+					BigDecimal.valueOf(100), BigDecimal.valueOf(50), true));
+			factBetRepository.save(settledBetForLeagueAndTipster(leagueId, null, houseId, sportId, marketId,
+					BigDecimal.valueOf(100), BigDecimal.valueOf(-100), false));
+
+			List<SegmentedBetAggregate> byTipster = factBetRepository.aggregateByTipster(StatisticsFilter.none());
+
+			assertThat(byTipster).hasSize(1);
+			assertThat(byTipster.get(0).dimensionId()).isEqualTo(tipsterId.toString());
+			assertThat(byTipster.get(0).dimensionName()).isEqualTo("Tipster");
+			assertThat(byTipster.get(0).aggregate().settledCount()).isEqualTo(1);
+			assertThat(byTipster.get(0).aggregate().totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(100));
+		}
+	}
+
 	@Test
 	void shouldExcludeBetsOutsideTheFromToDateRange() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -243,6 +408,70 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(100));
 			assertThat(aggregate.settledCount()).isEqualTo(1);
 			assertThat(aggregate.wonCount()).isEqualTo(1);
+		}
+	}
+
+	// epic-016: array esparso - dias com aposta liquidada aparecem, agregados separadamente e
+	// ordenados por data ascendente; dia so com pending nao gera linha.
+	@Test
+	void shouldAggregateByDayAsSparseArrayOrderedAscendingExcludingPendingOnlyDays() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID day1 = newDateId(10, 6, 2026);
+			UUID day3 = newDateId(12, 6, 2026);
+			UUID pendingOnlyDay = newDateId(11, 6, 2026);
+			factBetRepository.save(
+					settledBet(day1, houseId, sportId, marketId, BigDecimal.valueOf(100), BigDecimal.valueOf(50), true));
+			factBetRepository.save(
+					settledBet(day1, houseId, sportId, marketId, BigDecimal.valueOf(50), BigDecimal.valueOf(-50), false));
+			factBetRepository.save(
+					settledBet(day3, houseId, sportId, marketId, BigDecimal.valueOf(200), BigDecimal.valueOf(100), true));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), pendingOnlyDay, houseId, sportId, newLeagueId(),
+					marketId, null, null, null, BigDecimal.valueOf(999), null, null, null, BetStatus.PENDING, null, 1));
+
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(StatisticsFilter.none());
+
+			assertThat(daily).hasSize(2);
+			assertThat(daily.get(0).date()).isEqualTo(java.time.LocalDate.of(2026, 6, 10));
+			assertThat(daily.get(0).totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(150));
+			assertThat(daily.get(0).netProfit()).isEqualByComparingTo(BigDecimal.ZERO);
+			assertThat(daily.get(0).betCount()).isEqualTo(2);
+			assertThat(daily.get(1).date()).isEqualTo(java.time.LocalDate.of(2026, 6, 12));
+			assertThat(daily.get(1).totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(200));
+			assertThat(daily.get(1).betCount()).isEqualTo(1);
+		}
+	}
+
+	@Test
+	void shouldRestrictDailyAggregateToTheFromToRange() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID januaryDate = newDateId(15, 1, 2026);
+			UUID marchDate = newDateId(15, 3, 2026);
+			factBetRepository.save(settledBet(januaryDate, houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(50), true));
+			factBetRepository.save(settledBet(marchDate, houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(-100), false));
+
+			StatisticsFilter januaryOnly = new StatisticsFilter(null, null, null, null, null,
+					java.time.LocalDate.of(2026, 1, 1), java.time.LocalDate.of(2026, 1, 31));
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(januaryOnly);
+
+			assertThat(daily).hasSize(1);
+			assertThat(daily.get(0).date()).isEqualTo(java.time.LocalDate.of(2026, 1, 15));
+		}
+	}
+
+	@Test
+	void shouldReturnEmptyDailyAggregateWhenNoSettledBetExists() {
+		try (var _ = TenantContextScope.open(schema)) {
+			List<DailyBetAggregate> daily = factBetRepository.aggregateByDay(StatisticsFilter.none());
+
+			assertThat(daily).isEmpty();
 		}
 	}
 }

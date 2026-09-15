@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
+import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.MonthlyBetAggregate;
 import com.stakevault.betting.stats.domain.model.SearchAggregate;
@@ -29,7 +30,22 @@ public interface FactBetRepository {
 
 	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
+	// epic-018: fecha a lacuna de feat-006 (leagueId/tipsterId so estreitavam os outros segmentos
+	// como filtro, nunca tiveram agrupamento proprio). aggregateByTipster exclui tipsterId nulo
+	// (campo opcional em FACT_BET, diferente de leagueId que e sempre presente).
+	List<SegmentedBetAggregate> aggregateByLeague(StatisticsFilter filter);
+
+	List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter);
+
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
+
+	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
+	// ficam de fora dos dois.
+	List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter);
+
+	// epic-016 (GET /api/v1/statistics/daily): array esparso ordenado por data ascendente - so
+	// dias com pelo menos 1 aposta liquidada geram linha.
+	List<DailyBetAggregate> aggregateByDay(StatisticsFilter filter);
 
 	// epic-011 (RF09 estendido): agregado + serie ordenada especificos de GET
 	// /api/v1/statistics/search - separados dos 5 metodos acima (dashboard consolidado, feat-006)

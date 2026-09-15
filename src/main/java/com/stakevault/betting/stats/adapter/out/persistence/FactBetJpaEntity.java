@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.FactBet;
 
 import jakarta.persistence.Column;
@@ -55,6 +56,9 @@ public class FactBetJpaEntity extends AbstractJpaEntity {
 	@Column(nullable = false)
 	private BetStatus status;
 
+	@Column(name = "bet_type")
+	private BetType betType;
+
 	@Column(name = "bet_count", nullable = false)
 	private int betCount;
 
@@ -82,6 +86,7 @@ public class FactBetJpaEntity extends AbstractJpaEntity {
 		this.profit = factBet.profit();
 		this.isWin = factBet.isWin();
 		this.status = factBet.status();
+		this.betType = factBet.betType();
 		this.betCount = factBet.betCount();
 	}
 }

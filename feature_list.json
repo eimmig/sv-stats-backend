@@ -1024,7 +1024,6 @@
       "status": "done",
       "plan_review": "2026-09-10, Plan Reviewer (review-suite:ln-11-plan-reviewer) - READY WITH CONCERNS. Achados: MAJOR - packages: write no permissions do job so e concedido se o repositorio tiver 'Workflow permissions' = Read and write em Settings > Actions > General (default de repositorio novo costuma vir restrito a leitura, e nesse caso o job-level permissions e limitado silenciosamente, push falha com 403 em vez de erro de sintaxe) - verificar/configurar antes do primeiro push em main. MINOR (confirmado contra a documentacao oficial do docker/build-push-action) - nao obrigatorio mas recomendado adicionar docker/setup-buildx-action antes do build, incluido no plano corrigido. Escopo confirmado: PAT/imagePullSecrets do cluster de deploy fica fora desta feature.",
       "jira": "SV-328",
-      "evidence": "",
       "subtasks": [
         {
           "id": "feat-014.1",
@@ -1070,7 +1069,316 @@
           "status": "done",
           "jira": "SV-336"
         }
-      ]
+      ],
+      "evidence": "Fechada em 2026-09-10. Job build-and-push-image no ci.yml publicando de verdade em ghcr.io/eimmig/sv-stats-backend - confirmado via log real (containerimage.digest: sha256:0a09207...). 2 achados reais so descobertos verificando ponta a ponta contra o GitHub de verdade (feat-014.3): actions de terceiro pinadas por SHA completo (SonarCloud S7637, risco de supply-chain) e guard de sonar.qualitygate.wait ampliado de 'push para develop' pra qualquer push direto (primeira analise de uma branch longa sem leak period faz a API devolver status NONE, tratado como reprovado pelo plugin). Achado de processo: status da feature foi gravado 'done' por engano antes da evidencia existir, corrigido de volta pra 'in-progress' e a story do Jira devolvida de Done pra Review antes de fechar de verdade. Delivery Reviewer: CONCERNS -> PASS depois de confirmado o push real. Workflow permissions do repositorio confirmado 'Read and write'. ./init.sh do servico e da raiz verdes. docs/CI-CD.md atualizado com os achados."
+    },
+    {
+      "id": "feat-015",
+      "name": "Extensao do dashboard consolidado - PRE/LIVE, odd media, vitorias/derrotas, byBetType",
+      "goal": "GET /api/v1/statistics ganha contagens brutas (wonCount/lostCount/voidCount), contagem por tipo de aposta (preCount/liveCount), odd media (avgOdd) em todos os agregados existentes, e um 6o segmento byBetType (2 buckets fixos PRE/LIVE).",
+      "scope": [
+        "FACT_BET.betType (nullable) gravado so no insert de BetCreated, preservado no upsert de BetSettled",
+        "wonCount/lostCount/voidCount/preCount/liveCount/avgOdd em overall/bySport/byMarket/byBettingHouse/monthly",
+        "Novo segmento byBetType (dimensionId/dimensionName = PRE/LIVE, sem FK de catalogo)",
+        "Cache-aside estendido (chave segment:byBetType, evict simetrico aos demais segmentos)",
+        "Nao inclui saldo inicial/final nem unidades apostadas (bets-service/apps/web, epic-013/epic-015)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-014 da raiz, pedido do usuario 2026-09-10). Formulas em docs/STATISTICS.md, contrato de resposta em docs/API-CONTRACTS.md, mecanismo em docs/services/stats-service.md - os 3 ja escritos antes do codigo. Depende de feat-004 (agregacao existente, done) e bets-service epic-013 (BET.betType enum PRE/LIVE, done, ja publicado no evento BetCreated).",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, 3 achados MAJOR corrigidos no plano, nenhum exigiu decisao do usuario. (MAJOR #1) Comparacao de enum em JPQL deve usar parametro ligado (@Param tipado BetStatus/BetType), nunca literal de string solto (CASE WHEN f.status = 'LOST') - confirmado por grep que o codebase inteiro ja evita esse padrao (so usa :pending como parametro), literal de string arriscaria o AttributeConverter (@Converter(autoApply=true), BetStatusAttributeConverter/novo BetTypeAttributeConverter) nao ser aplicado de forma garantida, zerando silenciosamente lostCount/voidCount/preCount/liveCount. (MAJOR #2) Projecao de byBetType deve expor o getter no tipo real do enum (BetTypeAggregateProjection.getBetType(): BetType), com a conversao pra String (PRE/LIVE, .name()) feita explicitamente no adapter (JpaFactBetRepository), nao pedir a uma interface de projecao Spring Data um getDimensionId():String direto de uma expressao JPQL tipada BetType (conversao implicita que o resto do codigo nunca faz). (MAJOR #3) Mudanca de tipo dimensionId UUID->String em SegmentedBetAggregate/SegmentedBetMetrics (necessaria pra PRE/LIVE nao serem uuid) exige atualizar 5 arquivos de teste que ja referenciam esse tipo (StatisticsControllerIntegrationTest, RedisMetricsCacheRepositoryIntegrationTest, FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) - listado explicitamente pra nao subestimar o escopo da subtask. Achado do proprio autor do plano refutado com evidencia: preocupacao de que o cache Redis quebraria deserializacao pos-deploy (BetMetrics ganhando campos novos) nao se confirma - Jackson 3 (tools.jackson, autoconfiguracao padrao do Spring Boot 4, sem override de estrita neste repositorio) preenche componente de record ausente no JSON com o default do tipo (0/0L, null) em vez de lancar excecao; risco residual aceito (ate 1h de TTL com campos novos zerados/nulos num cache pre-deploy), nao virou subtask. Decisao confirmada sem necessidade de pergunta ao usuario: byBetType reaproveita o mesmo record BetMetrics (incluindo preCount/liveCount, mesmo triviais dentro do proprio bucket) em vez de um tipo apartado - consistente com 'mesmo formato dos outros 5 segmentos' de docs/API-CONTRACTS.md e evita duplicar SegmentedBetMetrics.",
+      "jira": "SV-343",
+      "subtasks": [
+        {
+          "id": "feat-015.1",
+          "name": "BetType persistido em FACT_BET (migration + insert/preservacao no upsert)",
+          "status": "done",
+          "jira": "SV-344",
+          "detail": "Mesmo padrao ja usado por dateId em processSettled: BetSettledEvent nao carrega betType (payload do evento so tem isso em BetCreated), entao a liquidacao precisa preservar o valor ja gravado, nao recalcula-lo/perde-lo.",
+          "checklist": [
+            "Migration ADD COLUMN bet_type VARCHAR(4) nullable em fact_bet (sem CHECK - este servico so reflete o que chegou no evento, nao valida entrada).",
+            "Enum de dominio BetType (PRE/LIVE, @JsonProperty lowercase, mesmo padrao de BetStatus).",
+            "BetTypeAttributeConverter (@Converter(autoApply=true), armazena lowercase pre/live, mesmo padrao de BetStatusAttributeConverter).",
+            "FactBet/FactBetJpaEntity ganham campo betType (applyFrom grava); BetCreatedEvent ganha betType (nullable).",
+            "BetEventListener.toBetCreatedEvent parseia payload.path(\"betType\") (nullable, case-insensitive).",
+            "ProcessBetEventService.processCreated passa event.betType(); processSettled preserva existing.map(FactBet::betType).orElse(null) em vez de recalcular/perder.",
+            "Teste de integracao: insert com PRE/LIVE/null: upsert via BetSettled preserva o valor gravado no insert."
+          ],
+          "validation": "./init.sh verde - teste prova que betType sobrevive ao upsert de liquidacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.2",
+          "name": "wonCount/lostCount/voidCount/preCount/liveCount/avgOdd nos 5 agregados existentes",
+          "status": "done",
+          "jira": "SV-345",
+          "detail": "Achado MAJOR do Plan Reviewer: toda comparacao de enum nas 5 queries JPQL usa parametro @Param tipado (BetStatus/BetType), nunca literal de string solto - mesma convencao ja usada por :pending, garante que o AttributeConverter seja aplicado corretamente.",
+          "checklist": [
+            "BetAggregate/BetMetrics ganham lostCount/voidCount/preCount/liveCount (long) e avgOdd (BigDecimal nullable).",
+            "AggregateProjection/SegmentedAggregateProjection/MonthlyAggregateProjection ganham os getters correspondentes.",
+            "As 5 queries JPQL (aggregateOverall/BySport/ByMarket/ByBettingHouse/ByMonth) ganham SUM(CASE WHEN f.status = :lost ...)/:voidStatus, SUM(CASE WHEN f.betType = :pre ...)/:live, AVG(f.odd) AS avgOdd - todos via @Param tipado.",
+            "CalculateMetricsService.toMetrics mapeia os campos novos (contagens null->0L; avgOdd passa direto sem coalescer pra ZERO, mesmo tratamento de SearchAggregate.avgOdd).",
+            "ZERO_METRICS em GetDashboardMetricsService atualizado com os campos novos.",
+            "Teste: aposta won/lost/void/pre/live/sem-betType misturadas provam cada contagem isolada, incluindo odd media com apostas sem odd (nullable)."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 6 campos novos via SQL real, nao mock.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.3",
+          "name": "Segmento byBetType (6o segmento, dimensionId String)",
+          "status": "done",
+          "jira": "SV-346",
+          "detail": "Achados MAJOR do Plan Reviewer: dimensionId de SegmentedBetAggregate/SegmentedBetMetrics muda de UUID pra String (PRE/LIVE nao sao uuid de catalogo) - atualizar os 5 arquivos de teste que ja referenciam esse tipo; projecao de byBetType expoe o getter no tipo real do enum (BetTypeAggregateProjection.getBetType():BetType), conversao pra String (.name()) feita explicitamente no adapter, nao implicita na projecao Spring Data.",
+          "checklist": [
+            "SegmentedBetAggregate/SegmentedBetMetrics.dimensionId muda de UUID para String (UUID.toString() no adapter para os 3 segmentos existentes).",
+            "Atualizar StatisticsControllerIntegrationTest, RedisMetricsCacheRepositoryIntegrationTest, FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest para o novo tipo.",
+            "Nova projecao BetTypeAggregateProjection (getBetType():BetType) + query aggregateByBetType (WHERE f.betType IS NOT NULL AND f.status <> :pending, GROUP BY f.betType) - dimensionId/dimensionName = betType.name() (\"PRE\"/\"LIVE\").",
+            "StatisticsDashboard ganha byBetType (List<SegmentedBetMetrics>, reaproveita o mesmo BetMetrics dos outros 5 segmentos, incluindo preCount/liveCount mesmo triviais ali).",
+            "GetStatisticsDashboardService inclui byBetType nos dois ramos (com/sem filtro).",
+            "Cache: findByBetType/saveByBetType + chave segment:byBetType em MetricsCacheRepository/RedisMetricsCacheRepository, evictada junto das outras 4 em evict() - simetria com bySport/byMarket/byBettingHouse.",
+            "Teste: byBetType retorna no maximo 2 itens (PRE/LIVE); aposta sem betType classificado nao aparece em nenhum dos dois."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 2 buckets fixos via SQL real.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-015.4",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-347",
+          "detail": "Fecha a feature - docs/API-CONTRACTS.md, docs/STATISTICS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Fechada em 2026-09-11 (feat-015.1..015.4, story SV-343 com 4 subtasks SV-344..347, 4 PRs de subtask mergeadas). GET /api/v1/statistics ganha wonCount/lostCount/voidCount/preCount/liveCount/avgOdd em overall/bySport/byMarket/byBettingHouse/monthly, mais um 6o segmento byBetType (2 buckets fixos PRE/LIVE). FACT_BET.betType (nullable) gravado so no insert de BetCreated, preservado no upsert de BetSettled (mesmo padrao ja usado por dateId).",
+        "secoes": [
+          {
+            "titulo": "Verificação real executada",
+            "itens": [
+              "./init.sh (mvn verify, JaCoCo 80% incluso) verde localmente com Docker ativo, em cada uma das 4 subtasks.",
+              "CI verde nas 4 PRs de subtask (subtask/SV-344..347 -> feature/SV-343).",
+              "Testes reais de integracao (Testcontainers Postgres): betType preservado no upsert (insert com PRE/LIVE/null, liquidacao nao perde o valor), lostCount/voidCount/preCount/liveCount/avgOdd provados com valores conferidos (nao so ausencia de excecao), byBetType com exatamente 2 buckets fixos e aposta sem betType classificado fora dos dois, teste HTTP end-to-end do bundle completo incluindo byBetType.",
+              "Teste unitario complementar (ProcessBetEventServiceTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest) prova os mesmos ramos com mocks - falha rapida e localizada."
+            ]
+          },
+          {
+            "titulo": "Divergência do plano original",
+            "itens": [
+              "Nenhuma alem do ja registrado no plan_review - as 3 correcoes MAJOR do Plan Reviewer (parametro tipado em vez de literal de string em comparacao de enum JPQL; getter no tipo real do enum na projecao de byBetType, conversao pra String explicita no adapter; mudanca de tipo dimensionId UUID->String com os 5 arquivos de teste afetados listados) foram aplicadas no plano antes do codigo, sem descoberta nova durante a implementacao."
+            ]
+          },
+          {
+            "titulo": "Defeitos encontrados antes de causar dano",
+            "itens": [
+              "Plan Reviewer (antes do codigo): READY WITH CONCERNS, 3 MAJOR corrigidos no plano - ver campo plan_review desta feature para o detalhe completo de cada achado.",
+              "Achado real do Delivery Reviewer (feat-015.4): o exemplo JSON de byBetType em docs/API-CONTRACTS.md (escrito antes do codigo, na sessao de planejamento do epic-014) nao mostrava preCount/liveCount nos itens do segmento - a decisao de implementacao (reaproveitar o mesmo record BetMetrics dos outros 5 segmentos, ja confirmada no plan_review) inclui esses 2 campos ali tambem, ainda que triviais dentro do proprio bucket. Doc corrigido para bater com a implementacao real, com a nota do racional (evita duplicar SegmentedBetMetrics so pra omitir 2 campos redundantes-mas-inofensivos).",
+              "Achado do self-review durante a implementacao (nao do Plan Reviewer): o rascunho original propunha tratamento de excecao no cache Redis para deserializacao de entradas antigas pos-deploy - verificado com evidencia (Jackson 3/tools.jackson, autoconfiguracao padrao do Spring Boot 4, sem override de estrita neste repositorio) que o comportamento default de record com campo ausente e preencher com o default do tipo, nao lancar excecao - achado refutado, nao virou subtask, documentado como risco residual aceito (ate 1h de TTL com campos novos zerados/nulos)."
+            ]
+          },
+          {
+            "titulo": "Skills e ferramentas",
+            "itens": [
+              "Plan Reviewer (3 MAJOR corrigidos) rodado antes de codificar; Delivery Reviewer (PASS, achado real de drift doc/codigo corrigido), Test Suite Auditor (PASS, oraculo forte em todos os testes novos) e Persistence Auditor (PASS, ADD COLUMN sem DEFAULT confirmado seguro, sem indice novo necessario) rodados contra o diff completo da feature (37 arquivos) - passe proprio, sem subagentes, independencia reduzida declarada, mesmo padrao ja usado nas demais features deste servico.",
+              "docs/API-CONTRACTS.md e docs/services/stats-service.md (repositorio raiz sv-harness) atualizados no commit de fechamento (feat-015.4) - secao do epic-014 marcada done, exemplo de byBetType corrigido."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "feat-016",
+      "name": "Quebra diaria de metricas (GET /api/v1/statistics/daily)",
+      "goal": "Novo endpoint GET /api/v1/statistics/daily devolve {date, totalStaked, netProfit, roi, betCount} por dia liquidado do recorte filtrado - fonte de dados para a pagina 'Relatorio do periodo' e a grade de graficos mensais de drawdown de apps/web.",
+      "scope": [
+        "Agregacao por dia (DimDate.day/month/year), mesma mecanica ja usada por MonthlyBetMetrics/aggregateByMonth",
+        "Array esparso: so dias com pelo menos 1 aposta liquidada, ordenado por data ascendente",
+        "Mesmos 7 filtros opcionais de GET /api/v1/statistics (bettingHouseId/sportId/leagueId/marketId/tipsterId/from/to)",
+        "Sem cache-aside - sempre calculado direto, nenhum caso (mesmo sem filtro) usa Redis",
+        "Nao inclui nenhum campo alem de date/totalStaked/netProfit/roi/betCount - sem wonCount/lostCount/avgOdd/etc (isso fica no endpoint overall, epic-014)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-016 da raiz, pedido do usuario 2026-09-10). Formulas/contrato de resposta ja escritos antes do codigo em docs/STATISTICS.md ('Quebra diaria') e docs/API-CONTRACTS.md (exemplo JSON completo). Depende so de feat-004 (agregacao existente, done) - nao usa betType/odd/saldo, entao nao depende de feat-013/014/015 nem de bets-service epic-013.",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, nenhum achado MAJOR/BLOCKER, nenhuma decisao do usuario necessaria. (MINOR #1) FUNCTION('make_date', d.year, d.month, d.day) no SELECT combinado com GROUP BY nas colunas cruas (d.year/d.month/d.day) e uma combinacao nova neste codebase - findOrderedSettledProfits (feat-012) ja usa FUNCTION('make_date',...) no SELECT mas sem agregacao/GROUP BY (linha a linha); aggregateByMonth ja usa GROUP BY mas seleciona d.year/d.month crus, sem FUNCTION(). SQL padrao permite (expressao deterministica so das colunas agrupadas nao precisa repetir no GROUP BY), mas a combinacao especifica com a traducao JPQL->SQL do Hibernate neste repositorio ainda nao foi exercitada - risco baixo, nao bloqueia, verificado pelo teste de integracao real (Testcontainers Postgres) antes do merge. Fallback trivial se falhar: DailyAggregateProjection expoe getYear()/getMonth()/getDay() (como MonthlyAggregateProjection) e JpaFactBetRepository constroi LocalDate.of(year,month,day) no mapeamento, em vez de depender de FUNCTION() no SELECT. (MINOR #2) Item do plano original que previa atualizar docs/API-CONTRACTS.md era redundante - a nota ja documenta o contrato completo (exemplo JSON identico ao shape implementado) desde a sessao de planejamento do epic-016, so confirmar aderencia na subtask de fechamento, sem reescrever. Escopo confirmado (sem decisao do usuario necessaria): calculateDaily entra em CalculateMetricsUseCase (ao lado de calculateMonthly, mesma familia - agregacao bruta + roi) em vez de um port dedicado, e StatisticsController passa a injetar CalculateMetricsUseCase diretamente (hoje so GetStatisticsDashboardService o injeta) - decisao aceitavel dado o precedente do proprio codebase, sem quebra de camada. roi=ZERO quando totalStaked=0 reaproveita a MESMA regra ja usada em CalculateMetricsService.toMetrics (RN04) - extrair helper privado estatico compartilhado, evitando duplicacao que o SonarCloud ja flagou em padroes analogos neste servico.",
+      "jira": "SV-354",
+      "subtasks": [
+        {
+          "id": "feat-016.1",
+          "name": "Agregacao diaria (domain + port + query JPQL + repository) com teste de integracao real",
+          "status": "done",
+          "jira": "SV-355",
+          "detail": "Mirror de MonthlyBetAggregate/aggregateByMonth, shape mais enxuto (so totalStaked/netProfit/betCount, sem os campos que overall/monthly carregam e que a resposta de /daily nao expoe). Achado MINOR do Plan Reviewer: a combinacao FUNCTION(make_date)+GROUP BY nas colunas cruas e nova - o teste de integracao real e quem confirma que funciona, com fallback documentado no plan_review se nao funcionar.",
+          "checklist": [
+            "domain/model/DailyBetAggregate.java - record (LocalDate date, BigDecimal totalStaked, BigDecimal netProfit, long betCount).",
+            "domain/port/out/FactBetRepository.java - novo metodo aggregateByDay(StatisticsFilter filter): List<DailyBetAggregate>.",
+            "adapter/out/persistence/DailyAggregateProjection.java (package-private, mesmo padrao de MonthlyAggregateProjection) - getDate()/getTotalStaked()/getNetProfit()/getBetCount().",
+            "FactBetSpringDataRepository.java - query aggregateByDay: SELECT FUNCTION('make_date', d.year, d.month, d.day) AS date, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit, COUNT(f) AS betCount FROM FactBetJpaEntity f, DimDateJpaEntity d WHERE f.dateId = d.id AND f.status <> :pending + os mesmos 5 predicados opcionais 'IS NULL OR' de aggregateByMonth + intervalo from/to, GROUP BY d.year, d.month, d.day ORDER BY d.year, d.month, d.day. So @Param(\"pending\") e @Param(\"filter\") - sem lost/voidStatus/pre/live.",
+            "JpaFactBetRepository.java - implementa aggregateByDay(filter) delegando a jpaRepository.aggregateByDay(BetStatus.PENDING, resolve(filter)), null-safety SUM/COUNT (mesmo padrao de toAggregate).",
+            "Teste de integracao (Testcontainers Postgres, FactBetAggregationIntegrationTest): apostas em dias diferentes agregadas separadamente; dia sem aposta liquidada ausente do resultado; status=pending excluido; filtro from/to restringe o intervalo; resultado ordenado por data ascendente."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova a agregacao diaria real via SQL (nao mock), incluindo o array esparso e a ordenacao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-016.2",
+          "name": "Endpoint GET /api/v1/statistics/daily (roi + controller)",
+          "status": "done",
+          "jira": "SV-356",
+          "detail": "calculateDaily entra em CalculateMetricsUseCase/CalculateMetricsService (mesma familia de calculateMonthly), reaproveitando a regra de roi=ZERO-se-totalStaked=0 via helper privado estatico compartilhado com toMetrics (evita duplicacao).",
+          "checklist": [
+            "domain/model/DailyBetMetrics.java - record (LocalDate date, BigDecimal totalStaked, BigDecimal netProfit, BigDecimal roi, long betCount).",
+            "domain/port/in/CalculateMetricsUseCase.java - novo metodo calculateDaily(StatisticsFilter filter): List<DailyBetMetrics>.",
+            "CalculateMetricsService.java - implementa calculateDaily mapeando DailyBetAggregate->DailyBetMetrics; extrai helper privado estatico roiOf(BigDecimal netProfit, BigDecimal totalStaked) reaproveitado por toMetrics() e calculateDaily.",
+            "StatisticsController.java - novo @GetMapping(\"/daily\") injetando CalculateMetricsUseCase, mesmos 7 @RequestParam opcionais do endpoint GET /api/v1/statistics.",
+            "Teste unitario em CalculateMetricsServiceTest (roi=ZERO quando totalStaked=0, caso normal, mesmo padrao ParameterizedTest ja usado para calculateOverall).",
+            "Teste de integracao HTTP no controller (200 com array esperado, filtros aplicados, array vazio quando nenhum dia liquidado no recorte)."
+          ],
+          "validation": "./init.sh verde - GET /api/v1/statistics/daily real (Testcontainers) devolve o shape exato documentado em docs/API-CONTRACTS.md.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-016.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-357",
+          "detail": "Fecha a feature - docs/STATISTICS.md e docs/API-CONTRACTS.md ja escritos antes do codigo (confirmar que a implementacao final bate exatamente, sem reescrever a menos que a implementacao precise divergir do ja planejado).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-11 (story SV-354, 3 subtasks SV-355..357, PRs #51/#52/#53 subtask->feature). GET /api/v1/statistics/daily novo: mesmos 7 filtros opcionais de GET /api/v1/statistics, granularidade diaria (DimDate.day/month/year), array esparso ordenado por data ascendente (so dias com pelo menos 1 aposta liquidada), sem cache-aside. aggregateByDay via JPQL com FUNCTION('make_date', d.year, d.month, d.day) no SELECT + GROUP BY nas colunas cruas - combinacao nova neste codebase, confirmada funcional pelo teste de integracao real (Testcontainers Postgres), sem precisar do fallback de LocalDate.of(year,month,day) previsto no plan_review. calculateDaily reaproveita a mesma regra RN04 de roi=ZERO-se-totalStaked=0 via helper privado estatico roiOf, extraido de toMetrics (elimina duplicacao). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao em GET /api/v1/statistics/GET /api/v1/statistics/search existentes, filtro from/to reaproveita os mesmos sentinelas MIN_DATE/MAX_DATE ja usados pelos outros endpoints. Test Suite Auditor: PASS - testes de integracao reais provam array esparso, exclusao RN06 (dia so com aposta pending fica de fora), filtro from/to, ordenacao ascendente; teste HTTP end-to-end confirma o shape exato do contrato; teste unitario cobre roi=ZERO isolado. Persistence Auditor: PASS - mesmo padrao de join/filtro ja aceito em aggregateByMonth/aggregateOverall (sem indice novo em date_id/status, baixo volume por tenant, nao e risco introduzido por esta feature). ./init.sh do servico e da raiz verdes. docs/CONVENTIONS.md atualizado (padrao FUNCTION(make_date)+GROUP BY confirmado, reaproveitavel por agregacoes por data futuras). docs/STATISTICS.md/docs/API-CONTRACTS.md ja escritos antes do codigo (sessao de planejamento do epic-016) - implementacao final confirmada aderente, sem divergencia. Fecha epic-016 da raiz."
+    },
+    {
+      "id": "feat-017",
+      "name": "Segmentos byLeague/byTipster em GET /api/v1/statistics",
+      "goal": "GET /api/v1/statistics ganha 2 novos arrays no bundle (byLeague, byTipster), mesmo formato de bySport/byMarket/byBettingHouse - fecha a lacuna documentada desde feat-006 (leagueId/tipsterId so estreitavam os outros segmentos como filtro, nunca tiveram agrupamento proprio). Fonte de dados para os 5 dashboards por cadastro de apps/web (epic-019).",
+      "scope": [
+        "aggregateByLeague/aggregateByTipster em FactBetRepository, mirror exato de aggregateBySport/aggregateByMarket (join DimLeagueJpaEntity/DimTipsterJpaEntity + DimDateJpaEntity)",
+        "aggregateByTipster exclui f.tipsterId IS NULL (tipster_id nullable em FACT_BET, diferente de league_id NOT NULL) - mesmo padrao ja usado por aggregateByBetType (f.betType IS NOT NULL)",
+        "calculateByLeague/calculateByTipster em CalculateMetricsUseCase/Service, reaproveitando toSegmentedMetrics existente",
+        "StatisticsDashboard ganha campos byLeague/byTipster, GetStatisticsDashboardService popula os 2 nos 2 branches (cache-aside sem filtro, calculo direto com filtro)",
+        "Cache-aside: getByLeague/getByTipster em GetDashboardMetricsUseCase/Service + MetricsCacheRepository/RedisMetricsCacheRepository (chaves segment:league/segment:tipster, mesmo padrao sport/market/house), evict() passa a incluir as 2 chaves novas",
+        "Sem migration nova (DIM_LEAGUE/DIM_TIPSTER ja existem desde feat-002), sem endpoint novo (mesmo GET /api/v1/statistics)"
+      ],
+      "description": "Escopo novo, fora do backlog original do TCC1 (epic-018 da raiz, pedido do usuario 2026-09-10, reestruturacao de menu por cadastro em apps/web). Contrato ja escrito antes do codigo em docs/API-CONTRACTS.md e docs/services/stats-service.md (secao 'Segmentos byLeague/byTipster', sessao de planejamento anterior) - mesmo formato de {dimensionId, dimensionName, metrics: SegmentedBetMetrics} dos 3 segmentos existentes, sem campo novo em SegmentedBetMetrics. Depende so de feat-004 (agregacao existente, done).",
+      "dependencies": [
+        "feat-004"
+      ],
+      "status": "done",
+      "plan_review": "2026-09-11, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano antes de qualquer codigo (passe proprio, sem subagentes - independencia reduzida, declarada, mesmo padrao ja usado nas demais features deste servico). Veredito: READY WITH CONCERNS, nenhum achado MAJOR/BLOCKER, nenhuma decisao do usuario necessaria - padrao ja validado 4x neste servico (bySport/byMarket/byBettingHouse desde feat-006, byBetType em feat-015), risco baixo por precedente direto. (MINOR #1) Nomeacao das chaves de cache: RedisMetricsCacheRepository usa constantes curtas (SPORT_SEGMENT='sport', MARKET_SEGMENT='market', HOUSE_SEGMENT='house') exceto BET_TYPE_SEGMENT='byBetType' (unica excecao ja existente ao padrao). Novas chaves seguem o padrao majoritario: LEAGUE_SEGMENT='league', TIPSTER_SEGMENT='tipster' (nao 'byLeague'/'byTipster'), consistente com 3 das 4 chaves existentes. (MINOR #2) evict() precisa incluir as 2 chaves novas na mesma chamada redisTemplate.delete(List.of(...)) - se esquecido, byLeague/byTipster cacheados ficam obsoletos apos BetSettled ate o TTL de seguranca de 1h expirar (bug silencioso, sem teste falhando via compilacao); RedisMetricsCacheRepositoryIntegrationTest e CacheInvalidationOnEventIntegrationTest existentes sao o lugar natural pra estender cobertura, garantindo que o teste falha se a chave for esquecida. Escopo confirmado (sem decisao do usuario necessaria): aggregateByTipster exclui tipsterId nulo do agrupamento (mesmo padrao de aggregateByBetType.betType IS NOT NULL) - decisao ja implicita no precedente do codebase, nao uma nova regra de negocio. Unico ponto de atencao tecnico (nao MAJOR): FactBetAggregationIntegrationTest, CalculateMetricsServiceTest, GetDashboardMetricsServiceTest, StatisticsControllerIntegrationTest e RedisMetricsCacheRepositoryIntegrationTest sao os 5 arquivos de teste que precisam de casos novos (mesmo padrao de extensao ja seguido em feat-015/feat-016).",
+      "jira": "SV-358",
+      "subtasks": [
+        {
+          "id": "feat-017.1",
+          "name": "Agregacao byLeague/byTipster (domain + port + query JPQL + repository) com testes de integracao reais",
+          "status": "done",
+          "jira": "SV-359",
+          "detail": "Mirror exato de aggregateBySport/aggregateByMarket (feat-006) - 2 metodos novos no mesmo arquivo/interface, mesma estrutura de predicados opcionais. aggregateByTipster adiciona f.tipsterId IS NOT NULL (unica diferenca estrutural em relacao aos outros 3 segmentos, mesmo padrao de aggregateByBetType.betType IS NOT NULL).",
+          "checklist": [
+            "domain/port/out/FactBetRepository.java - aggregateByLeague(StatisticsFilter filter)/aggregateByTipster(StatisticsFilter filter): List<SegmentedBetAggregate>.",
+            "adapter/out/persistence/FactBetSpringDataRepository.java - 2 novas @Query (SegmentedAggregateProjection reaproveitada), join DimLeagueJpaEntity/DimTipsterJpaEntity + DimDateJpaEntity, mesmos 5 predicados opcionais + from/to, GROUP BY id+name; aggregateByTipster com f.tipsterId IS NOT NULL adicional.",
+            "adapter/out/persistence/JpaFactBetRepository.java - implementa os 2 metodos delegando aos equivalentes do jpaRepository, mesmo padrao de toBetTypeSegment/toAggregate para mapear a projecao.",
+            "Teste de integracao (FactBetAggregationIntegrationTest, Testcontainers Postgres): byLeague agrega corretamente por liga; byTipster exclui apostas sem tipster do agrupamento (aposta com tipsterId null nao aparece em nenhum bucket); ambos respeitam RN06 (status pending excluido) e os filtros opcionais existentes."
+          ],
+          "validation": "./init.sh verde - teste de integracao prova os 2 agregados reais via SQL, incluindo a exclusao de tipster nulo.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-017.2",
+          "name": "calculateByLeague/calculateByTipster, StatisticsDashboard, cache-aside (getByLeague/getByTipster + evict) e teste HTTP end-to-end",
+          "status": "done",
+          "jira": "SV-360",
+          "detail": "Achado MINOR do Plan Reviewer: chaves de cache 'league'/'tipster' (nao 'byLeague'/'byTipster'), consistente com sport/market/house; evict() precisa incluir as 2 chaves novas na mesma lista, com teste provando que ficam obsoletas se esquecidas.",
+          "checklist": [
+            "domain/port/in/CalculateMetricsUseCase.java + application/CalculateMetricsService.java - calculateByLeague/calculateByTipster, reaproveitando toSegmentedMetrics existente.",
+            "domain/model/StatisticsDashboard.java - campos byLeague/byTipster (List<SegmentedBetMetrics>).",
+            "application/GetStatisticsDashboardService.java - popula os 2 campos novos nos 2 branches (filtro.isEmpty() via dashboardMetrics.getByLeague()/getByTipster(); filtro presente via calculateMetrics.calculateByLeague(filter)/calculateByTipster(filter)).",
+            "domain/port/in/GetDashboardMetricsUseCase.java + application/GetDashboardMetricsService.java - getByLeague/getByTipster (mesmo padrao cache-aside de getBySport/getByMarket).",
+            "domain/port/out/MetricsCacheRepository.java + adapter/out/cache/RedisMetricsCacheRepository.java - findByLeague/saveByLeague/findByTipster/saveByTipster (constantes LEAGUE_SEGMENT='league'/TIPSTER_SEGMENT='tipster'); evict() inclui as 2 chaves novas na mesma lista.",
+            "Teste unitario (CalculateMetricsServiceTest): calculateByLeague/calculateByTipster com caso normal + tipster nulo excluido.",
+            "Teste unitario (GetDashboardMetricsServiceTest): getByLeague/getByTipster hit/miss cache-aside, mesmo padrao dos 3 segmentos existentes.",
+            "Teste de integracao (RedisMetricsCacheRepositoryIntegrationTest): save/find real das 2 chaves novas contra Redis real (Testcontainers); evict real remove as 2 chaves novas junto das 4 existentes - prova que a lacuna do achado MINOR #2 nao existe no codigo final.",
+            "Teste de integracao HTTP (StatisticsControllerIntegrationTest): GET /api/v1/statistics real devolve byLeague/byTipster no bundle com o shape esperado (docs/API-CONTRACTS.md)."
+          ],
+          "validation": "./init.sh verde - GET /api/v1/statistics real devolve os 2 arrays novos; cache-aside e evicao dos 2 provados por teste real, nao so ausencia de excecao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-017.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-361",
+          "detail": "Fecha a feature - docs/API-CONTRACTS.md e docs/services/stats-service.md ja escritos antes do codigo (confirmar aderencia, atualizar o marcador 'planejado' -> 'done' da secao correspondente).",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased).",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer + Test Suite Auditor + Persistence Auditor rodados sem achado bloqueante nao resolvido.",
+            "docs/services/stats-service.md: secao 'Segmentos byLeague/byTipster' marcada done, com nota de implementacao (mesmo padrao das secoes de feat-014/015/016).",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC1) no mesmo commit."
+          ],
+          "validation": "./init.sh raiz e do servico saem 0; evidence da feature preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-11 (story SV-358, 3 subtasks SV-359..361, PRs #55/#56 subtask->feature). GET /api/v1/statistics ganha byLeague/byTipster, mesmo formato {dimensionId, dimensionName, metrics} de bySport/byMarket/byBettingHouse. aggregateByLeague e mirror exato de aggregateBySport/aggregateByMarket; aggregateByTipster exclui f.tipsterId IS NULL (campo opcional, diferente de leagueId sempre presente), mesmo padrao de aggregateByBetType. Cache-aside estendido (chaves segment:league/segment:tipster, nomeacao consistente com sport/market/house - achado MINOR #1 do plan review resolvido) - evict() passa a incluir as 2 chaves novas (achado MINOR #2 resolvido, coberto por teste de integracao dedicado que prova a lacuna nao existe). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao nos 4 segmentos existentes (bySport/byMarket/byBettingHouse/byBetType), os 2 achados MINOR do plan review confirmados resolvidos no codigo final. Test Suite Auditor: PASS - testes de integracao reais (Testcontainers Postgres) provam agrupamento por liga e exclusao de tipster nulo; testes de cache-aside (hit/miss) mirror do padrao existente; teste HTTP end-to-end confirma os 2 arrays no bundle e a exclusao de tipster nulo ponta a ponta; teste de integracao dedicado prova evict() real remove as 2 chaves novas junto das existentes. Persistence Auditor: PASS - mesmo padrao de join/predicado ja aceito nos 3 segmentos existentes, sem indice novo necessario (baixo volume por tenant, risco identico ja avaliado). ./init.sh do servico e da raiz verdes. docs/API-CONTRACTS.md/docs/services/stats-service.md (repositorio raiz) atualizados confirmando implementacao aderente ao planejado, secao marcada done. Fecha epic-018 da raiz. Libera epic-019 (web - menu por cadastro)."
+    },
+    {
+      "id": "feat-018",
+      "name": "Alinhar DIM_TEAM com o catalogo de times do dominio",
+      "description": "Avaliar e planejar o alinhamento da DIM_TEAM existente desde feat-012/feat-013 com uma eventual entidade TEAM no bets-service. A FK sportId ja existe em DIM_TEAM e deve ser preservada; o trabalho deve definir se ela passa a referenciar um identificador de dominio compartilhado, como sincronizar nomes e ids nos eventos e como manter as consultas historicas e o autocomplete compativeis.",
+      "dependencies": [
+        "feat-013"
+      ],
+      "status": "not-started",
+      "plan_review": "Plan Reviewer 2026-09-15: BLOCKED. DIM_TEAM ja tem sportId + chave natural unica (name, sport_id) desde V20260910120000/V20260910130000 (epic-011/epic-014, decisao do usuario na epoca) - a description desta feature trata isso como se ainda estivesse em aberto ('se ela passa a referenciar um identificador de dominio compartilhado'), mas a decisao real esta em bets-service feat-016 (services/bets-service/feature_list.json), ainda not-started/plan_review preenchido nesta mesma sessao. Nao ha subtask nenhuma cadastrada (subtasks: [] vazio) - feature nao pode virar in-progress sem elas. BLOCKED em vez de REVISE porque a lacuna e uma decisao de outro harness que ainda nao foi tomada: comecar feat-018 antes do documento de decisao de bets-service feat-016.3 existir arrisca este servico redecidir a mesma chave natural (name+sportId) de forma divergente do catalogo TEAM que sera a fonte de verdade. Acao antes de prosseguir: (1) aguardar bets-service feat-016 fechar com o documento de decisao referenciado em sua evidence; (2) so entao popular as subtasks aqui com base no plano de contratos de feat-016.3 (o que sincronizar: FK vs. nome+esporte, formato do evento BetCreated/BetSettled, migracao de dados historicos de DIM_TEAM); (3) rerodar o Plan Reviewer contra as subtasks resultantes antes de marcar in-progress.",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-019",
+      "name": "CD: job de deploy automatico (kubectl rollout restart) no ci.yml",
+      "description": "Fecha epic-028 da raiz (decisao do usuario, 2026-09-15) neste repositorio: job novo 'deploy' no ci.yml, needs: build-and-push-image (feat-014), if restrito a push em main, rodando kubectl rollout restart deployment/stats-service -n <namespace> contra o kubeconfig do secret KUBE_CONFIG (gerado por infra/feat-007 - ServiceAccount de CI com RBAC restrito, fora deste repositorio). Nao reaplica manifest - a imagem e referenciada por tag :latest no Deployment, o restart e o suficiente pra repuxar a imagem nova publicada pelo job anterior.",
+      "dependencies": [
+        "feat-014"
+      ],
+      "status": "done",
+      "plan_review": "Plan Reviewer (2026-09-15): READY. Mesmo padrao mecanico ja aplicado e validado em bets-service feat-018 (primeiro dos 6 repositorios de epic-028 a fechar) - reaproveitado aqui sem repetir o ciclo de descoberta, ver services/bets-service/feature_list.json feat-018 e docs/services/infra.md 'CD automatico via CI'. Confirmado contra este repositorio antes de codificar: infra/k8s/stats-service.yaml define o Deployment 'stats-service' sem namespace (default, mesmo padrao dos outros 5); RBAC de infra/k8s/ci-deployer-rbac.yaml ja inclui 'stats-service' em resourceNames; secret KUBE_CONFIG confirmado presente neste repositorio GitHub (gh secret list, gravado 2026-09-15 por infra/feat-007); default_workflow_permissions deste repositorio e 'write' (gh api .../actions/permissions/workflow), confirmando a necessidade do permissions: {} explicito no job (mesma licao ja aplicada em bets-service). As 2 correcoes MINOR do Plan Reviewer de bets-service feat-018 (sem azure/setup-kubectl - kubectl 1.37.0 ja preinstalado no runner ubuntu-latest; permissions: {} explicito) entram direto no plano aqui, nao precisam ser redescobertas. Sem BLOCKER, sem achado novo especifico deste repositorio.",
+      "jira": "SV-426",
+      "subtasks": [
+        {
+          "id": "feat-019.1",
+          "name": "Job deploy no ci.yml",
+          "status": "done",
+          "jira": "SV-427"
+        },
+        {
+          "id": "feat-019.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-428"
+        }
+      ],
+      "evidence": "Fechada em 2026-09-15 (story SV-426, subtasks SV-427/SV-428, PR #59 subtask->story verde, merge feature/SV-426 -> develop). Reaproveitou byte a byte o padrao ja revisado e fechado em bets-service feat-018 na mesma sessao (mesmo Plan Reviewer, mesmas 2 correcoes MINOR ja aplicadas: sem action de terceiro azure/setup-kubectl - kubectl 1.37.0 ja preinstalado no runner ubuntu-latest; permissions: {} explicito, confirmado necessario pois este repositorio tambem tem default_workflow_permissions=write). Unica diferenca e o nome do Deployment (stats-service), confirmado contra infra/k8s/stats-service.yaml (sem namespace, default) e contra infra/k8s/ci-deployer-rbac.yaml (resourceNames ja inclui stats-service). KUBE_CONFIG confirmado presente no repositorio (gh secret list). Delivery Reviewer: PASS (revisao condensada, reaplicacao identica de padrao ja auditado - sem achado). ./init.sh verde. Guard comportou como esperado: deploy/build-and-push-image corretamente 'skipping' no evento de PR (run 35010523400). **Disparo real do job adiado**: main deste repositorio estava ~20 commits atras de develop (feat-014..feat-017 + esta feat-019 acumulados, nenhuma promocao develop->main ainda) - mesma decisao de bets-service feat-018, nao forcar uma promocao so pra provar o job nesta sessao (decisao de release mais ampla, nao exclusiva desta feature). O job vai disparar de verdade e ficar provado no proximo develop->main legitimo deste repositorio - registrar a confirmacao real (log do Actions) em docs/services/infra.md nessa ocasiao. Fecha a parte de stats-service do epic-028 da raiz (4 dos 6 repositorios de aplicacao ainda pendentes: auth-service feat-016, api-gateway feat-014, telegram-integration feat-010, web feat-030)."
     }
   ]
 }

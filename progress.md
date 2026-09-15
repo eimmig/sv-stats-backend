@@ -2,8 +2,109 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-10
-**Feature ativa:** nenhuma — `feat-001`..`feat-014` `done`.
+**Última atualização:** 2026-09-15
+**Feature ativa:** nenhuma — `feat-001`..`feat-017` e `feat-019` `done`. `feat-018` (DIM_TEAM
+alignment, `epic-024`) `BLOCKED` pelo próprio Plan Reviewer — ver `session-handoff.md`.
+
+## `feat-019` fechada — CD automático, job `deploy` no `ci.yml` (2026-09-15)
+
+Desbloqueada por `infra/feat-007` fechar mais cedo no dia. Reaproveitou byte a byte o padrão já
+revisado e fechado em `bets-service feat-018` na mesma sessão — mesmo `Plan Reviewer`, mesmas 2
+correções MINOR já aplicadas (sem a action de terceiro `azure/setup-kubectl`, já que `kubectl
+1.37.0` vem preinstalado no runner `ubuntu-latest`; `permissions: {}` explícito, confirmado
+necessário aqui também porque este repositório tem `default_workflow_permissions=write`). Única
+diferença real: o nome do `Deployment` (`stats-service`), confirmado contra
+`infra/k8s/stats-service.yaml` (sem namespace) e contra `infra/k8s/ci-deployer-rbac.yaml`
+(`resourceNames` já incluía `stats-service`).
+
+Story SV-426 (subtasks SV-427/SV-428), PRs #59/#60/#61, CI+SonarCloud verdes em todos. `Delivery
+Reviewer`: PASS (revisão condensada — reaplicação idêntica de um padrão já auditado na mesma
+sessão, sem achado). Disparo real do job adiado deliberadamente (mesma decisão de `bets-service
+feat-018`): `main` estava ~20 commits atrás de `develop`, promover agora só para provar o job
+seria uma decisão de release mais ampla, não desta feature.
+
+**Achado de processo, corrigido antes de prosseguir**: tentei mesclar `feature/SV-426 -> develop`
+com `git merge --no-ff` local em vez de abrir PR real pro GitHub — o gate pesado (`story ->
+develop`) exige CI+SonarCloud reais, não merge local. Como nada tinha sido empurrado ainda,
+revertido com `git reset --hard origin/develop` (seguro, sem perda) e refeito corretamente via
+`gh pr create`/`gh pr merge` (PR #61). Lição para os outros 4 repositórios de `epic-028` ainda
+pendentes: mesmo reaproveitando um padrão já validado, o merge pro gate pesado sempre passa por
+PR real, nunca merge local direto.
+
+**Segundo achado de processo, também já cometido em `bets-service feat-018` na mesma sessão**:
+marcar a última subtask `done` e a feature `done` na mesma edição do `feature_list.json`, seguida
+de uma única chamada de `--sync-status`, pula o estado `Review` no board do Jira (vai direto
+`In Progress -> Done`) — a tabela de "Ciclo de vida no board" em `CLAUDE.md` da raiz já documenta
+esse erro exato (aconteceu antes em `auth-service feat-002`) e a correção (dois disparos
+separados). Não refeito retroativamente aqui (o estado final `Done` está correto, só a
+rastreabilidade intermediária no board ficou incompleta) — aplicar a correção nos próximos 4
+fechamentos de `epic-028`.
+
+Fecha a parte de `stats-service` do `epic-028` da raiz — 4 dos 6 repositórios de aplicação ainda
+pendentes (`auth-service feat-016`, `api-gateway feat-014`, `telegram-integration feat-010`,
+`web feat-030`).
+
+## `feat-017` fechada — segmentos byLeague/byTipster (2026-09-11)
+
+Fecha `epic-018` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). `GET /api/v1/statistics` ganha 2 novos arrays no bundle — `byLeague`/`byTipster`,
+mesmo formato `{dimensionId, dimensionName, metrics}` de `bySport`/`byMarket`/`byBettingHouse`
+(`feat-006`) — fechando a lacuna documentada desde aquela feature (`leagueId`/`tipsterId` só
+estreitavam os outros segmentos como filtro, nunca tiveram agrupamento próprio).
+
+3 subtasks (story SV-358): `feat-017.1` (SV-359, `aggregateByLeague`/`aggregateByTipster` —
+mirror exato de `aggregateBySport`/`aggregateByMarket`; `aggregateByTipster` exclui
+`f.tipsterId IS NULL`, mesmo padrão de `aggregateByBetType.betType IS NOT NULL`, já que
+`tipsterId` é opcional em `FACT_BET` diferente de `leagueId`), `feat-017.2` (SV-360,
+`calculateByLeague`/`calculateByTipster` + `StatisticsDashboard` + cache-aside completo —
+`getByLeague`/`getByTipster` com chaves `segment:league`/`segment:tipster`, `evict()` estendido
+para incluir as 2 chaves novas), `feat-017.3` (SV-361, fechamento formal).
+
+**2 achados MINOR do Plan Reviewer, ambos resolvidos no código**: (1) nomeação das chaves de
+cache — seguiu o padrão majoritário `sport`/`market`/`house` (não `byBetType`, a única exceção
+já existente) — `league`/`tipster`. (2) `evict()` precisava incluir as 2 chaves novas ou
+`byLeague`/`byTipster` cacheados ficariam obsoletos após `BetSettled` até o TTL de segurança de
+1h expirar — coberto por teste de integração dedicado
+(`RedisMetricsCacheRepositoryIntegrationTest`) que prova a lacuna não existe, em vez de só
+confiar na revisão manual.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (18 arquivos): todos `PASS`.
+`./init.sh` verde. CI+SonarCloud verdes nas 3 PRs de subtask (#55/#56/#57) e na PR
+`feature/SV-358 -> develop` (#58). `docs/API-CONTRACTS.md`/`docs/services/stats-service.md`
+(repositório raiz) atualizados confirmando aderência ao planejado. Libera `epic-019` (web —
+menu por cadastro).
+
+## `feat-016` fechada — GET /api/v1/statistics/daily (2026-09-11)
+
+Fecha `epic-016` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). Novo endpoint `GET /api/v1/statistics/daily`: mesmos 7 filtros opcionais de
+`GET /api/v1/statistics`, granularidade diária (`DimDate.day/month/year`, mesma mecânica de
+`aggregateByMonth`), array esparso (só dias com pelo menos 1 aposta liquidada) ordenado por data
+ascendente, sem cache-aside. Contrato já escrito antes do código em `docs/STATISTICS.md`/
+`docs/API-CONTRACTS.md` (sessão de planejamento anterior) — implementação final confirmada
+aderente, sem divergência.
+
+3 subtasks (story SV-354): `feat-016.1` (SV-355, agregação diária via JPQL — `aggregateByDay`),
+`feat-016.2` (SV-356, `calculateDaily`/controller — reaproveita a regra RN04 de roi=ZERO via
+helper `roiOf` extraído de `toMetrics`), `feat-016.3` (SV-357, fechamento formal).
+
+**Achado MINOR do Plan Reviewer, confirmado sem problema**: `FUNCTION('make_date', d.year,
+d.month, d.day)` no `SELECT` combinado com `GROUP BY` nas colunas cruas era uma combinação nova
+neste codebase (`findOrderedSettledProfits` já usava `FUNCTION()` sem agregação;
+`aggregateByMonth` já usava `GROUP BY` sem `FUNCTION()`) — funcionou de primeira no teste de
+integração real (Testcontainers Postgres), sem precisar do fallback (`LocalDate.of` client-side)
+previsto no `plan_review`. Documentado em `docs/CONVENTIONS.md` (raiz) para reaproveitamento
+direto por futura agregação por data.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (14 arquivos): todos `PASS`.
+`./init.sh` verde. CI+SonarCloud verdes nas PRs #51/#52/#53 (subtask→feature) e #54
+(feature→develop). Achado de processo corrigido durante o fechamento desta sessão: a primeira
+tentativa marcou `feat-016.3` e `feat-016` `done` na mesma edição do JSON — corrigido antes do
+commit (regra "não pular o estado Review", ver `CLAUDE.md` raiz), separando em duas
+edições/`--sync-status` (subtask `done` → story `Review`; feature `done` numa edição posterior →
+story `Done`).
 
 ## `feat-014` fechada — build/push de imagem Docker pro GHCR, validado de verdade (2026-09-10)
 
@@ -416,3 +517,54 @@ Build real e execução real testados contra a infra (`postgres-stats`, `rabbitm
 `/actuator/health` UP. Imagem usada de fato pelos manifests Kubernetes de `infra/feat-004`. 1
 subtask (SV-281, story SV-280), 2 PRs (#37 subtask->feature, #38 feature->develop), CI+SonarCloud
 verdes nos dois.
+
+## `feat-015` fechada — extensão do dashboard consolidado: PRE/LIVE, avgOdd, won/lost/void, byBetType (2026-09-11)
+
+Fecha `epic-014` da raiz (escopo novo, fora do backlog original do TCC1, pedido do usuário
+2026-09-10). `GET /api/v1/statistics` ganha `wonCount`/`lostCount`/`voidCount`/`preCount`/
+`liveCount`/`avgOdd` em `overall`/`bySport`/`byMarket`/`byBettingHouse`/`monthly`, mais um 6º
+segmento `byBetType` (2 buckets fixos `PRE`/`LIVE`). Contrato já escrito antes do código em
+`docs/API-CONTRACTS.md`/`docs/STATISTICS.md`/`docs/services/stats-service.md` (sessão de
+planejamento anterior) — esta feature foi puramente implementação contra um design já fechado.
+
+4 subtasks (story SV-343): `feat-015.1` (SV-344, `FACT_BET.betType` persistido — gravado só no
+*insert* de `BetCreated`, preservado no *upsert* de `BetSettled` porque aquele payload não carrega
+`betType`, mesmo padrão exato já usado para `dateId`; enum `BetType` com `AttributeConverter`
+dedicado, mesmo padrão de `BetStatusAttributeConverter`), `feat-015.2` (SV-345, campos novos nas 5
+queries JPQL existentes), `feat-015.3` (SV-346, segmento `byBetType` — `dimensionId` migrado de
+`UUID` para `String` em `SegmentedBetAggregate`/`SegmentedBetMetrics`, único segmento sem uuid de
+catálogo por trás), `feat-015.4` (SV-347, fechamento formal).
+
+**3 achados MAJOR do Plan Reviewer, corrigidos antes do código** (não exigiram decisão do
+usuário): (1) toda comparação de enum nas queries JPQL deve usar `@Param` tipado, nunca literal de
+string solto (`f.status = 'LOST'`) — o codebase já evitava esse padrão desde `feat-006`
+(`:pending`), aqui só ficou explícito o porquê: literal de string arriscaria o
+`AttributeConverter` não ser aplicado de forma garantida. (2) projeção de `byBetType` expõe o
+getter no tipo real do enum (`BetTypeAggregateProjection.getBetType(): BetType`), conversão pra
+`String` feita explicitamente no adapter (`JpaFactBetRepository`), não implícita numa projeção
+Spring Data. (3) mudança de tipo `dimensionId` exigiu atualizar 5 arquivos de teste que já
+referenciavam `UUID` — listado explicitamente no plano pra não subestimar o escopo.
+
+**Achado real do Delivery Reviewer** (self-review, sem subagentes — independência reduzida,
+declarada, mesmo padrão já usado nas demais features deste serviço): o exemplo JSON de
+`byBetType` em `docs/API-CONTRACTS.md` (escrito na sessão de planejamento, antes do código) não
+mostrava `preCount`/`liveCount` nos itens do segmento — a decisão de implementação (reaproveitar o
+mesmo `record` `BetMetrics` dos outros 5 segmentos em vez de um tipo apartado, já confirmada no
+`plan_review`) inclui esses 2 campos ali também, ainda que triviais dentro do próprio bucket
+(`PRE` sempre tem `preCount == settledCount`). Doc corrigido pra bater com a implementação real,
+no mesmo commit de fechamento.
+
+**Achado do self-review durante a implementação, refutado com evidência** (não virou subtask): a
+preocupação de que estender `BetMetrics` quebraria a deserialização de entradas já cacheadas no
+Redis de antes do deploy não se confirmou — Jackson 3 (`tools.jackson`, autoconfiguração padrão do
+Spring Boot 4, sem override de estrita neste repositório) preenche componente de `record` ausente
+no JSON com o *default* do tipo (`0`/`0L`, `null`) em vez de lançar exceção. Risco residual aceito
+(até 1h de TTL com campos novos zerados/nulos num cache pré-deploy), documentado mas não corrigido
+— não é um problema introduzido por esta feature, é comportamento pré-existente do framework.
+
+`Delivery Reviewer`/`Test Suite Auditor`/`Persistence Auditor` (passe próprio, sem subagentes —
+independência reduzida, declarada) rodados contra o diff completo (37 arquivos): todos `PASS`.
+`./init.sh` (`mvn verify`, JaCoCo 80%) verde localmente com Docker ativo em cada uma das 4
+subtasks. CI+SonarCloud verdes nas 4 PRs de subtask e na PR `feature/SV-343 -> develop` (#50).
+`docs/API-CONTRACTS.md`/`docs/services/stats-service.md` (repositório raiz) atualizados no commit
+de fechamento. Fecha `epic-014` da raiz.

@@ -27,11 +27,24 @@ public interface MetricsCacheRepository {
 
 	void saveByBettingHouse(List<SegmentedBetMetrics> metrics);
 
+	Optional<List<SegmentedBetMetrics>> findByLeague();
+
+	void saveByLeague(List<SegmentedBetMetrics> metrics);
+
+	Optional<List<SegmentedBetMetrics>> findByTipster();
+
+	void saveByTipster(List<SegmentedBetMetrics> metrics);
+
+	Optional<List<SegmentedBetMetrics>> findByBetType();
+
+	void saveByBetType(List<SegmentedBetMetrics> metrics);
+
 	Optional<BetMetrics> findMonthly(int year, int month);
 
 	void saveMonthly(int year, int month, BetMetrics metrics);
 
-	// Invalidacao no consumo do evento (BetCreated/BetSettled) - evita as 5 chaves do tenant,
-	// incluindo o mes especifico do evento, em vez de confiar so no TTL de seguranca.
+	// Invalidacao no consumo do evento (BetCreated/BetSettled) - evita todas as chaves de
+	// segmento do tenant, incluindo o mes especifico do evento, em vez de confiar so no TTL de
+	// seguranca.
 	void evict(int year, int month);
 }

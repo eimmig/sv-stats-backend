@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.TenantSchemaName;
 import com.stakevault.betting.stats.domain.model.TenantSchemaNotFoundException;
 import com.stakevault.betting.stats.domain.port.in.BetCreatedEvent;
@@ -76,7 +77,7 @@ public class BetEventListener {
 				uuid(payload, "leagueId"), payload.path("leagueName").asText(), uuid(payload, "marketId"),
 				payload.path("marketName").asText(), nullableUuid(payload, "tipsterId"),
 				nullableText(payload, "tipsterName"), nullableText(payload, "team1"), nullableText(payload, "team2"),
-				decimal(payload, "stake"), decimal(payload, "odd"), instant(payload, "betDate"));
+				decimal(payload, "stake"), decimal(payload, "odd"), betType(payload), instant(payload, "betDate"));
 	}
 
 	private static BetSettledEvent toBetSettledEvent(JsonNode payload) {
@@ -102,6 +103,13 @@ public class BetEventListener {
 	private static String nullableText(JsonNode payload, String field) {
 		JsonNode node = payload.path(field);
 		return node.isNull() || node.isMissingNode() ? null : node.asText();
+	}
+
+	// betType so existe no payload de BetCreated (bets-service epic-013), nullable - aposta sem
+	// classificacao nao entra em nenhum bucket de preCount/liveCount (epic-014).
+	private static BetType betType(JsonNode payload) {
+		String value = nullableText(payload, "betType");
+		return value == null ? null : BetType.valueOf(value.toUpperCase());
 	}
 
 	private static BigDecimal decimal(JsonNode payload, String field) {

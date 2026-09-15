@@ -55,7 +55,7 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 		UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 		UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
 		return new FactBet(UUID.randomUUID(), dateId, bettingHouseId, sportId, leagueId, marketId, null, null, null,
-				BigDecimal.valueOf(100), null, null, null, BetStatus.PENDING, 1);
+				BigDecimal.valueOf(100), null, null, null, BetStatus.PENDING, null, 1);
 	}
 
 	@Test
@@ -86,7 +86,7 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 			FactBet settled = new FactBet(inserted.id(), inserted.dateId(), inserted.bettingHouseId(),
 					inserted.sportId(), inserted.leagueId(), inserted.marketId(), inserted.tipsterId(),
 					inserted.team1Id(), inserted.team2Id(), inserted.stake(), inserted.odd(),
-					BigDecimal.valueOf(150), true, BetStatus.WON, 1);
+					BigDecimal.valueOf(150), true, BetStatus.WON, inserted.betType(), 1);
 
 			factBetRepository.save(settled);
 

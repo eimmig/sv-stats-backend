@@ -41,7 +41,7 @@ class GetDashboardMetricsServiceTest {
 
 	private BetMetrics sampleMetrics() {
 		return new BetMetrics(BigDecimal.valueOf(100), BigDecimal.valueOf(50), BigDecimal.valueOf(0.5),
-				BigDecimal.valueOf(0.5), 1);
+				BigDecimal.valueOf(0.5), 1, 1, 0, 0, 0, 0, BigDecimal.valueOf(1.92));
 	}
 
 	@Test
@@ -67,7 +67,7 @@ class GetDashboardMetricsServiceTest {
 
 	@Test
 	void shouldReturnCachedSegmentWithoutCallingCalculateOnHit() {
-		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID(), "Soccer",
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "Soccer",
 				sampleMetrics()));
 		when(cache.findBySport()).thenReturn(Optional.of(segments));
 
@@ -79,7 +79,7 @@ class GetDashboardMetricsServiceTest {
 
 	@Test
 	void shouldCalculateAndSaveSegmentOnMiss() {
-		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID(), "Soccer",
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "Soccer",
 				sampleMetrics()));
 		when(cache.findBySport()).thenReturn(Optional.empty());
 		when(calculateMetrics.calculateBySport(StatisticsFilter.none())).thenReturn(segments);
@@ -132,6 +132,79 @@ class GetDashboardMetricsServiceTest {
 		service.getMonthly(2026, 1);
 
 		verify(cache).saveMonthly(2026, 1, new BetMetrics(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-				BigDecimal.ZERO, 0));
+				BigDecimal.ZERO, 0, 0, 0, 0, 0, 0, null));
+	}
+
+	@Test
+	void shouldReturnCachedByLeagueWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "League A",
+				sampleMetrics()));
+		when(cache.findByLeague()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByLeague();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByLeague(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByLeagueOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics(UUID.randomUUID().toString(), "League A",
+				sampleMetrics()));
+		when(cache.findByLeague()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByLeague(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByLeague();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByLeague(segments);
+	}
+
+	@Test
+	void shouldReturnCachedByTipsterWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Tipster", sampleMetrics()));
+		when(cache.findByTipster()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByTipster();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByTipster(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByTipsterOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Tipster", sampleMetrics()));
+		when(cache.findByTipster()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByTipster(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByTipster();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByTipster(segments);
+	}
+
+	@Test
+	void shouldReturnCachedByBetTypeWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics("PRE", "PRE", sampleMetrics()));
+		when(cache.findByBetType()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByBetType();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByBetType(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByBetTypeOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics("PRE", "PRE", sampleMetrics()));
+		when(cache.findByBetType()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByBetType(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByBetType();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByBetType(segments);
 	}
 }

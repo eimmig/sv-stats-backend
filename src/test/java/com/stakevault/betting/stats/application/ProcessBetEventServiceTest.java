@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.port.in.BetCreatedEvent;
 import com.stakevault.betting.stats.domain.port.in.BetSettledEvent;
@@ -51,7 +52,7 @@ class ProcessBetEventServiceTest {
 	private BetCreatedEvent createdEvent(UUID betId) {
 		return new BetCreatedEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
 				"League", UUID.randomUUID(), "Market", null, null, "Team A", "Team B", BigDecimal.valueOf(100),
-				BigDecimal.valueOf(2), Instant.now());
+				BigDecimal.valueOf(2), BetType.PRE, Instant.now());
 	}
 
 	private BetSettledEvent settledEvent(UUID betId, Instant settledAt) {
@@ -93,6 +94,7 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().status()).isEqualTo(BetStatus.PENDING);
 		assertThat(captor.getValue().profit()).isNull();
 		assertThat(captor.getValue().dateId()).isEqualTo(dateId);
+		assertThat(captor.getValue().betType()).isEqualTo(BetType.PRE);
 		verify(processedEventRepository).save(any());
 		// RN06 exclui pending de toda agregacao - inserir uma linha pending e invisivel pras
 		// metricas cacheadas, evitar aqui seria desperdicio.
@@ -107,7 +109,7 @@ class ProcessBetEventServiceTest {
 		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
 				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
 						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50),
-						true, BetStatus.WON, 1)));
+						true, BetStatus.WON, BetType.PRE, 1)));
 
 		service.processCreated(eventId, createdEvent(betId));
 
@@ -155,7 +157,7 @@ class ProcessBetEventServiceTest {
 		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
 				new FactBet(betId, gameDateId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
 						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2), null,
-						null, BetStatus.PENDING, 1)));
+						null, BetStatus.PENDING, BetType.LIVE, 1)));
 		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -167,5 +169,51 @@ class ProcessBetEventServiceTest {
 		verify(factBetRepository).save(captor.capture());
 		assertThat(captor.getValue().dateId()).isEqualTo(gameDateId);
 		verify(dimensionResolver, never()).resolveDate(any());
+	}
+
+	// epic-014: BetSettledEvent nao carrega betType (so BetCreated tem esse campo) - processSettled
+	// precisa preservar o valor ja gravado no insert, nao perde-lo/anula-lo a cada liquidacao.
+	@Test
+	void shouldPreserveExistingBetTypeWhenSettlingAnAlreadyCreatedBet() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
+				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2), null,
+						null, BetStatus.PENDING, BetType.PRE, 1)));
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processSettled(eventId, settledEvent(betId, settledAt));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().betType()).isEqualTo(BetType.PRE);
+	}
+
+	// BetSettled chegando antes do BetCreated correspondente (mensagens fora de ordem) - sem linha
+	// existente, betType nasce null (so BetCreated grava esse campo).
+	@Test
+	void shouldLeaveBetTypeNullWhenSettledArrivesBeforeCreated() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.empty());
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processSettled(eventId, settledEvent(betId, settledAt));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().betType()).isNull();
 	}
 }

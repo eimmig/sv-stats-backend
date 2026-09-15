@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.model.ProcessedEvent;
 import com.stakevault.betting.stats.domain.port.in.BetCreatedEvent;
@@ -60,7 +61,8 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			// invisivel para as metricas cacheadas - invalidar agora seria desperdicio (mesmo
 			// valor antes/depois). So processSettled muda o que as queries RN06 realmente veem.
 			factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-					tipsterId, team1Id, team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING, 1));
+					tipsterId, team1Id, team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING,
+					event.betType(), 1));
 		}
 
 		markProcessed(eventId);
@@ -83,6 +85,9 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		// ha betDate disponivel neste payload - cai em settledAt como estimativa ate BetCreated
 		// processar depois (ver docs/STATISTICS.md "Drawdown maximo").
 		UUID dateId = existing.map(FactBet::dateId).orElseGet(() -> dimensionResolver.resolveDate(event.settledAt()));
+		// BetSettled nao carrega betType (so BetCreated tem esse campo) - preserva o valor ja
+		// gravado no insert em vez de perde-lo a cada liquidacao (mesmo padrao de dateId acima).
+		BetType betType = existing.map(FactBet::betType).orElse(null);
 		UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(), event.bettingHouseName());
 		UUID sportId = dimensionResolver.resolveSport(event.sportId(), event.sportName());
 		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
@@ -93,7 +98,7 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
 				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),
-				event.status() == BetStatus.WON, event.status(), 1));
+				event.status() == BetStatus.WON, event.status(), betType, 1));
 		evictMetricsFor(event.settledAt());
 
 		markProcessed(eventId);
