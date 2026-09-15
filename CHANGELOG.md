@@ -81,3 +81,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-359](https://stakevault.atlassian.net/browse/SV-359) - Agregacao byLeague/byTipster (domain + port + query JPQL + repository) com testes de integracao reais
 - [SV-360](https://stakevault.atlassian.net/browse/SV-360) - calculateByLeague/calculateByTipster, StatisticsDashboard, cache-aside (getByLeague/getByTipster + evict) e teste HTTP end-to-end
 - [SV-361](https://stakevault.atlassian.net/browse/SV-361) - CHANGELOG e verificacao final
+- [SV-426](https://stakevault.atlassian.net/browse/SV-426) - CD: job de deploy automatico (kubectl rollout restart) no ci.yml
+- [SV-427](https://stakevault.atlassian.net/browse/SV-427) - Job deploy no ci.yml
+- [SV-428](https://stakevault.atlassian.net/browse/SV-428) - CHANGELOG e verificacao final

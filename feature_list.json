@@ -1361,10 +1361,23 @@
       "dependencies": [
         "feat-014"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "Plan Reviewer (2026-09-15): READY. Mesmo padrao mecanico ja aplicado e validado em bets-service feat-018 (primeiro dos 6 repositorios de epic-028 a fechar) - reaproveitado aqui sem repetir o ciclo de descoberta, ver services/bets-service/feature_list.json feat-018 e docs/services/infra.md 'CD automatico via CI'. Confirmado contra este repositorio antes de codificar: infra/k8s/stats-service.yaml define o Deployment 'stats-service' sem namespace (default, mesmo padrao dos outros 5); RBAC de infra/k8s/ci-deployer-rbac.yaml ja inclui 'stats-service' em resourceNames; secret KUBE_CONFIG confirmado presente neste repositorio GitHub (gh secret list, gravado 2026-09-15 por infra/feat-007); default_workflow_permissions deste repositorio e 'write' (gh api .../actions/permissions/workflow), confirmando a necessidade do permissions: {} explicito no job (mesma licao ja aplicada em bets-service). As 2 correcoes MINOR do Plan Reviewer de bets-service feat-018 (sem azure/setup-kubectl - kubectl 1.37.0 ja preinstalado no runner ubuntu-latest; permissions: {} explicito) entram direto no plano aqui, nao precisam ser redescobertas. Sem BLOCKER, sem achado novo especifico deste repositorio.",
+      "jira": "SV-426",
+      "subtasks": [
+        {
+          "id": "feat-019.1",
+          "name": "Job deploy no ci.yml",
+          "status": "in-progress",
+          "jira": "SV-427"
+        },
+        {
+          "id": "feat-019.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-428"
+        }
+      ],
       "evidence": ""
     }
   ]
