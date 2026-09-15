@@ -1368,13 +1368,13 @@
         {
           "id": "feat-019.1",
           "name": "Job deploy no ci.yml",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-427"
         },
         {
           "id": "feat-019.2",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-428"
         }
       ],
