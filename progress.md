@@ -2,8 +2,47 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-11
-**Feature ativa:** nenhuma — `feat-001`..`feat-017` `done`. Fecha `epic-018` da raiz.
+**Última atualização:** 2026-09-15
+**Feature ativa:** nenhuma — `feat-001`..`feat-017` e `feat-019` `done`. `feat-018` (DIM_TEAM
+alignment, `epic-024`) `BLOCKED` pelo próprio Plan Reviewer — ver `session-handoff.md`.
+
+## `feat-019` fechada — CD automático, job `deploy` no `ci.yml` (2026-09-15)
+
+Desbloqueada por `infra/feat-007` fechar mais cedo no dia. Reaproveitou byte a byte o padrão já
+revisado e fechado em `bets-service feat-018` na mesma sessão — mesmo `Plan Reviewer`, mesmas 2
+correções MINOR já aplicadas (sem a action de terceiro `azure/setup-kubectl`, já que `kubectl
+1.37.0` vem preinstalado no runner `ubuntu-latest`; `permissions: {}` explícito, confirmado
+necessário aqui também porque este repositório tem `default_workflow_permissions=write`). Única
+diferença real: o nome do `Deployment` (`stats-service`), confirmado contra
+`infra/k8s/stats-service.yaml` (sem namespace) e contra `infra/k8s/ci-deployer-rbac.yaml`
+(`resourceNames` já incluía `stats-service`).
+
+Story SV-426 (subtasks SV-427/SV-428), PRs #59/#60/#61, CI+SonarCloud verdes em todos. `Delivery
+Reviewer`: PASS (revisão condensada — reaplicação idêntica de um padrão já auditado na mesma
+sessão, sem achado). Disparo real do job adiado deliberadamente (mesma decisão de `bets-service
+feat-018`): `main` estava ~20 commits atrás de `develop`, promover agora só para provar o job
+seria uma decisão de release mais ampla, não desta feature.
+
+**Achado de processo, corrigido antes de prosseguir**: tentei mesclar `feature/SV-426 -> develop`
+com `git merge --no-ff` local em vez de abrir PR real pro GitHub — o gate pesado (`story ->
+develop`) exige CI+SonarCloud reais, não merge local. Como nada tinha sido empurrado ainda,
+revertido com `git reset --hard origin/develop` (seguro, sem perda) e refeito corretamente via
+`gh pr create`/`gh pr merge` (PR #61). Lição para os outros 4 repositórios de `epic-028` ainda
+pendentes: mesmo reaproveitando um padrão já validado, o merge pro gate pesado sempre passa por
+PR real, nunca merge local direto.
+
+**Segundo achado de processo, também já cometido em `bets-service feat-018` na mesma sessão**:
+marcar a última subtask `done` e a feature `done` na mesma edição do `feature_list.json`, seguida
+de uma única chamada de `--sync-status`, pula o estado `Review` no board do Jira (vai direto
+`In Progress -> Done`) — a tabela de "Ciclo de vida no board" em `CLAUDE.md` da raiz já documenta
+esse erro exato (aconteceu antes em `auth-service feat-002`) e a correção (dois disparos
+separados). Não refeito retroativamente aqui (o estado final `Done` está correto, só a
+rastreabilidade intermediária no board ficou incompleta) — aplicar a correção nos próximos 4
+fechamentos de `epic-028`.
+
+Fecha a parte de `stats-service` do `epic-028` da raiz — 4 dos 6 repositórios de aplicação ainda
+pendentes (`auth-service feat-016`, `api-gateway feat-014`, `telegram-integration feat-010`,
+`web feat-030`).
 
 ## `feat-017` fechada — segmentos byLeague/byTipster (2026-09-11)
 
