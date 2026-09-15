@@ -1340,6 +1340,32 @@
         }
       ],
       "evidence": "Fechada em 2026-09-11 (story SV-358, 3 subtasks SV-359..361, PRs #55/#56 subtask->feature). GET /api/v1/statistics ganha byLeague/byTipster, mesmo formato {dimensionId, dimensionName, metrics} de bySport/byMarket/byBettingHouse. aggregateByLeague e mirror exato de aggregateBySport/aggregateByMarket; aggregateByTipster exclui f.tipsterId IS NULL (campo opcional, diferente de leagueId sempre presente), mesmo padrao de aggregateByBetType. Cache-aside estendido (chaves segment:league/segment:tipster, nomeacao consistente com sport/market/house - achado MINOR #1 do plan review resolvido) - evict() passa a incluir as 2 chaves novas (achado MINOR #2 resolvido, coberto por teste de integracao dedicado que prova a lacuna nao existe). Delivery Reviewer (passe proprio, sem subagentes - independencia reduzida, declarada): PASS, sem regressao nos 4 segmentos existentes (bySport/byMarket/byBettingHouse/byBetType), os 2 achados MINOR do plan review confirmados resolvidos no codigo final. Test Suite Auditor: PASS - testes de integracao reais (Testcontainers Postgres) provam agrupamento por liga e exclusao de tipster nulo; testes de cache-aside (hit/miss) mirror do padrao existente; teste HTTP end-to-end confirma os 2 arrays no bundle e a exclusao de tipster nulo ponta a ponta; teste de integracao dedicado prova evict() real remove as 2 chaves novas junto das existentes. Persistence Auditor: PASS - mesmo padrao de join/predicado ja aceito nos 3 segmentos existentes, sem indice novo necessario (baixo volume por tenant, risco identico ja avaliado). ./init.sh do servico e da raiz verdes. docs/API-CONTRACTS.md/docs/services/stats-service.md (repositorio raiz) atualizados confirmando implementacao aderente ao planejado, secao marcada done. Fecha epic-018 da raiz. Libera epic-019 (web - menu por cadastro)."
+    },
+    {
+      "id": "feat-018",
+      "name": "Alinhar DIM_TEAM com o catalogo de times do dominio",
+      "description": "Avaliar e planejar o alinhamento da DIM_TEAM existente desde feat-012/feat-013 com uma eventual entidade TEAM no bets-service. A FK sportId ja existe em DIM_TEAM e deve ser preservada; o trabalho deve definir se ela passa a referenciar um identificador de dominio compartilhado, como sincronizar nomes e ids nos eventos e como manter as consultas historicas e o autocomplete compativeis.",
+      "dependencies": [
+        "feat-013"
+      ],
+      "status": "not-started",
+      "plan_review": "Plan Reviewer 2026-09-15: BLOCKED. DIM_TEAM ja tem sportId + chave natural unica (name, sport_id) desde V20260910120000/V20260910130000 (epic-011/epic-014, decisao do usuario na epoca) - a description desta feature trata isso como se ainda estivesse em aberto ('se ela passa a referenciar um identificador de dominio compartilhado'), mas a decisao real esta em bets-service feat-016 (services/bets-service/feature_list.json), ainda not-started/plan_review preenchido nesta mesma sessao. Nao ha subtask nenhuma cadastrada (subtasks: [] vazio) - feature nao pode virar in-progress sem elas. BLOCKED em vez de REVISE porque a lacuna e uma decisao de outro harness que ainda nao foi tomada: comecar feat-018 antes do documento de decisao de bets-service feat-016.3 existir arrisca este servico redecidir a mesma chave natural (name+sportId) de forma divergente do catalogo TEAM que sera a fonte de verdade. Acao antes de prosseguir: (1) aguardar bets-service feat-016 fechar com o documento de decisao referenciado em sua evidence; (2) so entao popular as subtasks aqui com base no plano de contratos de feat-016.3 (o que sincronizar: FK vs. nome+esporte, formato do evento BetCreated/BetSettled, migracao de dados historicos de DIM_TEAM); (3) rerodar o Plan Reviewer contra as subtasks resultantes antes de marcar in-progress.",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-019",
+      "name": "CD: job de deploy automatico (kubectl rollout restart) no ci.yml",
+      "description": "Fecha epic-028 da raiz (decisao do usuario, 2026-09-15) neste repositorio: job novo 'deploy' no ci.yml, needs: build-and-push-image (feat-014), if restrito a push em main, rodando kubectl rollout restart deployment/stats-service -n <namespace> contra o kubeconfig do secret KUBE_CONFIG (gerado por infra/feat-007 - ServiceAccount de CI com RBAC restrito, fora deste repositorio). Nao reaplica manifest - a imagem e referenciada por tag :latest no Deployment, o restart e o suficiente pra repuxar a imagem nova publicada pelo job anterior.",
+      "dependencies": [
+        "feat-014"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
     }
   ]
 }
