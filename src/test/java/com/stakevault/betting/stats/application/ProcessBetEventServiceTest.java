@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,9 +57,14 @@ class ProcessBetEventServiceTest {
 	}
 
 	private BetSettledEvent settledEvent(UUID betId, Instant settledAt) {
+		return settledEvent(betId, settledAt, null, "Team A", null, "Team B");
+	}
+
+	private BetSettledEvent settledEvent(UUID betId, Instant settledAt, UUID team1Id, String team1Name, UUID team2Id,
+			String team2Name) {
 		return new BetSettledEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
-				"League", UUID.randomUUID(), "Market", null, null, "Team A", "Team B", BigDecimal.valueOf(100),
-				BigDecimal.valueOf(2), BetStatus.WON, BigDecimal.valueOf(50), settledAt);
+				"League", UUID.randomUUID(), "Market", null, null, team1Id, team1Name, team2Id, team2Name,
+				BigDecimal.valueOf(100), BigDecimal.valueOf(2), BetStatus.WON, BigDecimal.valueOf(50), settledAt);
 	}
 
 	@Test
@@ -213,5 +219,57 @@ class ProcessBetEventServiceTest {
 		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
 		verify(factBetRepository).save(captor.capture());
 		assertThat(captor.getValue().betType()).isNull();
+	}
+
+	// feat-018.3: team1Id/team1Name/team2Id/team2Name sao dimensao aditiva em BetSettled -
+	// quando o evento nao traz (null), processSettled preserva o que ja foi gravado no insert em
+	// vez de apagar (mesmo padrao de dateId/betType acima).
+	@Test
+	void shouldPreserveExistingTeamIdsWhenSettledEventDoesNotCarryThem() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID existingTeam1Id = UUID.randomUUID();
+		UUID existingTeam2Id = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
+				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, existingTeam1Id, existingTeam2Id, BigDecimal.valueOf(100),
+						BigDecimal.valueOf(2), null, null, BetStatus.PENDING, BetType.PRE, 1)));
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processSettled(eventId, settledEvent(betId, settledAt, null, null, null, null));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().team1Id()).isEqualTo(existingTeam1Id);
+		assertThat(captor.getValue().team2Id()).isEqualTo(existingTeam2Id);
+		verify(dimensionResolver, never()).resolveTeam(any(), any(), any());
+	}
+
+	@Test
+	void shouldResolveTeamDimensionWhenSettledEventCarriesIt() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID catalogTeam1Id = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.empty());
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveTeam(eq(catalogTeam1Id), eq("Flamengo"), any())).thenReturn(catalogTeam1Id);
+
+		service.processSettled(eventId,
+				settledEvent(betId, settledAt, catalogTeam1Id, "Flamengo", null, null));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().team1Id()).isEqualTo(catalogTeam1Id);
 	}
 }

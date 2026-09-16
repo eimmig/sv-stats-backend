@@ -91,11 +91,15 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-		// BetSettledEvent.team1()/team2() nunca sao populados por um publicador real (feat-018.3
-		// troca por team1Id/team1Name/team2Id/team2Name) - id sempre null aqui por enquanto,
-		// mesmo comportamento de antes desta mudanca de assinatura.
-		UUID team1Id = dimensionResolver.resolveTeam(null, event.team1(), sportId);
-		UUID team2Id = dimensionResolver.resolveTeam(null, event.team2(), sportId);
+		// team1Id/team1Name/team2Id/team2Name sao dimensao aditiva nova em BetSettled (aditivo
+		// desde bets-service feat-017) - existe pra cobrir o caso de BetSettled chegar antes do
+		// BetCreated correspondente (mensagens fora de ordem, mesmo residual de dateId acima).
+		// Quando o evento traz o time, resolve/gravar normalmente; quando nao traz (null), preserva
+		// o que ja foi gravado no insert em vez de apagar (mesmo padrao de betType acima).
+		UUID team1Id = event.team1Name() != null ? dimensionResolver.resolveTeam(event.team1Id(), event.team1Name(), sportId)
+				: existing.map(FactBet::team1Id).orElse(null);
+		UUID team2Id = event.team2Name() != null ? dimensionResolver.resolveTeam(event.team2Id(), event.team2Name(), sportId)
+				: existing.map(FactBet::team2Id).orElse(null);
 
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
 				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),
