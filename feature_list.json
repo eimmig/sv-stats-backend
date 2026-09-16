@@ -1396,7 +1396,7 @@
           ],
           "validation": "Teste de integracao prova upsert de BetSettled populando/preservando team1Id/team2Id corretamente nos 2 cenarios de ordem de chegada.",
           "owner": "agente",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-478"
         },
         {

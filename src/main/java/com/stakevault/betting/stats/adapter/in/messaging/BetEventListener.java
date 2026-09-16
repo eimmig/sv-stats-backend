@@ -86,8 +86,9 @@ public class BetEventListener {
 				payload.path("bettingHouseName").asText(), uuid(payload, "sportId"), payload.path("sportName").asText(),
 				uuid(payload, "leagueId"), payload.path("leagueName").asText(), uuid(payload, "marketId"),
 				payload.path("marketName").asText(), nullableUuid(payload, "tipsterId"),
-				nullableText(payload, "tipsterName"), nullableText(payload, "team1"), nullableText(payload, "team2"),
-				decimal(payload, "stake"), decimal(payload, "odd"),
+				nullableText(payload, "tipsterName"), nullableUuid(payload, "team1Id"),
+				nullableText(payload, "team1Name"), nullableUuid(payload, "team2Id"),
+				nullableText(payload, "team2Name"), decimal(payload, "stake"), decimal(payload, "odd"),
 				BetStatus.valueOf(payload.path("status").asText().toUpperCase()), decimal(payload, "profit"),
 				instant(payload, "settledAt"));
 	}
