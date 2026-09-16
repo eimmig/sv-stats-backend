@@ -79,6 +79,20 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	@Test
+	void shouldReportExistenceById() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			UUID id = UUID.randomUUID();
+
+			assertThat(dimTeamRepository.existsById(id)).isFalse();
+
+			dimTeamRepository.save(new DimTeam(id, "Flamengo", sportId));
+
+			assertThat(dimTeamRepository.existsById(id)).isTrue();
+		}
+	}
+
+	@Test
 	void shouldListTeamsOrderedByNameForASport() {
 		try (var _ = TenantContextScope.open(schema)) {
 			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();

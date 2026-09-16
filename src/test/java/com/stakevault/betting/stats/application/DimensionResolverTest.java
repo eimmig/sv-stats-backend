@@ -120,32 +120,63 @@ class DimensionResolverTest {
 	void shouldReturnNullForTeamWhenNameIsNull() {
 		UUID sportId = UUID.randomUUID();
 
-		UUID resolved = resolver.resolveTeam(null, sportId);
+		UUID resolved = resolver.resolveTeam(UUID.randomUUID(), null, sportId);
 
 		assertThat(resolved).isNull();
 		verify(teamRepository, never()).findByNameAndSportId(any(), any());
 	}
 
 	@Test
-	void shouldReuseExistingTeamByNameAndSport() {
+	void shouldReuseExistingTeamByNameAndSportEvenWithoutIdInTheEvent() {
 		UUID existingId = UUID.randomUUID();
 		UUID sportId = UUID.randomUUID();
 		when(teamRepository.findByNameAndSportId("Flamengo", sportId))
 				.thenReturn(Optional.of(new DimTeam(existingId, "Flamengo", sportId)));
 
-		UUID resolved = resolver.resolveTeam("Flamengo", sportId);
+		UUID resolved = resolver.resolveTeam(null, "Flamengo", sportId);
 
 		assertThat(resolved).isEqualTo(existingId);
 		verify(teamRepository, never()).save(any());
 	}
 
+	// Cenario central do feat-018: um time ja resolvido aqui por nome antes do catalogo TEAM de
+	// bets-service existir (id local antigo) reaparece com o id real do catalogo - o id ja
+	// gravado tem que vencer, senao o INSERT com o id novo violaria UNIQUE(name, sport_id).
 	@Test
-	void shouldCreateTeamRowWhenNameAndSportCombinationIsMissing() {
+	void shouldPreferTheAlreadyPersistedIdOverTheEventIdOnNameAndSportCollision() {
+		UUID localLegacyId = UUID.randomUUID();
+		UUID catalogId = UUID.randomUUID();
+		UUID sportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId))
+				.thenReturn(Optional.of(new DimTeam(localLegacyId, "Flamengo", sportId)));
+
+		UUID resolved = resolver.resolveTeam(catalogId, "Flamengo", sportId);
+
+		assertThat(resolved).isEqualTo(localLegacyId);
+		verify(teamRepository, never()).save(any());
+		verify(teamRepository, never()).existsById(any());
+	}
+
+	@Test
+	void shouldCreateTeamRowWithTheEventIdWhenSeenForTheFirstTime() {
+		UUID catalogId = UUID.randomUUID();
+		UUID sportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty());
+		when(teamRepository.existsById(catalogId)).thenReturn(false);
+
+		UUID resolved = resolver.resolveTeam(catalogId, "Flamengo", sportId);
+
+		assertThat(resolved).isEqualTo(catalogId);
+		verify(teamRepository).save(new DimTeam(catalogId, "Flamengo", sportId));
+	}
+
+	@Test
+	void shouldCreateTeamRowWithARandomIdWhenTheEventHasNoId() {
 		UUID sportId = UUID.randomUUID();
 		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty());
 		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		UUID resolved = resolver.resolveTeam("Flamengo", sportId);
+		UUID resolved = resolver.resolveTeam(null, "Flamengo", sportId);
 
 		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
 		verify(teamRepository).save(captor.capture());
@@ -153,6 +184,7 @@ class DimensionResolverTest {
 		assertThat(resolved).isEqualTo(saved.id());
 		assertThat(saved.name()).isEqualTo("Flamengo");
 		assertThat(saved.sportId()).isEqualTo(sportId);
+		verify(teamRepository, never()).existsById(any());
 	}
 
 	// O mesmo nome em esportes diferentes nao deve reutilizar a linha do outro esporte.
@@ -163,7 +195,7 @@ class DimensionResolverTest {
 		when(teamRepository.findByNameAndSportId("Flamengo", basketballSportId)).thenReturn(Optional.empty());
 		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		resolver.resolveTeam("Flamengo", basketballSportId);
+		resolver.resolveTeam(null, "Flamengo", basketballSportId);
 
 		verify(teamRepository, never()).findByNameAndSportId("Flamengo", soccerSportId);
 		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);

@@ -51,8 +51,8 @@ class ProcessBetEventServiceTest {
 
 	private BetCreatedEvent createdEvent(UUID betId) {
 		return new BetCreatedEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
-				"League", UUID.randomUUID(), "Market", null, null, "Team A", "Team B", BigDecimal.valueOf(100),
-				BigDecimal.valueOf(2), BetType.PRE, Instant.now());
+				"League", UUID.randomUUID(), "Market", null, null, null, "Team A", null, "Team B",
+				BigDecimal.valueOf(100), BigDecimal.valueOf(2), BetType.PRE, Instant.now());
 	}
 
 	private BetSettledEvent settledEvent(UUID betId, Instant settledAt) {

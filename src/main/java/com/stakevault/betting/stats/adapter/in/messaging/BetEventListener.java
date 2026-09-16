@@ -76,8 +76,9 @@ public class BetEventListener {
 				payload.path("bettingHouseName").asText(), uuid(payload, "sportId"), payload.path("sportName").asText(),
 				uuid(payload, "leagueId"), payload.path("leagueName").asText(), uuid(payload, "marketId"),
 				payload.path("marketName").asText(), nullableUuid(payload, "tipsterId"),
-				nullableText(payload, "tipsterName"), nullableText(payload, "team1"), nullableText(payload, "team2"),
-				decimal(payload, "stake"), decimal(payload, "odd"), betType(payload), instant(payload, "betDate"));
+				nullableText(payload, "tipsterName"), nullableUuid(payload, "team1Id"), nullableText(payload, "team1"),
+				nullableUuid(payload, "team2Id"), nullableText(payload, "team2"), decimal(payload, "stake"),
+				decimal(payload, "odd"), betType(payload), instant(payload, "betDate"));
 	}
 
 	private static BetSettledEvent toBetSettledEvent(JsonNode payload) {

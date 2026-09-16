@@ -58,6 +58,13 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 	}
 
 	private String betCreatedBody(String eventId, UUID betId, String tenantSlug) {
+		return betCreatedBody(eventId, betId, tenantSlug, UUID.randomUUID(), null, null);
+	}
+
+	private String betCreatedBody(String eventId, UUID betId, String tenantSlug, UUID sportId, UUID team1Id,
+			String team1) {
+		String team1IdJson = team1Id == null ? "null" : "\"" + team1Id + "\"";
+		String team1Json = team1 == null ? "null" : "\"" + team1 + "\"";
 		return """
 				{
 				  "eventId": "%s",
@@ -79,7 +86,8 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 				    "tipsterId": null,
 				    "tipsterName": null,
 				    "ticketNumber": null,
-				    "team1": null,
+				    "team1Id": %s,
+				    "team1": %s,
 				    "team2": null,
 				    "description": null,
 				    "betType": null,
@@ -90,8 +98,8 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 				    "betDate": "%s"
 				  }
 				}
-				""".formatted(eventId, Instant.now(), tenantSlug, UUID.randomUUID(), betId, UUID.randomUUID(),
-				UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+				""".formatted(eventId, Instant.now(), tenantSlug, UUID.randomUUID(), betId, UUID.randomUUID(), sportId,
+				UUID.randomUUID(), UUID.randomUUID(), team1IdJson, team1Json, Instant.now());
 	}
 
 	private String betSettledBody(String eventId, UUID betId, String tenantSlug) {
@@ -217,6 +225,56 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 					Integer.class, UUID.fromString(eventId));
 		}
 		assertThat(processedCount).isEqualTo(1);
+	}
+
+	@Test
+	void shouldResolveTeamDimensionUsingTheCatalogIdFromTheEvent() {
+		UUID betId = UUID.randomUUID();
+		UUID sportId = UUID.randomUUID();
+		UUID catalogTeamId = UUID.randomUUID();
+
+		publish("bet.created",
+				betCreatedBody(UUID.randomUUID().toString(), betId, tenantSlug, sportId, catalogTeamId, "Flamengo"));
+
+		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+			try (var _ = TenantContextScope.open(schema)) {
+				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
+				assertThat(factBet.team1Id()).isEqualTo(catalogTeamId);
+			}
+		});
+	}
+
+	// Cenario central do feat-018: um time ja resolvido por nome antes do catalogo TEAM de
+	// bets-service existir (id local, sem catalogId no evento) tem que continuar respondendo
+	// pelo mesmo id quando reaparece com o id real do catalogo - senao o segundo BetCreated
+	// violaria UNIQUE(name, sport_id) e cairia na DLQ sem se recuperar sozinho.
+	@Test
+	void shouldKeepTheFirstResolvedTeamIdWhenTheSameNameReappearsWithADifferentCatalogId() {
+		UUID firstBetId = UUID.randomUUID();
+		UUID secondBetId = UUID.randomUUID();
+		UUID sportId = UUID.randomUUID();
+		UUID legacyLocalTeamId = UUID.randomUUID();
+		UUID laterCatalogTeamId = UUID.randomUUID();
+
+		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), firstBetId, tenantSlug, sportId,
+				legacyLocalTeamId, "Flamengo"));
+		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+			try (var _ = TenantContextScope.open(schema)) {
+				assertThat(factBetRepository.findById(firstBetId)).isPresent();
+			}
+		});
+
+		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), secondBetId, tenantSlug, sportId,
+				laterCatalogTeamId, "Flamengo"));
+
+		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+			try (var _ = TenantContextScope.open(schema)) {
+				FactBet factBet = factBetRepository.findById(secondBetId).orElseThrow();
+				assertThat(factBet.team1Id()).isEqualTo(legacyLocalTeamId);
+			}
+		});
+		assertThat(queueMessageCount(QUEUE)).isZero();
+		assertThat(queueMessageCount(DLQ)).isZero();
 	}
 
 	@Test
