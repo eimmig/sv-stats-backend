@@ -1412,7 +1412,7 @@
           ],
           "validation": "./init.sh verde, evidence preenchida, epic-024 da raiz reavaliado (falta so apps/web feat-022).",
           "owner": "agente",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-479"
         }
       ],
