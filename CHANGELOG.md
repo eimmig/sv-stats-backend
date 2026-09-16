@@ -84,3 +84,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-426](https://stakevault.atlassian.net/browse/SV-426) - CD: job de deploy automatico (kubectl rollout restart) no ci.yml
 - [SV-427](https://stakevault.atlassian.net/browse/SV-427) - Job deploy no ci.yml
 - [SV-428](https://stakevault.atlassian.net/browse/SV-428) - CHANGELOG e verificacao final
+- [SV-475](https://stakevault.atlassian.net/browse/SV-475) - Alinhar DIM_TEAM com o catalogo de times do dominio
+- [SV-476](https://stakevault.atlassian.net/browse/SV-476) - Sincronizar schema JSON vendorizado com o contrato real (achado BLOCKER)
+- [SV-477](https://stakevault.atlassian.net/browse/SV-477) - DimensionResolver.resolveTeam passa a aceitar id do catalogo (BetCreated)
+- [SV-478](https://stakevault.atlassian.net/browse/SV-478) - Consumir team1Id/team1Name/team2Id/team2Name em BetSettled
+- [SV-479](https://stakevault.atlassian.net/browse/SV-479) - CHANGELOG e verificacao final
