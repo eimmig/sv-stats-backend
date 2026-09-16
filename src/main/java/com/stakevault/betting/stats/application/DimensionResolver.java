@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.application;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -97,17 +98,30 @@ public class DimensionResolver {
 						date.getMonthValue(), date.getYear(), quarterOf(date), date.getDayOfWeek().name())).id());
 	}
 
-	// team1/team2 nao tem catalogo em bets-service (texto livre por aposta) - sem id proprio no
-	// evento, resolvida por chave natural composta (name, sportId), mesmo padrao de resolveDate.
-	// sportId faz parte da chave (feat-013, decisao do usuario) - o mesmo nome de time pode
-	// existir em esportes diferentes. Nem toda aposta referencia os 2 lados (ex. mercado sem
-	// confronto de dois lados) - null passa direto.
-	public UUID resolveTeam(String name, UUID sportId) {
+	// team1/team2 agora podem trazer id do catalogo TEAM de bets-service (aditivo desde
+	// bets-service feat-017, nullable - nem toda aposta referencia os 2 lados, ex. mercado sem
+	// confronto de dois lados). (name, sportId) tem precedencia sobre o id do evento: um time ja
+	// resolvido aqui por nome antes desta mudanca (id gerado localmente, epic-011) tem que
+	// continuar respondendo pelo mesmo id sempre que reaparecer, senao a segunda tentativa de
+	// gravar com o id novo do catalogo violaria UNIQUE(name, sport_id) - ver docs/DECISIONS-LOG.md
+	// 2026-09-15/16 e docs/services/stats-service.md. So cria linha nova com o id do evento
+	// quando o time e visto pela primeira vez aqui; sem id (evento legado ou time sem catalogo),
+	// cai no id local aleatorio de sempre. Resultado: DIM_TEAM.id so coincide com o catalogo real
+	// de bets-service para times vistos pela primeira vez apos esta mudanca - times antigos
+	// mantem o id local para sempre (sem backfill, mesmo precedente de V20260910130000).
+	public UUID resolveTeam(UUID id, String name, UUID sportId) {
 		if (name == null) {
 			return null;
 		}
-		return teamRepository.findByNameAndSportId(name, sportId).map(DimTeam::id)
-				.orElseGet(() -> teamRepository.save(new DimTeam(UUID.randomUUID(), name, sportId)).id());
+		Optional<DimTeam> existing = teamRepository.findByNameAndSportId(name, sportId);
+		if (existing.isPresent()) {
+			return existing.get().id();
+		}
+		UUID resolvedId = id != null ? id : UUID.randomUUID();
+		if (id == null || !teamRepository.existsById(id)) {
+			teamRepository.save(new DimTeam(resolvedId, name, sportId));
+		}
+		return resolvedId;
 	}
 
 	private static int quarterOf(LocalDate date) {

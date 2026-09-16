@@ -1348,10 +1348,74 @@
       "dependencies": [
         "feat-013"
       ],
-      "status": "not-started",
-      "plan_review": "Plan Reviewer 2026-09-15: BLOCKED. DIM_TEAM ja tem sportId + chave natural unica (name, sport_id) desde V20260910120000/V20260910130000 (epic-011/epic-014, decisao do usuario na epoca) - a description desta feature trata isso como se ainda estivesse em aberto ('se ela passa a referenciar um identificador de dominio compartilhado'), mas a decisao real esta em bets-service feat-016 (services/bets-service/feature_list.json), ainda not-started/plan_review preenchido nesta mesma sessao. Nao ha subtask nenhuma cadastrada (subtasks: [] vazio) - feature nao pode virar in-progress sem elas. BLOCKED em vez de REVISE porque a lacuna e uma decisao de outro harness que ainda nao foi tomada: comecar feat-018 antes do documento de decisao de bets-service feat-016.3 existir arrisca este servico redecidir a mesma chave natural (name+sportId) de forma divergente do catalogo TEAM que sera a fonte de verdade. Acao antes de prosseguir: (1) aguardar bets-service feat-016 fechar com o documento de decisao referenciado em sua evidence; (2) so entao popular as subtasks aqui com base no plano de contratos de feat-016.3 (o que sincronizar: FK vs. nome+esporte, formato do evento BetCreated/BetSettled, migracao de dados historicos de DIM_TEAM); (3) rerodar o Plan Reviewer contra as subtasks resultantes antes de marcar in-progress.",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "Plan Reviewer 2026-09-15 (1a rodada): BLOCKED, aguardando bets-service feat-016 fechar o plano de contratos (ver historico). Plan Reviewer 2026-09-16 (2a rodada, apos bets-service feat-016/017 done): REVISE, corrigido antes de codificar. Achado BLOCKER confirmado com evidencia direta: src/main/resources/contracts/bet-{created,settled}.schema.json ficaram desatualizados em relacao a docs/contracts/ (raiz) desde bets-service feat-017 - payload.additionalProperties:false + BetEventSchemaValidator (networknt V7) + InvalidBetEventException (AmqpRejectAndDontRequeueException, sem retry) significam que TODO evento BetCreated/BetSettled (nao so os que referenciam time) vai direto pra DLQ assim que bets-service promover feat-017 pra producao - feat-018.1 corretamente prioriza isso. Achado MAJOR corrigido no subtask (nao exigiu decisao do usuario, resolvido com precedente tecnico do proprio codebase): feat-018.2 deixava a estrategia de resolucao id-vs-nome em aberto ('decidir no code-time') - cenario real e nada raro (time ja existente em DIM_TEAM com id local antigo, aposta nova do mesmo time trazendo o id real do catalogo) faria INSERT id-first violar UNIQUE(name, sport_id) permanentemente (mensagem envenenada, esgota as 3 tentativas do spring-retry e morta-letra sem recuperacao). Corrigido: resolveTeam busca por (name, sportId) primeiro (id existente vence, mesmo se diferente do id do evento); so cria linha nova com o id do evento quando nao existe por nome+esporte; sem id, gera aleatorio (caminho legado). Assimetria resultante (DIM_TEAM.id so coincide com o catalogo real de bets-service pra times vistos pela primeira vez apos esta feature - times antigos mantem id local pra sempre, sem backfill, mesmo precedente ja usado 3x neste harness) documentada explicitamente no subtask, em DimTeam.java e docs/services/stats-service.md, nao deixada implicita. feat-018.3 ganhou item de checklist pra atualizar testes que hoje montam BetSettledEvent com team1/team2 preenchido (campos nunca populados por publicador real - confirmado, docs/contracts/bet-settled.schema.json nunca teve team1/team2). Nenhuma decisao exige o usuario - tudo resolvido com precedente tecnico ja estabelecido no codebase.",
+      "jira": "SV-475",
+      "subtasks": [
+        {
+          "id": "feat-018.1",
+          "name": "Sincronizar schema JSON vendorizado com o contrato real (achado BLOCKER)",
+          "detail": "src/main/resources/contracts/{bet-created,bet-settled}.schema.json ficaram desatualizados em relacao a docs/contracts/ (raiz) desde bets-service feat-017 - additionalProperties:false nos dois vai rejeitar (DLQ) qualquer evento com team1Id/team2Id (BetCreated) ou team1Id/team1Name/team2Id/team2Name (BetSettled) assim que bets-service promover feat-017 para main. Corrigir antes de qualquer outra subtask, independente do resto da feature.",
+          "checklist": [
+            "bet-created.schema.json local ganha team1Id/team2Id (mesmas definicoes do arquivo raiz).",
+            "bet-settled.schema.json local ganha team1Id/team1Name/team2Id/team2Name.",
+            "Conferir se ha outro drift entre os 2 arquivos alem de team (ex.: enum de betType) e corrigir tambem se trivial.",
+            "Teste de validacao de schema cobre uma mensagem real com os campos novos (nao so ausencia)."
+          ],
+          "validation": "Comparacao (JSON normalizado) entre os schemas locais e docs/contracts/ da raiz nao mostra divergencia de campo.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-476"
+        },
+        {
+          "id": "feat-018.2",
+          "name": "DimensionResolver.resolveTeam passa a aceitar id do catalogo (BetCreated)",
+          "detail": "BetCreatedEvent ganha team1Id/team2Id (UUID nullable). resolveTeam(UUID id, String name, UUID sportId) passa a buscar por (name, sportId) PRIMEIRO (findByNameAndSportId) - se existir, retorna o id ja existente (mesmo que diferente do id do evento, precedencia do que ja esta gravado, evita violar UNIQUE(name, sport_id)); so cria linha nova com o id do evento quando nao existe por nome+esporte E o evento traz id (novo existsById(UUID) em DimTeamRepository/JpaDimTeamRepository, mesmo padrao de DimTipsterRepository); sem id e sem linha existente, gera UUID aleatorio (caminho legado atual). Assimetria resultante - DIM_TEAM.id so passa a coincidir com o catalogo real de bets-service pra times vistos pela primeira vez apos esta feature, times ja existentes mantem o id local pra sempre (sem backfill, mesmo precedente de V20260910130000) - documentar explicitamente no javadoc/comentario de DimTeam.java (hoje diz 'id e gerado por este servico', fica desatualizado) e em docs/services/stats-service.md.",
+          "checklist": [
+            "BetCreatedEvent (record) ganha team1Id/team2Id.",
+            "resolveTeam busca por (name, sportId) antes de considerar o id do evento - id existente sempre vence.",
+            "DimTeamRepository/JpaDimTeamRepository ganham existsById(UUID).",
+            "ProcessBetEventService.processCreated passa team1Id/team2Id do evento.",
+            "DimTeam.java e docs/services/stats-service.md documentam a assimetria de origem do id (local vs. catalogo real).",
+            "Teste cobre: id presente + linha nova cria com esse id; id presente + linha ja existente por nome+esporte com OUTRO id reusa o id existente (prova que nao viola UNIQUE); id ausente cai no fallback por nome/gera aleatorio."
+          ],
+          "validation": "Testes de integracao (Testcontainers) provam os 3 caminhos do checklist, incluindo o cenario de colisao (linha existente com id diferente do evento) sem excecao de constraint.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-477"
+        },
+        {
+          "id": "feat-018.3",
+          "name": "Consumir team1Id/team1Name/team2Id/team2Name em BetSettled",
+          "detail": "BetSettledEvent hoje tem team1/team2 (String) que NUNCA foram populados de verdade pelo publicador real (bets-service nunca mandou esses campos antes de feat-017, e o formato real pos feat-017 e team1Id/team1Name/team2Id/team2Name, nao team1/team2) - campos mortos, substituir pelos reais. processSettled passa a resolver DIM_TEAM a partir desses campos, preservando team1Id/team2Id ja gravados no insert quando o evento de liquidacao nao trouxer (mesmo padrao ja usado para dateId/betType).",
+          "checklist": [
+            "BetSettledEvent troca team1/team2 (String) por team1Id/team1Name/team2Id/team2Name.",
+            "processSettled preserva team1Id/team2Id existentes quando o evento nao traz (mesmo padrao de betType).",
+            "Teste cobre BetSettled chegando antes do BetCreated correspondente (mensagens fora de ordem, cenario ja documentado para dateId).",
+            "Testes existentes que hoje montam BetSettledEvent com team1/team2 (String) preenchido sao atualizados para team1Id/team1Name/team2Id/team2Name (campos nunca populados por publicador real - falso positivo de cobertura)."
+          ],
+          "validation": "Teste de integracao prova upsert de BetSettled populando/preservando team1Id/team2Id corretamente nos 2 cenarios de ordem de chegada.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-478"
+        },
+        {
+          "id": "feat-018.4",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fechamento formal - confirmar que nao ha necessidade de backfill de DIM_TEAM historico (mesmo precedente ja usado em V20260910130000, catalogo nunca usado em tenant real) e que a documentacao do vault reflete o mecanismo final.",
+          "checklist": [
+            "Entrada em CHANGELOG.md.",
+            "./init.sh do servico e da raiz verdes.",
+            "Delivery Reviewer/Test Suite Auditor/Persistence Auditor rodados.",
+            "docs/services/stats-service.md e docs/API-CONTRACTS.md atualizados se o mecanismo final divergir do plano.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "./init.sh verde, evidence preenchida, epic-024 da raiz reavaliado (falta so apps/web feat-022).",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-479"
+        }
+      ],
       "evidence": ""
     },
     {

@@ -45,8 +45,8 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 		}
 	}
 
-	// feat-013: o mesmo nome de time pode existir em esportes diferentes - name sozinho nao e
-	// chave natural suficiente, sportId completa a chave composta.
+	// O mesmo nome de time pode existir em esportes diferentes - name sozinho nao e chave
+	// natural suficiente, sportId completa a chave composta.
 	@Test
 	void shouldTreatSameNameInDifferentSportsAsDistinctRows() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -63,8 +63,8 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 		}
 	}
 
-	// feat-013: prova a UNIQUE(name, sport_id) no banco, nao so o caminho de aplicacao (que ja
-	// evita duplicata via findByNameAndSportId antes do save) - mesmo padrao de
+	// Prova a UNIQUE(name, sport_id) no banco, nao so o caminho de aplicacao (que ja evita
+	// duplicata via findByNameAndSportId antes do save) - mesmo padrao de
 	// JpaProcessedEventRepositoryIntegrationTest.shouldRejectDuplicateEventIdAtTheDatabaseLevel.
 	@Test
 	void shouldRejectDuplicateNameAndSportAtTheDatabaseLevel() {
@@ -75,6 +75,20 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 
 			assertThatThrownBy(() -> dimTeamRepository.save(duplicate))
 					.isInstanceOf(DataIntegrityViolationException.class);
+		}
+	}
+
+	@Test
+	void shouldReportExistenceById() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			UUID id = UUID.randomUUID();
+
+			assertThat(dimTeamRepository.existsById(id)).isFalse();
+
+			dimTeamRepository.save(new DimTeam(id, "Flamengo", sportId));
+
+			assertThat(dimTeamRepository.existsById(id)).isTrue();
 		}
 	}
 

@@ -25,6 +25,11 @@ public class JpaDimTeamRepository implements DimTeamRepository {
 	}
 
 	@Override
+	public boolean existsById(UUID id) {
+		return jpaRepository.existsById(id);
+	}
+
+	@Override
 	public Optional<DimTeam> findByNameAndSportId(String name, UUID sportId) {
 		return jpaRepository.findByNameAndSportId(name, sportId).map(JpaDimTeamRepository::toDomain);
 	}

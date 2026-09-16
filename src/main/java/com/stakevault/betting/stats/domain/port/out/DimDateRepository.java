@@ -10,6 +10,6 @@ public interface DimDateRepository {
 
 	// Diferente das demais dimensoes (id = mesmo uuid do catalogo em bets-service), uma data nao
 	// chega com id proprio no evento - a linha e localizada pela chave natural (dia/mes/ano) e
-	// criada sob demanda na primeira aposta daquele dia (feat-003).
+	// criada sob demanda na primeira aposta daquele dia.
 	Optional<DimDate> findByDayAndMonthAndYear(int day, int month, int year);
 }

@@ -54,8 +54,8 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 			UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 			UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-			UUID team1Id = dimensionResolver.resolveTeam(event.team1(), sportId);
-			UUID team2Id = dimensionResolver.resolveTeam(event.team2(), sportId);
+			UUID team1Id = dimensionResolver.resolveTeam(event.team1Id(), event.team1(), sportId);
+			UUID team2Id = dimensionResolver.resolveTeam(event.team2Id(), event.team2(), sportId);
 
 			// Sem evict aqui: RN06 exclui status=pending de toda agregacao, entao este insert e
 			// invisivel para as metricas cacheadas - invalidar agora seria desperdicio (mesmo
@@ -77,12 +77,10 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 
 		Optional<FactBet> existing = factBetRepository.findById(event.betId());
 		// dateId reflete a data do JOGO (betDate, resolvida por processCreated a partir de
-		// event.betDate() - nao a de registro nem a de liquidacao, decisao do usuario). Achado
-		// real do plan review de epic-011: preserva o dateId ja gravado em vez de recalcular a
-		// partir de settledAt, que corrompia silenciosamente o agregado mensal do dashboard
-		// (feat-006) toda vez que uma aposta liquidava em mes diferente do jogo. Residual aceito:
-		// se BetSettled chegar antes do BetCreated correspondente (mensagens fora de ordem), nao
-		// ha betDate disponivel neste payload - cai em settledAt como estimativa ate BetCreated
+		// event.betDate() - nao a de registro nem a de liquidacao, decisao do usuario). Preserva
+		// o dateId ja gravado em vez de recalcular a partir de settledAt. Residual aceito: se
+		// BetSettled chegar antes do BetCreated correspondente (mensagens fora de ordem), nao ha
+		// betDate disponivel neste payload - cai em settledAt como estimativa ate BetCreated
 		// processar depois (ver docs/STATISTICS.md "Drawdown maximo").
 		UUID dateId = existing.map(FactBet::dateId).orElseGet(() -> dimensionResolver.resolveDate(event.settledAt()));
 		// BetSettled nao carrega betType (so BetCreated tem esse campo) - preserva o valor ja
@@ -93,8 +91,15 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-		UUID team1Id = dimensionResolver.resolveTeam(event.team1(), sportId);
-		UUID team2Id = dimensionResolver.resolveTeam(event.team2(), sportId);
+		// team1Id/team1Name/team2Id/team2Name sao dimensao aditiva nova em BetSettled (aditivo
+		// desde bets-service feat-017) - existe pra cobrir o caso de BetSettled chegar antes do
+		// BetCreated correspondente (mensagens fora de ordem, mesmo residual de dateId acima).
+		// Quando o evento traz o time, resolve/gravar normalmente; quando nao traz (null), preserva
+		// o que ja foi gravado no insert em vez de apagar (mesmo padrao de betType acima).
+		UUID team1Id = event.team1Name() != null ? dimensionResolver.resolveTeam(event.team1Id(), event.team1Name(), sportId)
+				: existing.map(FactBet::team1Id).orElse(null);
+		UUID team2Id = event.team2Name() != null ? dimensionResolver.resolveTeam(event.team2Id(), event.team2Name(), sportId)
+				: existing.map(FactBet::team2Id).orElse(null);
 
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
 				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),

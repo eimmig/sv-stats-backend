@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 class BetEventSchemaValidatorTest {
 
@@ -38,8 +39,10 @@ class BetEventSchemaValidatorTest {
 				    "tipsterId": null,
 				    "tipsterName": null,
 				    "ticketNumber": null,
-				    "team1": null,
-				    "team2": null,
+				    "team1Id": "%s",
+				    "team1": "Real Madrid",
+				    "team2Id": "%s",
+				    "team2": "Barcelona",
 				    "description": null,
 				    "betType": null,
 				    "playType": null,
@@ -50,13 +53,57 @@ class BetEventSchemaValidatorTest {
 				  }
 				}
 				""".formatted(UUID.randomUUID(), Instant.now(), UUID.randomUUID(), UUID.randomUUID(),
-				UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+				UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+				UUID.randomUUID(), Instant.now());
+		return objectMapper.readTree(json);
+	}
+
+	private JsonNode validBetSettled() throws Exception {
+		String json = """
+				{
+				  "eventId": "%s",
+				  "eventType": "BetSettled",
+				  "schemaVersion": 1,
+				  "occurredAt": "%s",
+				  "tenantId": "acme",
+				  "userId": "%s",
+				  "payload": {
+				    "betId": "%s",
+				    "bettingHouseId": "%s",
+				    "bettingHouseName": "House",
+				    "sportId": "%s",
+				    "sportName": "Sport",
+				    "leagueId": "%s",
+				    "leagueName": "League",
+				    "marketId": "%s",
+				    "marketName": "Market",
+				    "tipsterId": null,
+				    "tipsterName": null,
+				    "team1Id": "%s",
+				    "team1Name": "Real Madrid",
+				    "team2Id": "%s",
+				    "team2Name": "Barcelona",
+				    "stake": 100.0,
+				    "odd": 1.5,
+				    "status": "won",
+				    "profit": 50.0,
+				    "settledAt": "%s"
+				  }
+				}
+				""".formatted(UUID.randomUUID(), Instant.now(), UUID.randomUUID(), UUID.randomUUID(),
+				UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+				UUID.randomUUID(), Instant.now());
 		return objectMapper.readTree(json);
 	}
 
 	@Test
 	void shouldAcceptAValidBetCreatedEvent() {
 		assertThatNoException().isThrownBy(() -> validator.validate("BetCreated", validBetCreated()));
+	}
+
+	@Test
+	void shouldAcceptAValidBetSettledEventWithTeamDimensions() {
+		assertThatNoException().isThrownBy(() -> validator.validate("BetSettled", validBetSettled()));
 	}
 
 	@Test
@@ -74,6 +121,15 @@ class BetEventSchemaValidatorTest {
 				""".formatted(UUID.randomUUID(), Instant.now(), UUID.randomUUID()));
 
 		assertThatThrownBy(() -> validator.validate("BetCreated", incomplete))
+				.isInstanceOf(InvalidBetEventException.class);
+	}
+
+	@Test
+	void shouldRejectABetCreatedEventWithAnUnknownField() throws Exception {
+		JsonNode event = validBetCreated();
+		((ObjectNode) event.get("payload")).put("unexpectedField", "x");
+
+		assertThatThrownBy(() -> validator.validate("BetCreated", event))
 				.isInstanceOf(InvalidBetEventException.class);
 	}
 

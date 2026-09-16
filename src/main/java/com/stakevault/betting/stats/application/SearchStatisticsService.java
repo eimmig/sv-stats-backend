@@ -17,10 +17,10 @@ import com.stakevault.betting.stats.domain.model.TimelinePoint;
 import com.stakevault.betting.stats.domain.port.in.SearchStatisticsUseCase;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 
-// GET /api/v1/statistics/search (epic-011) - diferente de GetStatisticsDashboardService
-// (feat-006), sempre calcula direto contra FACT_BET, sem cache-aside (espaco de combinacoes
-// esporte x liga x time x mercado x tipster x periodo grande demais pro padrao de chave fixa por
-// tenant de feat-005, ver docs/API-CONTRACTS.md).
+// GET /api/v1/statistics/search - diferente de GetStatisticsDashboardService, sempre calcula
+// direto contra FACT_BET, sem cache-aside (espaco de combinacoes esporte x liga x time x
+// mercado x tipster x periodo grande demais pro padrao de chave fixa por tenant, ver
+// docs/API-CONTRACTS.md).
 @Service
 public class SearchStatisticsService implements SearchStatisticsUseCase {
 
@@ -46,8 +46,8 @@ public class SearchStatisticsService implements SearchStatisticsUseCase {
 		return new StatisticsSearchResult(filter, summary, timeline);
 	}
 
-	// RN04, mesma formula/decisao de zero-division de CalculateMetricsService (feat-004) - nenhuma
-	// aposta liquidada no recorte retorna ZERO, nao excecao/null.
+	// RN04, mesma formula/decisao de zero-division de CalculateMetricsService - nenhuma aposta
+	// liquidada no recorte retorna ZERO, nao excecao/null.
 	private static BigDecimal roi(SearchAggregate aggregate) {
 		return aggregate.totalStaked().compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO
 				: aggregate.netProfit().divide(aggregate.totalStaked(), SCALE, RoundingMode.HALF_UP);
