@@ -88,7 +88,7 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 
 	// RN04: roi = lucro liquido acumulado / valor total investido. Taxa de acerto = vitorias /
 	// liquidadas. Nenhuma aposta liquidada (total investido=0 ou liquidadas=0) retorna ZERO, nao
-	// excecao/null - RN04 nao define esse caso, decisao registrada no plan_review de feat-004.
+	// excecao/null - RN04 nao define esse caso.
 	private static BetMetrics toMetrics(BetAggregate aggregate) {
 		BigDecimal roi = roiOf(aggregate.netProfit(), aggregate.totalStaked());
 		BigDecimal winRate = aggregate.settledCount() == 0 ? BigDecimal.ZERO

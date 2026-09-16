@@ -30,29 +30,27 @@ public interface FactBetRepository {
 
 	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
-	// epic-018: fecha a lacuna de feat-006 (leagueId/tipsterId so estreitavam os outros segmentos
-	// como filtro, nunca tiveram agrupamento proprio). aggregateByTipster exclui tipsterId nulo
-	// (campo opcional em FACT_BET, diferente de leagueId que e sempre presente).
+	// aggregateByTipster exclui tipsterId nulo (campo opcional em FACT_BET, diferente de
+	// leagueId que e sempre presente).
 	List<SegmentedBetAggregate> aggregateByLeague(StatisticsFilter filter);
 
 	List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter);
 
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 
-	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
-	// ficam de fora dos dois.
+	// So 2 buckets fixos (PRE/LIVE), apostas sem betType classificado ficam de fora dos dois.
 	List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter);
 
-	// epic-016 (GET /api/v1/statistics/daily): array esparso ordenado por data ascendente - so
-	// dias com pelo menos 1 aposta liquidada geram linha.
+	// GET /api/v1/statistics/daily: array esparso ordenado por data ascendente - so dias com
+	// pelo menos 1 aposta liquidada geram linha.
 	List<DailyBetAggregate> aggregateByDay(StatisticsFilter filter);
 
-	// epic-011 (RF09 estendido): agregado + serie ordenada especificos de GET
-	// /api/v1/statistics/search - separados dos 5 metodos acima (dashboard consolidado, feat-006)
-	// porque o filtro exige sportId/leagueId e adiciona teamId (team1Id OR team2Id).
+	// Agregado + serie ordenada especificos de GET /api/v1/statistics/search - separados dos 5
+	// metodos acima (dashboard consolidado) porque o filtro exige sportId/leagueId e adiciona
+	// teamId (team1Id OR team2Id).
 	SearchAggregate aggregateForSearch(StatisticsSearchFilter filter);
 
-	// Ordenada por date crescente - base do calculo de drawdown/Sharpe (domain, feat-012.4) e do
-	// campo "timeline" da resposta HTTP (feat-012.5).
+	// Ordenada por date crescente - base do calculo de drawdown/Sharpe e do campo "timeline" da
+	// resposta HTTP.
 	List<SettledBetPoint> findOrderedSettledProfits(StatisticsSearchFilter filter);
 }

@@ -25,8 +25,8 @@ import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 public class JpaFactBetRepository implements FactBetRepository {
 
 	// Limites-sentinela em vez de null: Postgres nao consegue inferir o tipo de um parametro
-	// null usado so dentro de CAST/FUNCTION (achado real, ver plan_review de feat-006) - fora de
-	// qualquer intervalo real de aposta, sem risco de overflow de driver como LocalDate.MIN/MAX.
+	// null usado so dentro de CAST/FUNCTION - fora de qualquer intervalo real de aposta, sem
+	// risco de overflow de driver como LocalDate.MIN/MAX.
 	private static final LocalDate MIN_DATE = LocalDate.of(1900, 1, 1);
 	private static final LocalDate MAX_DATE = LocalDate.of(2999, 12, 31);
 

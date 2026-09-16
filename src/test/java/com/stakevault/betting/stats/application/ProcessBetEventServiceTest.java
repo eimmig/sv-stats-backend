@@ -143,10 +143,8 @@ class ProcessBetEventServiceTest {
 		verify(metricsCacheRepository).evict(settledDate.getYear(), settledDate.getMonthValue());
 	}
 
-	// Achado real do plan review de epic-011: dateId reflete a data do JOGO (betDate), resolvida
-	// por processCreated - processSettled nao pode recalcula-lo a partir de settledAt (mes de
-	// liquidacao pode divergir do mes do jogo), sob risco de corromper o agregado mensal do
-	// dashboard (feat-006) silenciosamente.
+	// dateId reflete a data do JOGO (betDate), resolvida por processCreated - processSettled nao
+	// pode recalcula-lo a partir de settledAt (mes de liquidacao pode divergir do mes do jogo).
 	@Test
 	void shouldPreserveExistingDateIdWhenSettlingAnAlreadyCreatedBet() {
 		UUID eventId = UUID.randomUUID();

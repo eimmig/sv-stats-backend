@@ -155,7 +155,7 @@ class DimensionResolverTest {
 		assertThat(saved.sportId()).isEqualTo(sportId);
 	}
 
-	// feat-013: o mesmo nome em esportes diferentes nao deve reutilizar a linha do outro esporte.
+	// O mesmo nome em esportes diferentes nao deve reutilizar a linha do outro esporte.
 	@Test
 	void shouldNotReuseTeamFromADifferentSport() {
 		UUID soccerSportId = UUID.randomUUID();
