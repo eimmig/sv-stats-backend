@@ -1364,7 +1364,7 @@
           ],
           "validation": "Comparacao (JSON normalizado) entre os schemas locais e docs/contracts/ da raiz nao mostra divergencia de campo.",
           "owner": "agente",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-476"
         },
         {
