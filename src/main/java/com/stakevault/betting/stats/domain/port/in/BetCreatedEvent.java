@@ -8,6 +8,6 @@ import com.stakevault.betting.stats.domain.model.BetType;
 
 public record BetCreatedEvent(UUID betId, UUID bettingHouseId, String bettingHouseName, UUID sportId,
 		String sportName, UUID leagueId, String leagueName, UUID marketId, String marketName, UUID tipsterId,
-		String tipsterName, String team1, String team2, BigDecimal stake, BigDecimal odd, BetType betType,
-		Instant betDate) {
+		String tipsterName, UUID team1Id, String team1, UUID team2Id, String team2, BigDecimal stake, BigDecimal odd,
+		BetType betType, Instant betDate) {
 }

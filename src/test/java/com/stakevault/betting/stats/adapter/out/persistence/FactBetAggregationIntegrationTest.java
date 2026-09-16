@@ -327,8 +327,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// epic-018: fecha a lacuna de feat-006 - leagueId ganha agrupamento proprio, mirror exato
-	// do teste de aggregateBySport/aggregateByMarket.
+	// leagueId ganha agrupamento proprio, mirror exato do teste de aggregateBySport/aggregateByMarket.
 	@Test
 	void shouldAggregateByLeague() {
 		try (var _ = TenantContextScope.open(schema)) {

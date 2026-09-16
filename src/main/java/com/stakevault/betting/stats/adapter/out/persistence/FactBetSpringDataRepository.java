@@ -109,8 +109,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
-	// epic-018: fecha a lacuna de feat-006 (leagueId so estreitava os outros segmentos como
-	// filtro). Mirror exato de aggregateBySport, trocando a dimensao.
+	// Mirror exato de aggregateBySport, trocando a dimensao.
 	@Query("""
 			SELECT l.id AS dimensionId, l.name AS dimensionName, SUM(f.stake) AS totalStaked,
 			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,

@@ -2,9 +2,50 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-15
-**Feature ativa:** nenhuma — `feat-001`..`feat-017` e `feat-019` `done`. `feat-018` (DIM_TEAM
-alignment, `epic-024`) `BLOCKED` pelo próprio Plan Reviewer — ver `session-handoff.md`.
+**Última atualização:** 2026-09-16
+**Feature ativa:** nenhuma — `feat-001`..`feat-019` `done`. Backlog do serviço esgotado de novo.
+
+## `feat-018` fechada — DIM_TEAM alinhada ao catálogo real de `bets-service` (2026-09-16)
+
+Desbloqueada por `bets-service feat-016/017` fecharem (decisão de contratos + implementação do
+catálogo `TEAM`). O bloqueio original (Plan Reviewer 2026-09-15) exigia esperar aquele plano de
+contratos existir antes de popular subtasks aqui — feito nesta sessão, com uma 2ª rodada do Plan
+Reviewer (`REVISE`, corrigido antes de codificar).
+
+4 subtasks (story SV-475, subtasks SV-476..479, PRs #63-66 subtask→feature + #67 feature→develop):
+
+- **`feat-018.1` (achado BLOCKER real, não hipotético)**: os schemas JSON vendorizados
+  (`src/main/resources/contracts/bet-{created,settled}.schema.json`) nunca tinham sido
+  atualizados com os campos que `bets-service feat-017` passou a publicar
+  (`team1Id`/`team2Id` em `BetCreated`; `team1Id`/`team1Name`/`team2Id`/`team2Name`, novos, em
+  `BetSettled`) — `payload.additionalProperties: false` nos dois, combinado com
+  `BetEventSchemaValidator`/`InvalidBetEventException` (rejeita direto pra DLQ, sem retry),
+  significava que **todo** evento `BetCreated`/`BetSettled` (não só os que referenciam time) ia
+  morta-letrar assim que `bets-service` promovesse `feat-017` pra produção. Confirmado revertendo
+  o schema e rerodando o teste (falhou como esperado) antes de corrigir.
+- **`feat-018.2`**: `DimensionResolver.resolveTeam(UUID id, String name, UUID sportId)` passou a
+  considerar o id do catálogo, mas com **precedência de `(name, sportId)`** — a linha já gravada
+  vence sobre o id do evento. Sem essa precedência, um time já resolvido aqui por nome (antes do
+  catálogo `TEAM` existir, `epic-011`) reapareceria com o id real do catálogo e o `INSERT` violaria
+  `UNIQUE(name, sport_id)` permanentemente (mensagem "envenenada", não recuperável por retry/DLQ).
+  Assimetria resultante — `DIM_TEAM.id` só passa a coincidir com o catálogo real pra times vistos
+  pela primeira vez depois desta feature, times antigos mantêm o id local pra sempre, sem
+  backfill (mesmo precedente de `V20260910130000`) — documentada em `DimTeam.java` e
+  `docs/services/stats-service.md`.
+- **`feat-018.3`**: `BetSettledEvent.team1()`/`team2()` (`String`) eram campos mortos — nenhum
+  publicador real jamais os populou (`BetSettled` nunca carregou `team1`/`team2` antes desta
+  mudança). Substituídos pelos campos reais; `processSettled` resolve ou preserva o
+  `team1Id`/`team2Id` já gravado, mesmo padrão de `dateId`/`betType`.
+- **`feat-018.4`**: `Delivery Reviewer`/`Persistence Auditor`/`Test Suite Auditor` rodados contra
+  o diff completo da feature (não só por subtask): todos `PASS`, sem achado bloqueante.
+  Duplicação de cobertura Mockito vs. end-to-end no cenário de colisão avaliada e mantida
+  (localização de falha distinta, mesmo precedente já usado pra `dateId`/`betType`/constraint de
+  `DIM_TEAM`).
+
+`./init.sh` verde 4x ao longo da feature (Docker ativo). 1 flake de timing do `Awaitility` (5s)
+numa PR de subtask, confirmado não-recorrente via rerun — mesmo padrão já aceito no histórico
+deste serviço (`feat-006`). Fecha a parte `stats-service` de `epic-024` da raiz — falta só
+`apps/web feat-022` (date picker, `REVISE`) pra fechar o epic inteiro.
 
 ## `feat-019` fechada — CD automático, job `deploy` no `ci.yml` (2026-09-15)
 

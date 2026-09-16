@@ -109,8 +109,8 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		JsonNode body = objectMapper.readTree(response.body());
 		assertThat(body.path("overall").path("totalStaked").asDouble()).isEqualTo(100.0);
 		assertThat(body.path("overall").path("settledCount").asInt()).isEqualTo(1);
-		// Cada item de segmento/mes aninha as metricas sob "metrics" (mesmos records de dominio
-		// ja usados desde feat-004/005), nao achatado - ver docs/API-CONTRACTS.md.
+		// Cada item de segmento/mes aninha as metricas sob "metrics", nao achatado - ver
+		// docs/API-CONTRACTS.md.
 		JsonNode sportSegment = body.path("bySport").get(0);
 		assertThat(sportSegment.path("dimensionName").asString()).isEqualTo("Soccer");
 		assertThat(sportSegment.path("metrics").path("totalStaked").asDouble()).isEqualTo(100.0);
