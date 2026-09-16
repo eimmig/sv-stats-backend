@@ -1381,7 +1381,7 @@
           ],
           "validation": "Testes de integracao (Testcontainers) provam os 3 caminhos do checklist, incluindo o cenario de colisao (linha existente com id diferente do evento) sem excecao de constraint.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-477"
         },
         {

@@ -54,8 +54,8 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 			UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 			UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-			UUID team1Id = dimensionResolver.resolveTeam(event.team1(), sportId);
-			UUID team2Id = dimensionResolver.resolveTeam(event.team2(), sportId);
+			UUID team1Id = dimensionResolver.resolveTeam(event.team1Id(), event.team1(), sportId);
+			UUID team2Id = dimensionResolver.resolveTeam(event.team2Id(), event.team2(), sportId);
 
 			// Sem evict aqui: RN06 exclui status=pending de toda agregacao, entao este insert e
 			// invisivel para as metricas cacheadas - invalidar agora seria desperdicio (mesmo
@@ -91,8 +91,11 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
 		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
 		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-		UUID team1Id = dimensionResolver.resolveTeam(event.team1(), sportId);
-		UUID team2Id = dimensionResolver.resolveTeam(event.team2(), sportId);
+		// BetSettledEvent.team1()/team2() nunca sao populados por um publicador real (feat-018.3
+		// troca por team1Id/team1Name/team2Id/team2Name) - id sempre null aqui por enquanto,
+		// mesmo comportamento de antes desta mudanca de assinatura.
+		UUID team1Id = dimensionResolver.resolveTeam(null, event.team1(), sportId);
+		UUID team2Id = dimensionResolver.resolveTeam(null, event.team2(), sportId);
 
 		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
 				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),
