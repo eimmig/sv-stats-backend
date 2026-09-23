@@ -624,3 +624,18 @@ Teste novo em `ProcessBetEventServiceTest` (`shouldUpdateAnAlreadyExistingPendin
 `./init.sh` verde, 157/157 testes. Detalhe completo do desenho da feature (decisões, Plan
 Reviewer) em `services/bets-service/feature_list.json`/`progress.md` — nasceu como parte daquela
 feature, não desta.
+
+## `feat-021` fechada — reformulação de marca StakeVault -> Arka (2026-09-23)
+
+Continuação do `epic-032` da raiz - 3º dos 4 serviços Java (depois de `auth-service feat-019` e
+`bets-service feat-020`, mesmo plano base reaproveitado). Único ponto real de marca: `pom.xml`
+linha 15 (`<description>`) - GroupId `com.stakevault.betting` e `.env`
+(`RABBITMQ_USER=stakevault`, untracked) fora de escopo. Plan Reviewer condensado (READY, ver
+`services/auth-service/feature_list.json` feat-019). Delivery Reviewer: PASS. 2 subtasks
+(SV-556/557, story SV-555), PRs #69/#70/#71, CI+SonarCloud verdes.
+
+Mesmo achado de processo do companion `bets-service feat-020`: `develop` tinha 1 commit local não
+publicado (`feat-020`, companion de `bets-service feat-019`) - sincronizado antes de ramificar.
+Mesmo residual de ambiente (processos `java.exe` órfãos) documentado em
+`services/auth-service/progress.md` - `mvn test` local verde, `mvn verify` completo confirmado
+pelo CI.
