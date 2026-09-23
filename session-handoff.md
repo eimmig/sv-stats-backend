@@ -3,17 +3,21 @@
 > Estado atual, não histórico. O diário cronológico é o `progress.md` — este arquivo é reescrito
 > a cada sessão para responder "o que a próxima sessão precisa saber agora".
 
-**Última atualização:** 2026-09-15
+**Última atualização:** 2026-09-22
 
 ## Objetivo atual
 
-`feat-001`..`feat-017` e `feat-019` `done`. Único item restante do backlog é `feat-018`
-("Alinhar DIM_TEAM com o catálogo de times do dominio", `epic-024` da raiz) — **BLOCKED** pelo
-próprio `Plan Reviewer` (não `in-progress`, não codificar sem revisitar): a decisão real de
-domínio (chave natural time+esporte) já foi tomada em `bets-service feat-016`/`feat-017`
-(já `done`, ver `services/bets-service/feature_list.json`), mas `feat-018` ainda não tem
-subtasks populadas a partir daquele plano. Não popular subtasks/virar `in-progress` sem reler o
-`plan_review` já escrito nesta feature primeiro.
+`feat-001`..`feat-020` `done` (`feat-018` — alinhar `DIM_TEAM` ao catálogo `TEAM` — fechada em
+sessão anterior via `epic-024`; `feat-020`, companion de `bets-service feat-019`, fechada nesta
+sessão). Backlog deste serviço esgotado — nenhuma feature `not-started` elegível agora.
+
+## Concluído em 2026-09-22
+
+- [x] **`feat-020` fechada** — `ProcessBetEventService.processCreated` aceita reprocessar
+      `FACT_BET` quando a linha existente ainda está `pending`, companion cross-service de
+      `bets-service feat-019` (`PUT /api/v1/bets/{id}`). Ver `services/bets-service/progress.md`
+      para o desenho completo (decidido no Plan Reviewer daquele serviço). Sem story/PR formal
+      nesta sessão (commit direto, fluxo de pareamento). `./init.sh` verde, 157/157 testes.
 
 ## Concluído nesta sessão (2026-09-15)
 

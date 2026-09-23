@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+- `feat-020` - processCreated aceita reprocessar FACT_BET ainda pending, companion de
+  bets-service `feat-019` (sem story própria - fluxo direto).
 - [SV-9](https://stakevault.atlassian.net/browse/SV-9) - Alinhar as chaves de projeto ao padrão do SonarCloud
 - [SV-110](https://stakevault.atlassian.net/browse/SV-110) - Setup do projeto + consumidor RabbitMQ
 - [SV-111](https://stakevault.atlassian.net/browse/SV-111) - Endurecer pipeline de CI antes do bootstrap (porta o padrao ja validado de bets-service)

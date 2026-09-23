@@ -609,3 +609,18 @@ independência reduzida, declarada) rodados contra o diff completo (37 arquivos)
 subtasks. CI+SonarCloud verdes nas 4 PRs de subtask e na PR `feature/SV-343 -> develop` (#50).
 `docs/API-CONTRACTS.md`/`docs/services/stats-service.md` (repositório raiz) atualizados no commit
 de fechamento. Fecha `epic-014` da raiz.
+
+## `feat-020` — companion de bets-service `feat-019` (2026-09-22)
+
+`bets-service feat-019` (`PUT /api/v1/bets/{id}`, edição de aposta já registrada) passou a
+republicar `BetCreated` quando a aposta editada continua `pending`, pra este serviço reprocessar
+`FACT_BET`. `ProcessBetEventService.processCreated` só inseria a linha se `FACT_BET` não
+existisse — uma 2ª entrega do mesmo `betId` era silenciosamente ignorada (marcada processada,
+sem atualizar nada). Corrigido: aceita reprocessar quando a linha existente ainda está `pending`,
+preservando a proteção original contra sobrescrever uma liquidação já aplicada por mensagem fora
+de ordem (`BetSettled` sempre vence). Sem mudança de schema — mesmo payload de `BetCreated`.
+
+Teste novo em `ProcessBetEventServiceTest` (`shouldUpdateAnAlreadyExistingPendingFactBetWhenCreatedArrivesAgain`).
+`./init.sh` verde, 157/157 testes. Detalhe completo do desenho da feature (decisões, Plan
+Reviewer) em `services/bets-service/feature_list.json`/`progress.md` — nasceu como parte daquela
+feature, não desta.
