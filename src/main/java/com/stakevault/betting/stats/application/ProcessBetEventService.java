@@ -46,7 +46,8 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 
 		// BetSettled pode ter chegado antes e ja liquidado esta linha (mensagens fora de ordem,
 		// ver plan_review) - BetCreated nunca sobrescreve uma liquidacao ja aplicada.
-		if (factBetRepository.findById(event.betId()).isEmpty()) {
+		Optional<FactBet> existing = factBetRepository.findById(event.betId());
+		if (existing.isEmpty() || existing.get().status() == BetStatus.PENDING) {
 			UUID dateId = dimensionResolver.resolveDate(event.betDate());
 			UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(),
 					event.bettingHouseName());

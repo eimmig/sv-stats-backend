@@ -1443,6 +1443,84 @@
         }
       ],
       "evidence": "Fechada em 2026-09-15 (story SV-426, subtasks SV-427/SV-428, PR #59 subtask->story verde, merge feature/SV-426 -> develop). Reaproveitou byte a byte o padrao ja revisado e fechado em bets-service feat-018 na mesma sessao (mesmo Plan Reviewer, mesmas 2 correcoes MINOR ja aplicadas: sem action de terceiro azure/setup-kubectl - kubectl 1.37.0 ja preinstalado no runner ubuntu-latest; permissions: {} explicito, confirmado necessario pois este repositorio tambem tem default_workflow_permissions=write). Unica diferenca e o nome do Deployment (stats-service), confirmado contra infra/k8s/stats-service.yaml (sem namespace, default) e contra infra/k8s/ci-deployer-rbac.yaml (resourceNames ja inclui stats-service). KUBE_CONFIG confirmado presente no repositorio (gh secret list). Delivery Reviewer: PASS (revisao condensada, reaplicacao identica de padrao ja auditado - sem achado). ./init.sh verde. Guard comportou como esperado: deploy/build-and-push-image corretamente 'skipping' no evento de PR (run 35010523400). **Disparo real do job adiado**: main deste repositorio estava ~20 commits atras de develop (feat-014..feat-017 + esta feat-019 acumulados, nenhuma promocao develop->main ainda) - mesma decisao de bets-service feat-018, nao forcar uma promocao so pra provar o job nesta sessao (decisao de release mais ampla, nao exclusiva desta feature). O job vai disparar de verdade e ficar provado no proximo develop->main legitimo deste repositorio - registrar a confirmacao real (log do Actions) em docs/services/infra.md nessa ocasiao. Fecha a parte de stats-service do epic-028 da raiz (4 dos 6 repositorios de aplicacao ainda pendentes: auth-service feat-016, api-gateway feat-014, telegram-integration feat-010, web feat-030)."
+    },
+    {
+      "id": "feat-020",
+      "name": "processCreated aceita reprocessar FACT_BET ainda pending (companion de bets-service feat-019)",
+      "description": "Companion cross-service de bets-service feat-019 (PUT /api/v1/bets/{id}, edicao de aposta ja registrada) - contrato de evento, excecao documentada em CLAUDE.md raiz pra tocar 2 servicos na mesma feature. Editar uma aposta ainda pending republica BetCreated (mesmo mecanismo/payload, sem mudanca de schema), mas ProcessBetEventService.processCreated so inserida se FACT_BET nao existisse - uma 2a entrega do mesmo betId era silenciosamente ignorada (marcada processada, sem atualizar nada), deixando FACT_BET desatualizado pra sempre apos qualquer edicao de aposta pending. Escopo: aceitar reprocessar quando a linha existente ainda estiver PENDING, preservando a protecao original contra sobrescrever uma liquidacao ja aplicada por mensagem fora de ordem (BetSettled sempre vence).",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "Coberto pelo Plan Reviewer de bets-service feat-019 (2026-09-22, ver services/bets-service/feature_list.json) - mudanca pequena e mecanica, sem decisao de arquitetura propria: JpaFactBetRepository.save() (stats-service) ja fazia findById+applyFrom+save corretamente (mesmo padrao documentado em docs/convencoes.md), entao so a condicao de guarda em processCreated precisava mudar. Sem BLOCKER/MAJOR especifico deste lado.",
+      "jira": "",
+      "subtasks": [],
+      "evidence": "ProcessBetEventService.processCreated: condicao mudou de 'insere so se FACT_BET nao existir' pra 'insere/atualiza se nao existir OU se a linha existente ainda for PENDING' - BetSettled continua vencendo sempre (nenhuma mudanca la). Teste novo em ProcessBetEventServiceTest (shouldUpdateAnAlreadyExistingPendingFactBetWhenCreatedArrivesAgain) cobrindo o caso que estava silenciosamente ignorado; teste existente shouldNotOverwriteAnAlreadySettledFactBetWhenCreatedArrivesLate confirmado sem regressao (mensagem fora de ordem contra bet ja liquidado continua sendo ignorada). ./init.sh verde, 157/157 testes. Sem mudanca de schema JSON (docs/contracts/*.schema.json) - mesmo payload de BetCreated, so passa a ser aceito numa 2a entrega pro mesmo betId."
+    },
+    {
+      "id": "feat-021",
+      "name": "Reformulacao de marca: StakeVault -> Arka (pom.xml description)",
+      "description": "Continuacao do epic-032 da raiz (rebranding StakeVault -> Arka) neste harness - 3o dos 4 servicos Java (depois de auth-service feat-019 e bets-service feat-020, mesmo plano base reaproveitado - ver services/auth-service/feature_list.json feat-019 para o levantamento completo). grep -ril 'stakevault' confirma a mesma estrutura: arvore src/main/java|test/java/com/stakevault/betting/** e o GroupId Maven (identificador tecnico ja deferido em docs/DECISIONS-LOG.md raiz 2026-09-23), .env untracked (RABBITMQ_USER=stakevault, mesma classe), CHANGELOG.md/feature_list.json so com links Jira reais/evidence historica. Escopo real: pom.xml linha 15, '<description>Consumidor de eventos, modelo OLAP e metricas de desempenho (StakeVault)</description>' - unico ponto de prosa/metadado com marca, confirmado (grep dedicado, ja feito no plan review de auth-service feat-019 cobrindo os 4 servicos Java de uma vez) que nao existe spring.application.name/info.app/springdoc/swagger expondo a marca a um operador real.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-09-23, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado uma vez cobrindo os 4 servicos Java, ver services/auth-service/feature_list.json feat-019 pro plan review completo (READY, sem achado) - reaproveitado aqui sem nova rodada, mesma estrutura de repositorio/pom.xml/GroupId confirmada identica.",
+      "jira": "SV-555",
+      "subtasks": [
+        {
+          "id": "feat-021.1",
+          "name": "pom.xml: description 'StakeVault' -> 'Arka'",
+          "status": "done",
+          "jira": "SV-556"
+        },
+        {
+          "id": "feat-021.2",
+          "name": "CHANGELOG, verificacao final e revisao do vault",
+          "status": "done",
+          "jira": "SV-557",
+          "detail": "Fecha a parte de stats-service do epic-032 da raiz.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer rodado sobre o diff real desta feature",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde, Delivery Reviewer sem achado real pendente, evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": "2 subtasks (SV-556/557, story SV-555) done, PR #69 (SV-556) subtask->story com CI verde. Rename StakeVault->Arka em pom.xml linha 15 ('<description>') - unico ponto de prosa/metadado com marca fora do GroupId Maven com.stakevault.betting (identificador tecnico deferido, docs/DECISIONS-LOG.md raiz 2026-09-23). Plan Reviewer (passe proprio, cobrindo os 4 servicos Java de uma vez, ver services/auth-service/feature_list.json feat-019): READY, sem achado. Delivery Reviewer (passe proprio sobre o diff completo, 3 arquivos, 37 linhas): PASS, sem achado. Achado de processo corrigido antes de abrir o PR: develop deste repositorio tinha 1 commit local nunca publicado (feat-020, companion de bets-service feat-019 - processCreated reprocessando FACT_BET pending) - sincronizado (push direto, fast-forward) antes de ramificar, pra nao vazar aquele commit alheio no diff desta feature. Mesmo residuo local do Windows ja registrado em auth-service feat-019.2: 8 processos java.exe orfaos de outro teste do usuario mantinham os jars antigos de target/ abertos, impedindo o repackage do mvn verify localmente - usuario autorizou pular o build local em vez de derrubar os processos. Verificacao alternativa: 'mvn -q -DskipTests=false test' (EXIT=0, todos os testes passando). Gap fechado pelo gate real: o PR story->develop (CI no GitHub Actions, ambiente Linux sem o lock do Windows) roda 'mvn verify' completo incluindo repackage. Fecha a parte de stats-service do epic-032 da raiz."
+    },
+    {
+      "id": "feat-022",
+      "name": "CI: gerar versao (semver + tag + Release + bump de pom.xml + corte de CHANGELOG) ao merge em main",
+      "description": "3o harness do epic-033 da raiz - mesmo mecanismo ja validado e implementado em auth-service feat-020 (ver aquele feature_list.json pro plan review completo, 2 subagentes independentes, pesquisa real). Job novo 'release' no ci.yml, identico ao de auth-service (so troca o nome do repositorio).",
+      "dependencies": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-23, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado uma vez em auth-service feat-020 (REVISE, 2 achados corrigidos: commit: explicito no release-action, persist-credentials:false) - reaproveitado aqui sem nova rodada, mesma estrutura de repositorio/pom.xml confirmada identica aos outros 3 servicos Java.",
+      "jira": "SV-567",
+      "subtasks": [
+        {
+          "id": "feat-022.1",
+          "name": "Job 'release' no ci.yml + .github/scripts/cut-changelog.py",
+          "status": "done",
+          "jira": "SV-568"
+        },
+        {
+          "id": "feat-022.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-569",
+          "detail": "Fecha a parte de stats-service do epic-033 da raiz.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer rodado sobre o diff real desta feature",
+            "Verificacao real: push de teste em main confirma job 'release' rodando (tag/Release criados, pom.xml/CHANGELOG.md bumped corretamente, sem loop de CI)",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "Push real em main confirmado no GitHub Actions (job release verde, tag/Release visiveis no repositorio), init.sh verde, Delivery Reviewer sem achado real pendente, evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

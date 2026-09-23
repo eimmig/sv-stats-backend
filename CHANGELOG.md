@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+- `feat-020` - processCreated aceita reprocessar FACT_BET ainda pending, companion de
+  bets-service `feat-019` (sem story própria - fluxo direto).
 - [SV-9](https://stakevault.atlassian.net/browse/SV-9) - Alinhar as chaves de projeto ao padrão do SonarCloud
 - [SV-110](https://stakevault.atlassian.net/browse/SV-110) - Setup do projeto + consumidor RabbitMQ
 - [SV-111](https://stakevault.atlassian.net/browse/SV-111) - Endurecer pipeline de CI antes do bootstrap (porta o padrao ja validado de bets-service)
@@ -89,3 +91,9 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-477](https://stakevault.atlassian.net/browse/SV-477) - DimensionResolver.resolveTeam passa a aceitar id do catalogo (BetCreated)
 - [SV-478](https://stakevault.atlassian.net/browse/SV-478) - Consumir team1Id/team1Name/team2Id/team2Name em BetSettled
 - [SV-479](https://stakevault.atlassian.net/browse/SV-479) - CHANGELOG e verificacao final
+- [SV-555](https://stakevault.atlassian.net/browse/SV-555) - Reformulacao de marca: StakeVault -> Arka (pom.xml description)
+- [SV-556](https://stakevault.atlassian.net/browse/SV-556) - pom.xml: description 'StakeVault' -> 'Arka'
+- [SV-557](https://stakevault.atlassian.net/browse/SV-557) - CHANGELOG, verificacao final e revisao do vault
+- [SV-567](https://stakevault.atlassian.net/browse/SV-567) - CI: gerar versao (semver + tag + Release + bump de pom.xml + corte de CHANGELOG) ao merge em main
+- [SV-568](https://stakevault.atlassian.net/browse/SV-568) - Job 'release' no ci.yml + .github/scripts/cut-changelog.py
+- [SV-569](https://stakevault.atlassian.net/browse/SV-569) - CHANGELOG e verificacao final

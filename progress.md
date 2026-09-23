@@ -609,3 +609,33 @@ independência reduzida, declarada) rodados contra o diff completo (37 arquivos)
 subtasks. CI+SonarCloud verdes nas 4 PRs de subtask e na PR `feature/SV-343 -> develop` (#50).
 `docs/API-CONTRACTS.md`/`docs/services/stats-service.md` (repositório raiz) atualizados no commit
 de fechamento. Fecha `epic-014` da raiz.
+
+## `feat-020` — companion de bets-service `feat-019` (2026-09-22)
+
+`bets-service feat-019` (`PUT /api/v1/bets/{id}`, edição de aposta já registrada) passou a
+republicar `BetCreated` quando a aposta editada continua `pending`, pra este serviço reprocessar
+`FACT_BET`. `ProcessBetEventService.processCreated` só inseria a linha se `FACT_BET` não
+existisse — uma 2ª entrega do mesmo `betId` era silenciosamente ignorada (marcada processada,
+sem atualizar nada). Corrigido: aceita reprocessar quando a linha existente ainda está `pending`,
+preservando a proteção original contra sobrescrever uma liquidação já aplicada por mensagem fora
+de ordem (`BetSettled` sempre vence). Sem mudança de schema — mesmo payload de `BetCreated`.
+
+Teste novo em `ProcessBetEventServiceTest` (`shouldUpdateAnAlreadyExistingPendingFactBetWhenCreatedArrivesAgain`).
+`./init.sh` verde, 157/157 testes. Detalhe completo do desenho da feature (decisões, Plan
+Reviewer) em `services/bets-service/feature_list.json`/`progress.md` — nasceu como parte daquela
+feature, não desta.
+
+## `feat-021` fechada — reformulação de marca StakeVault -> Arka (2026-09-23)
+
+Continuação do `epic-032` da raiz - 3º dos 4 serviços Java (depois de `auth-service feat-019` e
+`bets-service feat-020`, mesmo plano base reaproveitado). Único ponto real de marca: `pom.xml`
+linha 15 (`<description>`) - GroupId `com.stakevault.betting` e `.env`
+(`RABBITMQ_USER=stakevault`, untracked) fora de escopo. Plan Reviewer condensado (READY, ver
+`services/auth-service/feature_list.json` feat-019). Delivery Reviewer: PASS. 2 subtasks
+(SV-556/557, story SV-555), PRs #69/#70/#71, CI+SonarCloud verdes.
+
+Mesmo achado de processo do companion `bets-service feat-020`: `develop` tinha 1 commit local não
+publicado (`feat-020`, companion de `bets-service feat-019`) - sincronizado antes de ramificar.
+Mesmo residual de ambiente (processos `java.exe` órfãos) documentado em
+`services/auth-service/progress.md` - `mvn test` local verde, `mvn verify` completo confirmado
+pelo CI.

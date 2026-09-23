@@ -125,6 +125,32 @@ class ProcessBetEventServiceTest {
 	}
 
 	@Test
+	void shouldUpdateAnAlreadyExistingPendingFactBetWhenCreatedArrivesAgain() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID dateId = UUID.randomUUID();
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
+				new FactBet(betId, dateId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(50), BigDecimal.valueOf(1.5), null,
+						null, BetStatus.PENDING, BetType.PRE, 1)));
+		when(dimensionResolver.resolveDate(any())).thenReturn(dateId);
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processCreated(eventId, createdEvent(betId));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().stake()).isEqualByComparingTo(BigDecimal.valueOf(100));
+		assertThat(captor.getValue().odd()).isEqualByComparingTo(BigDecimal.valueOf(2));
+		assertThat(captor.getValue().status()).isEqualTo(BetStatus.PENDING);
+		verify(processedEventRepository).save(any());
+	}
+
+	@Test
 	void shouldUpsertFactBetAndMarkProcessedOnSettled() {
 		UUID eventId = UUID.randomUUID();
 		UUID betId = UUID.randomUUID();
