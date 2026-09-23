@@ -12,7 +12,7 @@
 	<artifactId>stats-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>stats-service</name>
-	<description>Consumidor de eventos, modelo OLAP e metricas de desempenho (StakeVault)</description>
+	<description>Consumidor de eventos, modelo OLAP e metricas de desempenho (Arka)</description>
 	<properties>
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

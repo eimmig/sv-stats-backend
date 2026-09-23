@@ -1454,6 +1454,39 @@
       "jira": "",
       "subtasks": [],
       "evidence": "ProcessBetEventService.processCreated: condicao mudou de 'insere so se FACT_BET nao existir' pra 'insere/atualiza se nao existir OU se a linha existente ainda for PENDING' - BetSettled continua vencendo sempre (nenhuma mudanca la). Teste novo em ProcessBetEventServiceTest (shouldUpdateAnAlreadyExistingPendingFactBetWhenCreatedArrivesAgain) cobrindo o caso que estava silenciosamente ignorado; teste existente shouldNotOverwriteAnAlreadySettledFactBetWhenCreatedArrivesLate confirmado sem regressao (mensagem fora de ordem contra bet ja liquidado continua sendo ignorada). ./init.sh verde, 157/157 testes. Sem mudanca de schema JSON (docs/contracts/*.schema.json) - mesmo payload de BetCreated, so passa a ser aceito numa 2a entrega pro mesmo betId."
+    },
+    {
+      "id": "feat-021",
+      "name": "Reformulacao de marca: StakeVault -> Arka (pom.xml description)",
+      "description": "Continuacao do epic-032 da raiz (rebranding StakeVault -> Arka) neste harness - 3o dos 4 servicos Java (depois de auth-service feat-019 e bets-service feat-020, mesmo plano base reaproveitado - ver services/auth-service/feature_list.json feat-019 para o levantamento completo). grep -ril 'stakevault' confirma a mesma estrutura: arvore src/main/java|test/java/com/stakevault/betting/** e o GroupId Maven (identificador tecnico ja deferido em docs/DECISIONS-LOG.md raiz 2026-09-23), .env untracked (RABBITMQ_USER=stakevault, mesma classe), CHANGELOG.md/feature_list.json so com links Jira reais/evidence historica. Escopo real: pom.xml linha 15, '<description>Consumidor de eventos, modelo OLAP e metricas de desempenho (StakeVault)</description>' - unico ponto de prosa/metadado com marca, confirmado (grep dedicado, ja feito no plan review de auth-service feat-019 cobrindo os 4 servicos Java de uma vez) que nao existe spring.application.name/info.app/springdoc/swagger expondo a marca a um operador real.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-09-23, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado uma vez cobrindo os 4 servicos Java, ver services/auth-service/feature_list.json feat-019 pro plan review completo (READY, sem achado) - reaproveitado aqui sem nova rodada, mesma estrutura de repositorio/pom.xml/GroupId confirmada identica.",
+      "jira": "SV-555",
+      "subtasks": [
+        {
+          "id": "feat-021.1",
+          "name": "pom.xml: description 'StakeVault' -> 'Arka'",
+          "status": "done",
+          "jira": "SV-556"
+        },
+        {
+          "id": "feat-021.2",
+          "name": "CHANGELOG, verificacao final e revisao do vault",
+          "status": "done",
+          "jira": "SV-557",
+          "detail": "Fecha a parte de stats-service do epic-032 da raiz.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer rodado sobre o diff real desta feature",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde, Delivery Reviewer sem achado real pendente, evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": "2 subtasks (SV-556/557, story SV-555) done, PR #69 (SV-556) subtask->story com CI verde. Rename StakeVault->Arka em pom.xml linha 15 ('<description>') - unico ponto de prosa/metadado com marca fora do GroupId Maven com.stakevault.betting (identificador tecnico deferido, docs/DECISIONS-LOG.md raiz 2026-09-23). Plan Reviewer (passe proprio, cobrindo os 4 servicos Java de uma vez, ver services/auth-service/feature_list.json feat-019): READY, sem achado. Delivery Reviewer (passe proprio sobre o diff completo, 3 arquivos, 37 linhas): PASS, sem achado. Achado de processo corrigido antes de abrir o PR: develop deste repositorio tinha 1 commit local nunca publicado (feat-020, companion de bets-service feat-019 - processCreated reprocessando FACT_BET pending) - sincronizado (push direto, fast-forward) antes de ramificar, pra nao vazar aquele commit alheio no diff desta feature. Mesmo residuo local do Windows ja registrado em auth-service feat-019.2: 8 processos java.exe orfaos de outro teste do usuario mantinham os jars antigos de target/ abertos, impedindo o repackage do mvn verify localmente - usuario autorizou pular o build local em vez de derrubar os processos. Verificacao alternativa: 'mvn -q -DskipTests=false test' (EXIT=0, todos os testes passando). Gap fechado pelo gate real: o PR story->develop (CI no GitHub Actions, ambiente Linux sem o lock do Windows) roda 'mvn verify' completo incluindo repackage. Fecha a parte de stats-service do epic-032 da raiz."
     }
   ]
 }
