@@ -1493,7 +1493,7 @@
       "name": "CI: gerar versao (semver + tag + Release + bump de pom.xml + corte de CHANGELOG) ao merge em main",
       "description": "3o harness do epic-033 da raiz - mesmo mecanismo ja validado e implementado em auth-service feat-020 (ver aquele feature_list.json pro plan review completo, 2 subagentes independentes, pesquisa real). Job novo 'release' no ci.yml, identico ao de auth-service (so troca o nome do repositorio).",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-23, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado uma vez em auth-service feat-020 (REVISE, 2 achados corrigidos: commit: explicito no release-action, persist-credentials:false) - reaproveitado aqui sem nova rodada, mesma estrutura de repositorio/pom.xml confirmada identica aos outros 3 servicos Java.",
       "jira": "SV-567",
       "subtasks": [
