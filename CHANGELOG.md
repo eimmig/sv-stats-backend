@@ -94,3 +94,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-555](https://stakevault.atlassian.net/browse/SV-555) - Reformulacao de marca: StakeVault -> Arka (pom.xml description)
 - [SV-556](https://stakevault.atlassian.net/browse/SV-556) - pom.xml: description 'StakeVault' -> 'Arka'
 - [SV-557](https://stakevault.atlassian.net/browse/SV-557) - CHANGELOG, verificacao final e revisao do vault
+- [SV-567](https://stakevault.atlassian.net/browse/SV-567) - CI: gerar versao (semver + tag + Release + bump de pom.xml + corte de CHANGELOG) ao merge em main
+- [SV-568](https://stakevault.atlassian.net/browse/SV-568) - Job 'release' no ci.yml + .github/scripts/cut-changelog.py
+- [SV-569](https://stakevault.atlassian.net/browse/SV-569) - CHANGELOG e verificacao final
