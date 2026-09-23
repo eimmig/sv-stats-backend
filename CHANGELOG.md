@@ -91,3 +91,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-477](https://stakevault.atlassian.net/browse/SV-477) - DimensionResolver.resolveTeam passa a aceitar id do catalogo (BetCreated)
 - [SV-478](https://stakevault.atlassian.net/browse/SV-478) - Consumir team1Id/team1Name/team2Id/team2Name em BetSettled
 - [SV-479](https://stakevault.atlassian.net/browse/SV-479) - CHANGELOG e verificacao final
+- [SV-555](https://stakevault.atlassian.net/browse/SV-555) - Reformulacao de marca: StakeVault -> Arka (pom.xml description)
+- [SV-556](https://stakevault.atlassian.net/browse/SV-556) - pom.xml: description 'StakeVault' -> 'Arka'
+- [SV-557](https://stakevault.atlassian.net/browse/SV-557) - CHANGELOG, verificacao final e revisao do vault
