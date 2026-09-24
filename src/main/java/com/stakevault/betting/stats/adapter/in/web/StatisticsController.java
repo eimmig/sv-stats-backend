@@ -50,11 +50,6 @@ public class StatisticsController {
 		return getStatisticsDashboard.getDashboard(filter);
 	}
 
-	// sportId/leagueId obrigatorios (400 RFC 7807 localizado se ausentes) - unico ponto do
-	// contrato de estatisticas onde um filtro deixa de ser opcional. required=false aqui de
-	// proposito - a validacao manual abaixo garante o formato de erro do servico
-	// (LocalizedDomainException/DomainExceptionHandler) em vez do 400 generico que o Spring MVC
-	// devolveria para um @RequestParam(required = true) ausente.
 	@GetMapping("/search")
 	public StatisticsSearchResult search(@RequestParam(required = false) UUID sportId,
 			@RequestParam(required = false) UUID leagueId, @RequestParam(required = false) UUID teamId,
@@ -72,10 +67,6 @@ public class StatisticsController {
 		return searchStatistics.search(filter);
 	}
 
-	// epic-016: mesmos 7 filtros opcionais do bundle consolidado, granularidade diaria - array
-	// esparso (so dias com pelo menos 1 aposta liquidada), sem cache-aside (sempre calculado
-	// direto, mesmo sem filtro nenhum - shape de lista por dia nao bate com a chave unica do
-	// cache-aside de GetStatisticsDashboardService).
 	@GetMapping("/daily")
 	public List<DailyBetMetrics> daily(@RequestParam(required = false) UUID bettingHouseId,
 			@RequestParam(required = false) UUID sportId, @RequestParam(required = false) UUID leagueId,
@@ -86,10 +77,6 @@ public class StatisticsController {
 		return calculateMetrics.calculateDaily(filter);
 	}
 
-	// DIM_TEAM nao tem catalogo em bets-service (texto livre por aposta) - autocomplete da tela
-	// "Buscar Estatisticas" precisa desta listagem pra oferecer os times ja vistos. sportId
-	// obrigatorio (mesmo padrao de erro do endpoint acima) porque a chave natural de DIM_TEAM e
-	// composta (name, sportId) - trocar de esporte na UI refiltra a lista.
 	@GetMapping("/teams")
 	public List<DimTeam> teams(@RequestParam(required = false) UUID sportId) {
 		if (sportId == null) {

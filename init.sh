@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Verification for stats-service (Java 25 + Spring Boot 4.x).
 set -euo pipefail
 
 if ! command -v java >/dev/null 2>&1; then

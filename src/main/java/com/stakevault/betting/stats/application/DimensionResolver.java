@@ -23,11 +23,6 @@ import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTipsterRepository;
 
-// Resolve o id de cada dimensao do esquema estrela a partir do payload do evento, criando a
-// linha sob demanda na primeira aposta que a referencia (upsert-if-missing) - id e o mesmo uuid
-// do catalogo em bets-service para as 5 dimensoes nominais; DimDate/DimTeam sao a excecao,
-// localizadas por chave natural (dia/mes/ano; name) porque o evento nao carrega um id proprio
-// pra elas (team1/team2 sao texto livre em bets-service, sem catalogo - ver docs/DATA-MODEL.md).
 @Service
 public class DimensionResolver {
 
@@ -98,17 +93,6 @@ public class DimensionResolver {
 						date.getMonthValue(), date.getYear(), quarterOf(date), date.getDayOfWeek().name())).id());
 	}
 
-	// team1/team2 agora podem trazer id do catalogo TEAM de bets-service (aditivo desde
-	// bets-service feat-017, nullable - nem toda aposta referencia os 2 lados, ex. mercado sem
-	// confronto de dois lados). (name, sportId) tem precedencia sobre o id do evento: um time ja
-	// resolvido aqui por nome antes desta mudanca (id gerado localmente, epic-011) tem que
-	// continuar respondendo pelo mesmo id sempre que reaparecer, senao a segunda tentativa de
-	// gravar com o id novo do catalogo violaria UNIQUE(name, sport_id) - ver docs/DECISIONS-LOG.md
-	// 2026-09-15/16 e docs/services/stats-service.md. So cria linha nova com o id do evento
-	// quando o time e visto pela primeira vez aqui; sem id (evento legado ou time sem catalogo),
-	// cai no id local aleatorio de sempre. Resultado: DIM_TEAM.id so coincide com o catalogo real
-	// de bets-service para times vistos pela primeira vez apos esta mudanca - times antigos
-	// mantem o id local para sempre (sem backfill, mesmo precedente de V20260910130000).
 	public UUID resolveTeam(UUID id, String name, UUID sportId) {
 		if (name == null) {
 			return null;

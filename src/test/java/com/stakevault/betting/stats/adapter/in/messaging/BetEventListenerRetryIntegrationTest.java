@@ -22,8 +22,6 @@ import com.stakevault.betting.stats.domain.port.in.ProcessBetEventUseCase;
 import com.stakevault.betting.stats.domain.port.in.ProvisionTenantSchemaUseCase;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
-// Contexto proprio (bean @Primary abaixo substitui ProcessBetEventUseCase) - nao reaproveita o
-// contexto cacheado de BetEventListenerIntegrationTest, propositalmente isolado.
 class BetEventListenerRetryIntegrationTest extends TenantSchemaIntegrationSupport {
 
 	private static final String EXCHANGE = "bets.events";
@@ -40,9 +38,6 @@ class BetEventListenerRetryIntegrationTest extends TenantSchemaIntegrationSuppor
 		this.rabbitAdmin = rabbitAdmin;
 	}
 
-	// RabbitMQ 4.3+ nao conta nack(requeue=true) para x-delivery-limit - simula a falha
-	// transitoria que so o retry de aplicacao (spring.rabbitmq.listener.simple.retry, ver
-	// application.yml) consegue esgotar e converter em reject explicito (sempre morta-letra).
 	@TestConfiguration
 	static class AlwaysFailingProcessorConfig {
 

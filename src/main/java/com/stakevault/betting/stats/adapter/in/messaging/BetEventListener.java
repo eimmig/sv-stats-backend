@@ -107,8 +107,6 @@ public class BetEventListener {
 		return node.isNull() || node.isMissingNode() ? null : node.asText();
 	}
 
-	// betType so existe no payload de BetCreated (bets-service epic-013), nullable - aposta sem
-	// classificacao nao entra em nenhum bucket de preCount/liveCount (epic-014).
 	private static BetType betType(JsonNode payload) {
 		String value = nullableText(payload, "betType");
 		return value == null ? null : BetType.valueOf(value.toUpperCase());

@@ -66,8 +66,6 @@
 			<artifactId>lombok</artifactId>
 			<scope>provided</scope>
 		</dependency>
-		<!-- Validacao de mensagem consumida contra o JSON Schema em producao (nao so em teste,
-		diferente do lado publicador de bets-service) - ver docs/API-CONTRACTS.md e feat-001.9. -->
 		<dependency>
 			<groupId>com.networknt</groupId>
 			<artifactId>json-schema-validator</artifactId>

@@ -9,8 +9,6 @@ import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.port.in.ListTeamsUseCase;
 import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 
-// GET /api/v1/statistics/teams - autocomplete de time da tela "Buscar Estatisticas", escopado
-// por esporte (DimTeamRepository.findBySportId ja ordena por nome).
 @Service
 public class ListTeamsService implements ListTeamsUseCase {
 

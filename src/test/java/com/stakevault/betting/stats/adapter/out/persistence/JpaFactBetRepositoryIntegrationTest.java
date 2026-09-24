@@ -66,8 +66,6 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 			FactBet saved = factBetRepository.save(factBet);
 			FactBet found = factBetRepository.findById(saved.id()).orElseThrow();
 
-			// BigDecimal.equals() distingue escala (100 vs 100.00, ver docs/TESTING.md) - compara
-			// campo a campo em vez de igualdade de record inteiro.
 			assertThat(found.id()).isEqualTo(saved.id());
 			assertThat(found.dateId()).isEqualTo(saved.dateId());
 			assertThat(found.bettingHouseId()).isEqualTo(saved.bettingHouseId());

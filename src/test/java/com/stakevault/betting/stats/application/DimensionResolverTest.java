@@ -139,9 +139,6 @@ class DimensionResolverTest {
 		verify(teamRepository, never()).save(any());
 	}
 
-	// Cenario central do feat-018: um time ja resolvido aqui por nome antes do catalogo TEAM de
-	// bets-service existir (id local antigo) reaparece com o id real do catalogo - o id ja
-	// gravado tem que vencer, senao o INSERT com o id novo violaria UNIQUE(name, sport_id).
 	@Test
 	void shouldPreferTheAlreadyPersistedIdOverTheEventIdOnNameAndSportCollision() {
 		UUID localLegacyId = UUID.randomUUID();
@@ -187,7 +184,6 @@ class DimensionResolverTest {
 		verify(teamRepository, never()).existsById(any());
 	}
 
-	// O mesmo nome em esportes diferentes nao deve reutilizar a linha do outro esporte.
 	@Test
 	void shouldNotReuseTeamFromADifferentSport() {
 		UUID soccerSportId = UUID.randomUUID();

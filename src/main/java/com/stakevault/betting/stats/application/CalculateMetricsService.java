@@ -91,9 +91,6 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 				.toList();
 	}
 
-	// RN04: roi = lucro liquido acumulado / valor total investido. Taxa de acerto = vitorias /
-	// liquidadas. Nenhuma aposta liquidada (total investido=0 ou liquidadas=0) retorna ZERO, nao
-	// excecao/null - RN04 nao define esse caso.
 	private static BetMetrics toMetrics(BetAggregate aggregate) {
 		BigDecimal roi = roiOf(aggregate.netProfit(), aggregate.totalStaked());
 		BigDecimal winRate = aggregate.settledCount() == 0 ? BigDecimal.ZERO
@@ -104,8 +101,6 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 				aggregate.liveCount(), aggregate.avgOdd());
 	}
 
-	// epic-016: mesma regra de roi=ZERO-se-totalStaked=0 (RN04) reaproveitada por toMetrics() e
-	// calculateDaily() - extraido pra evitar duplicar a formula.
 	private static BigDecimal roiOf(BigDecimal netProfit, BigDecimal totalStaked) {
 		return totalStaked.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO
 				: netProfit.divide(totalStaked, SCALE, RoundingMode.HALF_UP);

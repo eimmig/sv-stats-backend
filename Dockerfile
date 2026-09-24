@@ -1,4 +1,3 @@
-# Multi-stage build: compila com o JDK, roda com o JRE (imagem final menor, sem toolchain).
 FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
 COPY .mvn/ .mvn

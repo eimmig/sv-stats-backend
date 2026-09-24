@@ -18,10 +18,6 @@ import com.redis.testcontainers.RedisContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
-	// Topologia real de producao (infra/rabbitmq/definitions.json, ver docs/API-CONTRACTS.md
-	// "Topologia RabbitMQ") - o listener escuta a fila real "stats.bet-events", entao o teste
-	// precisa dela existir de verdade, diferente do lado publicador de bets-service (que so
-	// precisa de uma fila propria pra inspecionar a mensagem publicada).
 	private static final String EXCHANGE = "bets.events";
 	private static final String DLX = "bets.events.dlx";
 	private static final String QUEUE = "stats.bet-events";

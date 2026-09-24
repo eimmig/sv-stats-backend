@@ -92,8 +92,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 				null, null, stake, null, null, null, BetStatus.PENDING, null, 1);
 	}
 
-	// RN06 inclui explicitamente void nas agregacoes (aposta devolvida) - stake volta pro
-	// apostador, profit=0, nao conta como vitoria nem derrota.
 	private FactBet voidBet(UUID bettingHouseId, UUID sportId, UUID marketId, BigDecimal stake) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, newLeagueId(), marketId, null,
 				null, null, stake, null, BigDecimal.ZERO, false, BetStatus.VOID, null, 1);
@@ -105,9 +103,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 				null, null, stake, odd, profit, status == BetStatus.WON, status, betType, 1);
 	}
 
-	// epic-018: leagueId/tipsterId explicitos (nao gerados internamente como no settledBet
-	// generico) - necessario pra provar que 2+ apostas caem no MESMO bucket de agrupamento.
-	// tipsterId nullable (mesma FactBet.tipsterId opcional).
 	private FactBet settledBetForLeagueAndTipster(UUID leagueId, UUID tipsterId, UUID bettingHouseId, UUID sportId,
 			UUID marketId, BigDecimal stake, BigDecimal profit, boolean isWin) {
 		return new FactBet(UUID.randomUUID(), newDateId(), bettingHouseId, sportId, leagueId, marketId, tipsterId,
@@ -135,7 +130,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 
 			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
 
-			// void entra na soma (RN06) mas nao conta como vitoria.
 			assertThat(aggregate.totalStaked()).isEqualByComparingTo(BigDecimal.valueOf(300));
 			assertThat(aggregate.netProfit()).isEqualByComparingTo(BigDecimal.valueOf(-50));
 			assertThat(aggregate.wonCount()).isEqualTo(1);
@@ -256,8 +250,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// epic-014: lostCount/voidCount/preCount/liveCount/avgOdd - campos novos sobre o mesmo
-	// agregado. wonCount continua vindo de isWin (nao duplicado via status = :won).
 	@Test
 	void shouldComputeLostVoidPreLiveAndAvgOddOnOverallAggregate() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -279,7 +271,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			assertThat(aggregate.preCount()).isEqualTo(1);
 			assertThat(aggregate.liveCount()).isEqualTo(1);
 			assertThat(aggregate.settledCount()).isEqualTo(3);
-			// AVG ignora null (so 2 das 3 apostas tem odd) - (2.0 + 1.5) / 2 = 1.75.
 			assertThat(aggregate.avgOdd()).isEqualByComparingTo(BigDecimal.valueOf(1.75));
 		}
 	}
@@ -301,8 +292,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// epic-014: 6o segmento, so 2 buckets fixos (PRE/LIVE) - void sem betType classificado nao
-	// entra em nenhum dos dois.
 	@Test
 	void shouldAggregateByBetTypeWithExactlyTwoBuckets() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -337,7 +326,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// leagueId ganha agrupamento proprio, mirror exato do teste de aggregateBySport/aggregateByMarket.
 	@Test
 	void shouldAggregateByLeague() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -371,9 +359,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// epic-018: tipsterId e opcional em FACT_BET (diferente de leagueId) - aposta sem tipster
-	// nao aparece em nenhum bucket, mesmo padrao ja provado por shouldAggregateByBetType... acima
-	// (f.betType IS NOT NULL).
 	@Test
 	void shouldAggregateByTipsterExcludingBetsWithoutTipster() {
 		try (var _ = TenantContextScope.open(schema)) {
@@ -480,8 +465,6 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 		}
 	}
 
-	// epic-016: array esparso - dias com aposta liquidada aparecem, agregados separadamente e
-	// ordenados por data ascendente; dia so com pending nao gera linha.
 	@Test
 	void shouldAggregateByDayAsSparseArrayOrderedAscendingExcludingPendingOnlyDays() {
 		try (var _ = TenantContextScope.open(schema)) {

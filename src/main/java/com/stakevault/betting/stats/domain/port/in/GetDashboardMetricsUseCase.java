@@ -5,8 +5,6 @@ import java.util.List;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 
-// Cache-aside: hit no MetricsCacheRepository responde direto; miss calcula via
-// CalculateMetricsUseCase e grava no cache antes de retornar.
 public interface GetDashboardMetricsUseCase {
 
 	BetMetrics getOverall();

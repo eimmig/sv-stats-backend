@@ -73,15 +73,12 @@ class JpaFactBetRepositorySearchIntegrationTest extends TenantSchemaIntegrationS
 			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();
 			UUID date3 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 10, 9, 2026, 3, "THURSDAY")).id();
 
-			// team A como team1 - WON, odd 1.5, profit 50
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
 					teamA, teamB, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,
 					BetStatus.WON, null, 1));
-			// team A como team2 (visitante) - LOST, odd 2.0, profit -100
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date2, houseId, sportId, leagueId, marketId, null,
 					teamC, teamA, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(-100), false,
 					BetStatus.LOST, null, 1));
-			// sem team A nos 2 lados - nao deve entrar no filtro por teamId=A
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date3, houseId, sportId, leagueId, marketId, null,
 					teamC, teamB, BigDecimal.valueOf(100), BigDecimal.valueOf(3.0), BigDecimal.valueOf(200), true,
 					BetStatus.WON, null, 1));

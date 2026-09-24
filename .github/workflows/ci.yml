@@ -13,7 +13,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Escopo compartilhado pelos passos de story->develop/main (changelog, SonarCloud) - ver docs/CI-CD.md
       - name: Calcular escopo de story->develop/main
         id: story-gate
         run: |
@@ -23,7 +22,7 @@ jobs:
             echo "applies=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 1. Changelog - so no PR pra develop/main, ver docs/CI-CD.md
+      # 1. Changelog
       - name: Validar atualizacao do CHANGELOG.md
         if: github.event_name == 'pull_request' && (github.base_ref == 'develop' || github.base_ref == 'main')
         env:
@@ -31,7 +30,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: .github/scripts/validate-changelog.sh CHANGELOG.md
 
-      # 2. i18n - guarda propria, ver docs/CI-CD.md
+      # 2. i18n
       - name: Validar chaves de traducao (pt-BR/en-US/es)
         if: hashFiles('src/main/resources/messages_pt_BR.properties') != ''
         run: |
@@ -40,7 +39,6 @@ jobs:
             --file en-US=src/main/resources/messages_en_US.properties \
             --file es=src/main/resources/messages_es.properties
 
-      # Guarda por arquivo-marcador (pom.xml) - ver docs/CI-CD.md
       - uses: actions/setup-java@v4
         if: hashFiles('pom.xml') != ''
         with:
@@ -58,11 +56,6 @@ jobs:
         if: hashFiles('pom.xml') != ''
         run: mvn -B verify
 
-      # 5. SonarCloud - pulado em PR de subtask, ver docs/CI-CD.md. qualitygate.wait pulado em
-      # qualquer push direto (nao so develop - achado real feat-014, 2026-09-10: a primeira
-      # analise de uma branch longa nova, main incluso, nao tem leak period definido, API
-      # devolve status "NONE" em vez de "OK"/"ERROR" e o plugin trata isso como reprovado; o
-      # ponto de bloqueio real sempre foi a PR, nao o push)
       - name: SonarCloud
         if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true'
         env:
@@ -79,7 +72,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             $WAIT_FLAG
 
-      # 6. Gate de issue/hotspot do SonarCloud - pulado em qualquer push direto (mesmo racional do passo 5)
+      # 6. Gate de issue/hotspot do SonarCloud
       - name: Validar zero issues no SonarCloud
         if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true' && github.event_name != 'push'
         env:
@@ -124,7 +117,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      # kubectl ja vem preinstalado no runner ubuntu-latest - sem action de terceiro
       - name: Configurar kubeconfig
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
@@ -148,9 +140,6 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
-      # Calcula a proxima versao a partir de Conventional Commits desde a ultima tag - so
-      # calcula, nao cria a tag (isso e o passo "Criar tag e GitHub Release" mais abaixo).
-      # github.token de leitura basta aqui, nada disto e bloqueado por branch protection.
       - name: Calcular proxima versao (Conventional Commits)
         id: semver
         uses: ietf-tools/semver-action@c90370b2958652d71c06a3484129a4d423a6d8a8 # v1.11.0
@@ -168,13 +157,6 @@ jobs:
       - name: Cortar CHANGELOG.md
         run: python3 .github/scripts/cut-changelog.py CHANGELOG.md ${{ steps.semver.outputs.nextStrict }}
 
-      # main tem required status check "pipeline" - o GITHUB_TOKEN padrao roda como
-      # github-actions[bot], que nao e admin e seria rejeitado empurrando um commit novo
-      # (nenhum check rodou pra ele ainda). RELEASE_TOKEN (PAT do dono/admin, ver
-      # docs/pipeline-ci-cd.md) bypassa isso do mesmo jeito que um push manual do dono
-      # bypassaria - usado so aqui, embutido na URL (vida curta de um comando), nunca
-      # persistido no credential helper (persist-credentials: false acima). [skip ci] evita
-      # o loop: PAT (diferente de GITHUB_TOKEN) dispara o workflow de novo por padrao.
       - name: Commit e push da release
         id: release-commit
         env:
@@ -192,8 +174,6 @@ jobs:
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # commit: aponta explicitamente pro commit que acabou de ser empurrado (o bump) -
-      # sem isso a action usaria o commit que disparou o job, ANTES do bump.
       - name: Criar tag e GitHub Release
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
