@@ -1564,11 +1564,38 @@
           ],
           "validation": "init.sh verde, Delivery/Test Suite/Persistence Reviewer sem achado real pendente, evidence preenchida.",
           "owner": "agente",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-590"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechado em 2026-09-24 por feat-023.1/feat-023.2 (story SV-588). LocalizedRuntimeException (public abstract) extraida em domain.model; as 5 excecoes que implementam LocalizedDomainException migradas. Comportamento observavel preservado. Fecha a parte de stats-service do epic-034 da raiz.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "PR #75 (SV-589, subtask->story): base com campo transient Object[] args, 2 construtores e messageArgs() devolvendo clone.",
+              "InvalidAdminApiKeyException/TenantSchemaNotFoundException -> super(mensagem); InvalidTenantSlugException -> super(message, cause, slug==null?\"\":slug); TenantAlreadyProvisionedException -> super(message, slug==null?\"\":slug); MissingRequiredStatisticsFilterException -> super(message, fieldName). Accessors slug()/fieldName() mantidos.",
+              "Fora de escopo, conforme plano: InvalidBetEventException/UnknownBetEventTypeException (AmqpRejectAndDontRequeueException) e InvalidTenantIdHeader/MissingTenantIdHeader (aninhadas em TenantSchemaFilter, nao sao excecoes)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "./init.sh (mvn verify, gate JaCoCo) verde: 157 testes, 0 falhas/erros; zero arquivo de teste tocado.",
+              "CI do PR #75 (pipeline) verde.",
+              "Args ponta a ponta cobertos pela borda HTTP: StatisticsSearchControllerIntegrationTest (detail contem sportId) e AdminTenantControllerIntegrationTest (409/422, slug nulo sem vazar 'null').",
+              "Delivery Reviewer (self-conduzido, sem subagente - refactor mecanico): PASS, sem achado. Test Suite Auditor (self-conduzido): testes existentes provam o comportamento na borda HTTP, nenhum teste novo necessario, KEEP em todos. Persistence Auditor: diff nao toca persistencia - PASS sem achado."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Vault: docs/convencoes.md (raiz) atualizado com o caso inverso de exclusao (classe que implementa a interface sem ser excecao) e a interface diferente do api-gateway."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
