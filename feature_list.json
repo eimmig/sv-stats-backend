@@ -1564,7 +1564,7 @@
           ],
           "validation": "init.sh verde, Delivery/Test Suite/Persistence Reviewer sem achado real pendente, evidence preenchida.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-590"
         }
       ],
