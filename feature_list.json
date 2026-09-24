@@ -1669,6 +1669,84 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-025",
+      "name": "Segmento byTeam em GET /api/v1/statistics",
+      "goal": "Permitir o dashboard de times no web: ranking de metricas por time, no mesmo formato dos outros segmentos do bundle.",
+      "scope": "Agregacao por time em FACT_BET (team1Id OU team2Id), cache-aside com chave nova, campo byTeam no bundle; mesmos filtros dos outros segmentos.",
+      "description": "Parte stats-service do epic-036 da raiz (apps/web feat-047: menu flutuante Cadastrar/Dashboard na tela de Times). Decisao do usuario 2026-09-24: uma aposta conta para os 2 times. GET /api/v1/statistics ganha byTeam (array de {dimensionId, dimensionName, metrics}); apostas sem time ficam de fora. Soma de byTeam excede o overall por desenho. api-gateway nao muda. Contrato em docs/contratos-de-api.md.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "Plan Reviewer (review-suite:ln-11-plan-reviewer) 2026-09-24: READY WITH CONCERNS. Self-review em 2 passes distintos (simulacao de execucao, adversarial) - independencia reduzida. Confirmado: FactBetJpaEntity.team1Id/team2Id (UUID nullable); DimTeamJpaEntity herda id/name; padrao 'f.team1Id = X OR f.team2Id = X' ja usado na busca; StatisticsDashboard so e montado em GetStatisticsDashboardService; precedente feat-017. Decisao: aggregateByTeam mirror de aggregateByTipster com junção (f.team1Id = tm.id OR f.team2Id = tm.id), GROUP BY tm.id, tm.name; porta + adapter; calculateByTeam; getByTeam cache-aside com chave segment:team incluida no evict(); StatisticsDashboard.byTeam nos 2 caminhos do GetStatisticsDashboardService. Contrato aditivo. 2 MINOR: (1) aposta com team1 = team2 conta uma vez so (cada linha de DIM_TEAM casa no maximo uma vez) - coberto em FactBetAggregationIntegrationTest; (2) StatisticsControllerIntegrationTest afirma byTeam com e sem filtro (2 caminhos do bundle). Risco aceito: soma de byTeam excede o overall por desenho - documentado no contrato.",
+      "jira": "SV-641",
+      "subtasks": [
+        {
+          "id": "feat-025.1",
+          "name": "Agregacao por time com cache",
+          "detail": "Agregacao, porta, casos de uso e cache do novo segmento.",
+          "checklist": [
+            "`aggregateByTeam` em `FactBetSpringDataRepository` (junção team1 OU team2) + porta `FactBetRepository` + `JpaFactBetRepository`",
+            "`calculateByTeam` / `getByTeam` (cache-aside, chave `segment:team`) + `MetricsCacheRepository` + `RedisMetricsCacheRepository` com a chave no `evict()`",
+            "Testes: `FactBetAggregationIntegrationTest` (aposta nos 2 times, mesmo time nos 2 lados conta 1 vez, sem time excluida, pending excluida, filtro), `RedisMetricsCacheRepositoryIntegrationTest` (evict), `CalculateMetricsServiceTest`, `GetDashboardMetricsServiceTest`"
+          ],
+          "validation": "mvn verify verde.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-642"
+        },
+        {
+          "id": "feat-025.2",
+          "name": "byTeam no bundle, contrato e verificacao final",
+          "detail": "Expoe o segmento no JSON e fecha a feature.",
+          "checklist": [
+            "`StatisticsDashboard.byTeam` nos 2 caminhos de `GetStatisticsDashboardService`",
+            "`StatisticsControllerIntegrationTest`: JSON com `byTeam` com e sem filtro",
+            "docs/contratos-de-api.md e docs/services/stats-service.md atualizados",
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer/Test Suite Auditor/Persistence Auditor rodados",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit",
+            "Regras SonarCloud conhecidas conferidas antes do PR da story (docs/testes.md 'CI e SonarCloud')",
+            "Apontamentos fora de escopo encontrados viram feature nova no feature_list.json",
+            "status:done + evidence + progress.md/session-handoff.md na branch da story, no PR desta subtask, ANTES do PR story->develop"
+          ],
+          "validation": "init.sh verde, revisoes sem achado pendente, evidence preenchida.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-643"
+        }
+      ],
+      "evidence": {
+        "resumo": "Fechado em 2026-09-24 por feat-025.1/feat-025.2 (story SV-641, epic-036 da raiz). GET /api/v1/statistics ganha byTeam: cada aposta conta para os 2 times, apostas sem time ficam de fora, mesmos filtros do bundle e cache-aside com chave segment:team.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "PR #81 (SV-642): aggregateByTeam em FactBetSpringDataRepository (juncao f.team1Id = tm.id OR f.team2Id = tm.id, GROUP BY tm.id, tm.name) + porta/adapter; calculateByTeam; getByTeam cache-aside com segment:team; evict() inclui a chave.",
+              "SV-643: StatisticsDashboard.byTeam nos 2 caminhos de GetStatisticsDashboardService (cache sem filtro, calculo direto com filtro)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "FactBetAggregationIntegrationTest (Postgres real): aposta com 2 times conta nos 2; mesmo time nos 2 lados conta 1 vez; sem time e pendente excluidas; filtro de casa aplicado.",
+              "RedisMetricsCacheRepositoryIntegrationTest: save/find e evict da chave segment:team. GetDashboardMetricsServiceTest: acerto e falta do cache.",
+              "StatisticsControllerIntegrationTest: JSON com byTeam com e sem filtro.",
+              "./init.sh do servico (mvn verify, 165 testes, cobertura 98%) e da raiz verdes.",
+              "Delivery Reviewer (self-conduzido): PASS. Persistence Auditor (self-conduzido): PASS - query unica agregada, so leitura, sem indice nas colunas de time (mesmo padrao aceito das outras dimensoes, impacto do OR nao medido). Test Suite Auditor (self-conduzido): CONCERNS -> corrigido (teste unitario de repasse de calculateByTeam removido; coberto pelo IT do controller)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Teste unitario de mapeamento de calculateByTeam removido por achado do Test Suite Auditor.",
+              "Nenhum apontamento novo fora de escopo.",
+              "Vault: docs/contratos-de-api.md (byTeam, soma excede o overall por desenho) e docs/services/stats-service.md (secao do segmento)."
+            ]
+          }
+        ]
+      }
     }
   ]
 }

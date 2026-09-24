@@ -35,6 +35,10 @@ public interface MetricsCacheRepository {
 
 	void saveByTipster(List<SegmentedBetMetrics> metrics);
 
+	Optional<List<SegmentedBetMetrics>> findByTeam();
+
+	void saveByTeam(List<SegmentedBetMetrics> metrics);
+
 	Optional<List<SegmentedBetMetrics>> findByBetType();
 
 	void saveByBetType(List<SegmentedBetMetrics> metrics);

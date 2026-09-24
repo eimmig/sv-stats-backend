@@ -103,3 +103,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-607](https://stakevault.atlassian.net/browse/SV-607) - Filtro betType (pre/live) em GET /api/v1/statistics/search
 - [SV-608](https://stakevault.atlassian.net/browse/SV-608) - Filtro betType na busca, converter e testes
 - [SV-609](https://stakevault.atlassian.net/browse/SV-609) - Contrato, CHANGELOG e verificacao final
+- [SV-641](https://stakevault.atlassian.net/browse/SV-641) - Segmento byTeam em GET /api/v1/statistics
+- [SV-642](https://stakevault.atlassian.net/browse/SV-642) - Agregacao por time com cache
+- [SV-643](https://stakevault.atlassian.net/browse/SV-643) - byTeam no bundle, contrato e verificacao final
