@@ -19,6 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -147,5 +148,41 @@ class StatisticsSearchControllerIntegrationTest extends TenantSchemaIntegrationS
 		assertThat(body.path("timeline")).hasSize(2);
 		assertThat(body.path("timeline").get(0).path("cumulativeProfit").asDouble()).isEqualTo(50.0);
 		assertThat(body.path("timeline").get(1).path("cumulativeProfit").asDouble()).isEqualTo(-50.0);
+	}
+
+	@Test
+	void shouldFilterByBetTypeCaseInsensitivelyAndRejectAnUnknownValue() throws Exception {
+		UUID sportId;
+		UUID leagueId;
+		try (var _ = TenantContextScope.open(schema)) {
+			sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID date1 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 1, 9, 2026, 3, "TUESDAY")).id();
+			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();
+
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,
+					BetStatus.WON, BetType.PRE, 1));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date2, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(-100), false,
+					BetStatus.LOST, BetType.LIVE, 1));
+		}
+		String base = "sportId=" + sportId + "&leagueId=" + leagueId;
+
+		JsonNode live = objectMapper.readTree(get(base + "&betType=live", "X-Tenant-Id", tenantSlug).body());
+		assertThat(live.path("filters").path("betType").asString()).isEqualTo("live");
+		assertThat(live.path("summary").path("betCount").asInt()).isEqualTo(1);
+		assertThat(live.path("summary").path("netProfit").asDouble()).isEqualTo(-100.0);
+		assertThat(live.path("timeline")).hasSize(1);
+
+		JsonNode pre = objectMapper.readTree(get(base + "&betType=PRE", "X-Tenant-Id", tenantSlug).body());
+		assertThat(pre.path("summary").path("netProfit").asDouble()).isEqualTo(50.0);
+
+		JsonNode all = objectMapper.readTree(get(base, "X-Tenant-Id", tenantSlug).body());
+		assertThat(all.path("summary").path("betCount").asInt()).isEqualTo(2);
+
+		assertThat(get(base + "&betType=parlay", "X-Tenant-Id", tenantSlug).statusCode()).isEqualTo(400);
 	}
 }

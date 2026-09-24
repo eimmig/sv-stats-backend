@@ -10,7 +10,7 @@ import java.util.UUID;
 // MissingRequiredStatisticsFilterException) acontece antes deste record ser construido - o
 // requireNonNull aqui e defesa em profundidade, nao o unico ponto de validacao.
 public record StatisticsSearchFilter(UUID sportId, UUID leagueId, UUID teamId, UUID bettingHouseId, UUID marketId,
-		UUID tipsterId, LocalDate from, LocalDate to) {
+		UUID tipsterId, LocalDate from, LocalDate to, BetType betType) {
 
 	public StatisticsSearchFilter {
 		Objects.requireNonNull(sportId, "sportId");
