@@ -7,10 +7,13 @@
 
 ## Objetivo atual
 
-`feat-001`..`feat-024` `done`. Backlog deste serviço esgotado — nenhuma feature `not-started`
+`feat-001`..`feat-025` `done`. Backlog deste serviço esgotado — nenhuma feature `not-started`
 elegível agora.
 
 ## Concluído nesta sessão (2026-09-24)
+
+- [x] **`feat-025` fechada** — segmento `byTeam` em `GET /api/v1/statistics` (`epic-036` da raiz,
+      aposta conta para os 2 times). Story SV-641. Consumidor: `web feat-047`.
 
 - [x] **`feat-024` fechada** — filtro `betType` em `/statistics/search` (`epic-035` da raiz).
       Story SV-607. Consumidor: `web feat-038`.

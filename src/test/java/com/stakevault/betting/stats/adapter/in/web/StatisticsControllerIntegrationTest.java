@@ -26,6 +26,7 @@ import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
+import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.model.FactBet;
 import com.stakevault.betting.stats.domain.port.in.ProvisionTenantSchemaUseCase;
 import com.stakevault.betting.stats.domain.port.out.DimBettingHouseRepository;
@@ -33,6 +34,7 @@ import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
+import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
@@ -49,6 +51,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	private final DimSportRepository dimSportRepository;
 	private final DimLeagueRepository dimLeagueRepository;
 	private final DimMarketRepository dimMarketRepository;
+	private final DimTeamRepository dimTeamRepository;
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
 
@@ -56,7 +59,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			FactBetRepository factBetRepository, DimDateRepository dimDateRepository,
 			DimBettingHouseRepository dimBettingHouseRepository, DimSportRepository dimSportRepository,
 			DimLeagueRepository dimLeagueRepository, DimMarketRepository dimMarketRepository,
-			StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
+			DimTeamRepository dimTeamRepository, StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
 		super(provisionTenantSchema, jdbcTemplate);
 		this.factBetRepository = factBetRepository;
 		this.dimDateRepository = dimDateRepository;
@@ -64,6 +67,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		this.dimSportRepository = dimSportRepository;
 		this.dimLeagueRepository = dimLeagueRepository;
 		this.dimMarketRepository = dimMarketRepository;
+		this.dimTeamRepository = dimTeamRepository;
 		this.redisTemplate = redisTemplate;
 		this.objectMapper = objectMapper;
 	}
@@ -155,6 +159,44 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			}
 		}
 		throw new AssertionError("dimensionId not found: " + dimensionId);
+	}
+
+	@Test
+	void shouldReturnByTeamSegmentCountingTheBetForBothTeamsWithAndWithoutFilter() throws Exception {
+		UUID sportId;
+		try (var _ = TenantContextScope.open(schema)) {
+			sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
+			UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
+			UUID team1 = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Flamengo", sportId)).id();
+			UUID team2 = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Vasco", sportId)).id();
+			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
+					team1, team2, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50), true, BetStatus.WON, null,
+					1));
+		}
+
+		JsonNode unfiltered = objectMapper.readTree(get(null, "X-Tenant-Id", tenantSlug).body());
+		JsonNode filtered = objectMapper.readTree(get("sportId=" + sportId, "X-Tenant-Id", tenantSlug).body());
+
+		for (JsonNode body : new JsonNode[] { unfiltered, filtered }) {
+			assertThat(body.path("byTeam")).hasSize(2);
+			assertThat(findByDimensionName(body.path("byTeam"), "Flamengo").path("metrics").path("settledCount")
+				.asInt()).isEqualTo(1);
+			assertThat(findByDimensionName(body.path("byTeam"), "Vasco").path("metrics").path("totalStaked")
+				.asDouble()).isEqualTo(100.0);
+		}
+		assertThat(unfiltered.path("overall").path("settledCount").asInt()).isEqualTo(1);
+	}
+
+	private static JsonNode findByDimensionName(JsonNode array, String dimensionName) {
+		for (JsonNode node : array) {
+			if (dimensionName.equals(node.path("dimensionName").asString())) {
+				return node;
+			}
+		}
+		throw new AssertionError("dimensionName not found: " + dimensionName);
 	}
 
 	@Test

@@ -3,7 +3,12 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-24
-**Feature ativa:** nenhuma — `feat-024` fechada, backlog do serviço esgotado.
+**Feature ativa:** nenhuma — `feat-025` fechada, backlog do serviço esgotado.
+
+## `feat-025` fechada — segmento byTeam (2026-09-24)
+
+Story SV-641 (SV-642/643), PR #81. `epic-036` da raiz. Junção `team1Id OR team2Id` com `DIM_TEAM`:
+aposta conta para os 2 times; chave de cache `segment:team` no `evict()`. Consumidor: `web feat-047`.
 
 ## `feat-024` fechada — filtro `betType` em `/statistics/search` (epic-035 da raiz, 2026-09-24)
 
