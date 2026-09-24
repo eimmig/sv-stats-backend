@@ -7,11 +7,13 @@
 
 ## Objetivo atual
 
-`feat-001`..`feat-023` `done`. Backlog deste serviço esgotado — nenhuma feature `not-started`
+`feat-001`..`feat-024` `done`. Backlog deste serviço esgotado — nenhuma feature `not-started`
 elegível agora.
 
 ## Concluído nesta sessão (2026-09-24)
 
+- [x] **`feat-024` fechada** — filtro `betType` em `/statistics/search` (`epic-035` da raiz).
+      Story SV-607. Consumidor: `web feat-038`.
 - [x] **`feat-023` fechada** — `LocalizedRuntimeException` extraída (3º harness do `epic-034` da
       raiz). Story SV-588, PRs #75-#77, CI+SonarCloud verdes. Detalhe em `progress.md` e na
       `evidence` da feature.

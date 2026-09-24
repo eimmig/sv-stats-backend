@@ -1604,7 +1604,7 @@
       "scope": "Query param opcional `betType=pre|live` em `/statistics/search` (resumo e timeline), com conversao case-insensitive.",
       "description": "Parte stats-service do epic-035 da raiz (decisao do usuario 2026-09-24: PRE/LIVE vira filtro da busca e /bet-type-dashboard sai do web). GET /api/v1/statistics/search ganha betType opcional; null mantem o comportamento atual. Valores 'pre'/'live' (mesmos do JSON; BetType ja serializa minusculo). api-gateway nao muda (repassa query string de /api/v1/statistics/**). Contrato atualizado em docs/contratos-de-api.md.",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "Plan Reviewer (review-suite:ln-11-plan-reviewer) 2026-09-24: READY WITH CONCERNS. Challenge independente como self-review (independencia reduzida; contrato so ganha param opcional, retrocompativel). Confirmado por leitura: StatisticsSearchFilter tem 3 chamadores (controller + 2 em JpaFactBetRepositorySearchIntegrationTest); busca sem cache-aside; RouteConfig do gateway repassa /api/v1/statistics/** com query string; padrao ':param IS NULL OR f.col = :param' ja usado com teamId/bettingHouseId; BetTypeAttributeConverter autoApply. Decisoes: BetType opcional em StatisticsSearchFilter/ResolvedStatisticsSearchFilter, clausula nas 2 queries de busca (aggregateForSearch/findOrderedSettledProfits), adapter/in/web/BetTypeQueryParamConverter (Converter<String,BetType> @Component, case-insensitive) - valor invalido 400 igual UUID invalido. 3 MINOR: (1) IS NULL com enum+AttributeConverter nulo no Postgres sem precedente no servico - validado pelos testes de integracao que rodam sem betType; fallback: resolver pra String no Resolved*; (2) atualizar os 2 construtores de JpaFactBetRepositorySearchIntegrationTest e cobrir betType tambem no nivel de persistencia; (3) eco filters.betType no JSON e aditivo, web ignora campo desconhecido.",
       "jira": "SV-607",
       "subtasks": [
@@ -1639,11 +1639,36 @@
           ],
           "validation": "init.sh verde, revisoes sem achado pendente, evidence preenchida.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-609"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechado em 2026-09-24 por feat-024.1/feat-024.2 (story SV-607). GET /api/v1/statistics/search aceita betType=pre|live (case-insensitive) restringindo resumo e timeline; sem o param, comportamento anterior. Parte stats-service do epic-035 da raiz.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "PR #78 (SV-608): BetType opcional em StatisticsSearchFilter/ResolvedStatisticsSearchFilter; clausula betType em aggregateForSearch e findOrderedSettledProfits; @RequestParam betType + adapter/in/web/BetTypeQueryParamConverter (Converter<String,BetType> @Component).",
+              "Contrato (docs/contratos-de-api.md) e docs/services/stats-service.md atualizados no sv-harness; api-gateway sem mudanca (repassa query string de /api/v1/statistics/**)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "./init.sh (mvn verify, gate JaCoCo) verde.",
+              "StatisticsSearchControllerIntegrationTest (novo caso): betType=live so a LIVE (resumo, timeline, eco filters.betType='live'), betType=PRE so a PRE, sem param as 2, betType=parlay 400. JpaFactBetRepositorySearchIntegrationTest (novo caso): filtro no nivel de persistencia. Casos antigos sem betType validam o IS NULL com enum+AttributeConverter nulo no Postgres (MINOR do plan review - funcionou, fallback nao necessario).",
+              "Delivery Reviewer (self-conduzido): PASS - retrocompativel, sem cache envolvido. Test Suite Auditor (self-conduzido): regra coberta pela borda HTTP e pela persistencia. Persistence Auditor (self-conduzido): PASS - mesmo padrao de predicado opcional ja usado (teamId/bettingHouseId), sem query nova nem indice necessario (volume por tenant ja aceito sem indice nas outras dimensoes de FACT_BET)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Unitario isolado do converter nao criado: a integracao ja prova minusculo, maiusculo e valor invalido pela borda HTTP - um unitario so repetiria a mesma assercao sobre valueOf."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
