@@ -82,6 +82,15 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	}
 
 	@Override
+	public List<SegmentedBetMetrics> getByTeam() {
+		return cache.findByTeam().orElseGet(() -> {
+			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByTeam(StatisticsFilter.none());
+			cache.saveByTeam(metrics);
+			return metrics;
+		});
+	}
+
+	@Override
 	public List<SegmentedBetMetrics> getByBetType() {
 		return cache.findByBetType().orElseGet(() -> {
 			List<SegmentedBetMetrics> metrics = calculateMetrics.calculateByBetType(StatisticsFilter.none());

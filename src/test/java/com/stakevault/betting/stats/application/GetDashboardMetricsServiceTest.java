@@ -186,6 +186,31 @@ class GetDashboardMetricsServiceTest {
 	}
 
 	@Test
+	void shouldReturnCachedByTeamWithoutCallingCalculateOnHit() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Flamengo", sampleMetrics()));
+		when(cache.findByTeam()).thenReturn(Optional.of(segments));
+
+		List<SegmentedBetMetrics> result = service.getByTeam();
+
+		assertThat(result).isEqualTo(segments);
+		verify(calculateMetrics, never()).calculateByTeam(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveByTeamOnMiss() {
+		List<SegmentedBetMetrics> segments = List.of(
+				new SegmentedBetMetrics(UUID.randomUUID().toString(), "Flamengo", sampleMetrics()));
+		when(cache.findByTeam()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateByTeam(StatisticsFilter.none())).thenReturn(segments);
+
+		List<SegmentedBetMetrics> result = service.getByTeam();
+
+		assertThat(result).isEqualTo(segments);
+		verify(cache).saveByTeam(segments);
+	}
+
+	@Test
 	void shouldReturnCachedByBetTypeWithoutCallingCalculateOnHit() {
 		List<SegmentedBetMetrics> segments = List.of(new SegmentedBetMetrics("PRE", "PRE", sampleMetrics()));
 		when(cache.findByBetType()).thenReturn(Optional.of(segments));
