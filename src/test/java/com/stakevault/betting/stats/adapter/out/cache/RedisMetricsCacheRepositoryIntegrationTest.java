@@ -76,6 +76,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveByBettingHouse(segments);
 			cacheRepository.saveByLeague(segments);
 			cacheRepository.saveByTipster(segments);
+			cacheRepository.saveByTeam(segments);
 			cacheRepository.saveByBetType(segments);
 
 			assertThat(cacheRepository.findBySport().orElseThrow()).hasSize(1);
@@ -84,13 +85,11 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			assertThat(cacheRepository.findByBettingHouse().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByLeague().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByTipster().orElseThrow()).hasSize(1);
+			assertThat(cacheRepository.findByTeam().orElseThrow()).hasSize(1);
 			assertThat(cacheRepository.findByBetType().orElseThrow()).hasSize(1);
 		}
 	}
 
-	// epic-018 (achado do plan review): prova que evict() inclui as 2 chaves novas - byLeague/
-	// byTipster obsoletos apos BetSettled seriam um bug silencioso (sem excecao, so cache
-	// desatualizado ate o TTL de seguranca de 1h) se esquecidos aqui.
 	@Test
 	void shouldEvictOverallSegmentsAndTheGivenMonth() {
 		try (var _ = TenantContextScope.open(newTenant())) {
@@ -101,6 +100,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveByBettingHouse(segments);
 			cacheRepository.saveByLeague(segments);
 			cacheRepository.saveByTipster(segments);
+			cacheRepository.saveByTeam(segments);
 			cacheRepository.saveByBetType(segments);
 			cacheRepository.saveMonthly(2026, 9, sampleMetrics());
 
@@ -112,6 +112,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			assertThat(cacheRepository.findByBettingHouse()).isEmpty();
 			assertThat(cacheRepository.findByLeague()).isEmpty();
 			assertThat(cacheRepository.findByTipster()).isEmpty();
+			assertThat(cacheRepository.findByTeam()).isEmpty();
 			assertThat(cacheRepository.findByBetType()).isEmpty();
 			assertThat(cacheRepository.findMonthly(2026, 9)).isEmpty();
 		}

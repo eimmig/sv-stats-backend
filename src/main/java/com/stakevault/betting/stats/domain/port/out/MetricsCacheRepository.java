@@ -6,9 +6,6 @@ import java.util.Optional;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 
-// Cache-aside (chaves tenant:{slug}:... - ver docs/services/stats-service.md "Cache Redis").
-// Nenhum metodo recebe o tenant explicitamente: o adapter resolve via TenantContextHolder,
-// mesma simetria que TenantIdentifierResolver ja usa pra rotear o schema do Hibernate.
 public interface MetricsCacheRepository {
 
 	Optional<BetMetrics> findOverall();
@@ -35,6 +32,10 @@ public interface MetricsCacheRepository {
 
 	void saveByTipster(List<SegmentedBetMetrics> metrics);
 
+	Optional<List<SegmentedBetMetrics>> findByTeam();
+
+	void saveByTeam(List<SegmentedBetMetrics> metrics);
+
 	Optional<List<SegmentedBetMetrics>> findByBetType();
 
 	void saveByBetType(List<SegmentedBetMetrics> metrics);
@@ -43,8 +44,5 @@ public interface MetricsCacheRepository {
 
 	void saveMonthly(int year, int month, BetMetrics metrics);
 
-	// Invalidacao no consumo do evento (BetCreated/BetSettled) - evita todas as chaves de
-	// segmento do tenant, incluindo o mes especifico do evento, em vez de confiar so no TTL de
-	// seguranca.
 	void evict(int year, int month);
 }

@@ -8,10 +8,6 @@ import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetDashboardMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetStatisticsDashboardUseCase;
 
-// RF11/RN08: filtro presente bypassa o cache (as chaves so cobrem a vista sem filtro nenhum
-// por tenant) e calcula direto - so a requisicao sem filtro nenhum usa o cache (RNF03, meta de
-// performance com cache quente). "monthly" e sempre calculado direto (nunca via
-// GetDashboardMetricsUseCase.getMonthly).
 @Service
 public class GetStatisticsDashboardService implements GetStatisticsDashboardUseCase {
 
@@ -30,12 +26,12 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 			return new StatisticsDashboard(dashboardMetrics.getOverall(), dashboardMetrics.getBySport(),
 					dashboardMetrics.getByMarket(), dashboardMetrics.getByBettingHouse(),
 					calculateMetrics.calculateMonthly(filter), dashboardMetrics.getByBetType(),
-					dashboardMetrics.getByLeague(), dashboardMetrics.getByTipster());
+					dashboardMetrics.getByLeague(), dashboardMetrics.getByTipster(), dashboardMetrics.getByTeam());
 		}
 		return new StatisticsDashboard(calculateMetrics.calculateOverall(filter),
 				calculateMetrics.calculateBySport(filter), calculateMetrics.calculateByMarket(filter),
 				calculateMetrics.calculateByBettingHouse(filter), calculateMetrics.calculateMonthly(filter),
 				calculateMetrics.calculateByBetType(filter), calculateMetrics.calculateByLeague(filter),
-				calculateMetrics.calculateByTipster(filter));
+				calculateMetrics.calculateByTipster(filter), calculateMetrics.calculateByTeam(filter));
 	}
 }

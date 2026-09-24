@@ -2,8 +2,26 @@
 
 ## Estado Atual (Current State)
 
-**Última atualização:** 2026-09-16
-**Feature ativa:** nenhuma — `feat-001`..`feat-019` `done`. Backlog do serviço esgotado de novo.
+**Última atualização:** 2026-09-24
+**Feature ativa:** nenhuma — `feat-025` fechada, backlog do serviço esgotado.
+
+## `feat-025` fechada — segmento byTeam (2026-09-24)
+
+Story SV-641 (SV-642/643), PR #81. `epic-036` da raiz. Junção `team1Id OR team2Id` com `DIM_TEAM`:
+aposta conta para os 2 times; chave de cache `segment:team` no `evict()`. Consumidor: `web feat-047`.
+
+## `feat-024` fechada — filtro `betType` em `/statistics/search` (epic-035 da raiz, 2026-09-24)
+
+Story SV-607 (subtasks SV-608/609), PRs #78-#80. Param opcional `betType=pre|live`, case-insensitive
+via `BetTypeQueryParamConverter`. Contrato em `docs/contratos-de-api.md`. Consumidor: `web feat-038`.
+
+## `feat-023` fechada — `LocalizedRuntimeException` (epic-034 da raiz, 2026-09-24)
+
+Story SV-588, PRs #75-#77, CI+SonarCloud verdes. Classe base abstrata extraída e as 5 exceções
+localizadas migradas para estendê-la; comportamento observável inalterado, zero teste tocado.
+Fora de escopo: exceções de messaging (`AmqpRejectAndDontRequeueException`) e as 2 classes aninhadas de `TenantSchemaFilter` que implementam a interface sem serem exceções. Detalhe (plan review, fora de escopo, verificação) no `plan_review`/`evidence` da feature
+em `feature_list.json`. Nota: este commit de docs foi direto para `develop` (PR só de docs reprova
+o gate de `CHANGELOG.md`), mesmo precedente já aceito nos outros serviços.
 
 ## `feat-018` fechada — DIM_TEAM alinhada ao catálogo real de `bets-service` (2026-09-16)
 

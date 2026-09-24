@@ -6,9 +6,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
-// Calculo puro, sem I/O (domain - ver docs/STATISTICS.md "Drawdown maximo"/"Indice de Sharpe
-// simplificado") - recebe a serie de apostas liquidadas ja ordenada por data (mesma ordem devolvida
-// por FactBetRepository.findOrderedSettledProfits), sem acessar repositorio nem framework.
 public final class EquityCurveCalculator {
 
 	private static final int SCALE = 4;
@@ -20,9 +17,6 @@ public final class EquityCurveCalculator {
 		return new EquityCurveMetrics(maxDrawdown(orderedPoints), sharpeRatio(orderedPoints));
 	}
 
-	// Lucro acumulado ponto a ponto - a mesma serie que maxDrawdown() itera internamente, exposta
-	// aqui para alimentar o campo "timeline" da resposta HTTP (equity curve) sem uma segunda
-	// consulta ao repositorio.
 	public static List<TimelinePoint> timeline(List<SettledBetPoint> orderedPoints) {
 		List<TimelinePoint> timeline = new ArrayList<>(orderedPoints.size());
 		BigDecimal cumulative = BigDecimal.ZERO;
@@ -33,8 +27,6 @@ public final class EquityCurveCalculator {
 		return timeline;
 	}
 
-	// Maior queda pico-a-vale no lucro acumulado, em valor absoluto (mesma unidade de
-	// stake/profit) - serie vazia devolve ZERO, nao excecao.
 	private static BigDecimal maxDrawdown(List<SettledBetPoint> orderedPoints) {
 		BigDecimal cumulative = BigDecimal.ZERO;
 		BigDecimal peak = BigDecimal.ZERO;
@@ -47,9 +39,6 @@ public final class EquityCurveCalculator {
 		return maxDrawdown;
 	}
 
-	// Media/desvio-padrao AMOSTRAL (n-1, nao populacional - o recorte e sempre uma amostra) do
-	// profit por aposta liquidada. null (indeterminado) com menos de 2 pontos ou desvio-padrao
-	// zero (todas as apostas com o mesmo profit) - nunca divisao por zero.
 	private static BigDecimal sharpeRatio(List<SettledBetPoint> orderedPoints) {
 		int n = orderedPoints.size();
 		if (n < 2) {

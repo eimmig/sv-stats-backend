@@ -7,6 +7,17 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+- Remover todos os comentários restantes do código, testes e configuração (convenção de zero comentário, `docs/convencoes.md`)
+- [SV-588](https://stakevault.atlassian.net/browse/SV-588) - Extrair LocalizedRuntimeException (3o harness do epic-034 da raiz)
+- [SV-589](https://stakevault.atlassian.net/browse/SV-589) - Extrair LocalizedRuntimeException e migrar as 5 excecoes
+- [SV-590](https://stakevault.atlassian.net/browse/SV-590) - CHANGELOG e verificacao final
+- [SV-607](https://stakevault.atlassian.net/browse/SV-607) - Filtro betType (pre/live) em GET /api/v1/statistics/search
+- [SV-608](https://stakevault.atlassian.net/browse/SV-608) - Filtro betType na busca, converter e testes
+- [SV-609](https://stakevault.atlassian.net/browse/SV-609) - Contrato, CHANGELOG e verificacao final
+- [SV-641](https://stakevault.atlassian.net/browse/SV-641) - Segmento byTeam em GET /api/v1/statistics
+- [SV-642](https://stakevault.atlassian.net/browse/SV-642) - Agregacao por time com cache
+- [SV-643](https://stakevault.atlassian.net/browse/SV-643) - byTeam no bundle, contrato e verificacao final
+
 ## [0.1.0] - 2026-09-23
 
 - `feat-020` - processCreated aceita reprocessar FACT_BET ainda pending, companion de

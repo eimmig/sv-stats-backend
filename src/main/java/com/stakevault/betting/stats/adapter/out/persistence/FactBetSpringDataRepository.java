@@ -12,16 +12,6 @@ import com.stakevault.betting.stats.domain.model.BetType;
 
 interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UUID> {
 
-	// RF11/RN08: predicados opcionais "(:#{...} IS NULL OR ...)" pros UUIDs, agrupados num unico
-	// parametro SpEL (ResolvedStatisticsFilter) - achado real do SonarCloud (java:S107, mais de 7
-	// parametros) na primeira tentativa com um @Param por campo. O intervalo de data usa
-	// limites-sentinela (JpaFactBetRepository substitui from/to null por MIN/MAX antes de montar
-	// o filtro resolvido) em vez de outro "IS NULL OR" - Postgres nao consegue inferir o tipo de
-	// um parametro null usado so dentro de CAST/FUNCTION, achado real durante a implementacao.
-	// FUNCTION('make_date', ...) e Postgres-especifico, unico banco alvo do projeto. lost/voidStatus/
-	// pre/live SEMPRE parametros @Param tipados (nunca literal de string solto tipo "f.status =
-	// 'LOST'") - achado do plan review de epic-014: o codebase inteiro ja evita literal de enum em
-	// JPQL (so usa parametro, ver :pending), pra garantir que o AttributeConverter seja aplicado.
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
 			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
@@ -109,7 +99,6 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
-	// Mirror exato de aggregateBySport, trocando a dimensao.
 	@Query("""
 			SELECT l.id AS dimensionId, l.name AS dimensionName, SUM(f.stake) AS totalStaked,
 			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
@@ -132,8 +121,6 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
-	// epic-018: tipsterId e opcional em FACT_BET (diferente de leagueId) - apostas sem tipster
-	// ficam de fora do agrupamento, mesmo padrao de aggregateByBetType.betType IS NOT NULL.
 	@Query("""
 			SELECT t.id AS dimensionId, t.name AS dimensionName, SUM(f.stake) AS totalStaked,
 			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
@@ -153,6 +140,28 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			GROUP BY t.id, t.name
 			""")
 	List<SegmentedAggregateProjection> aggregateByTipster(@Param("pending") BetStatus pending,
+			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
+			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
+
+	@Query("""
+			SELECT tm.id AS dimensionId, tm.name AS dimensionName, SUM(f.stake) AS totalStaked,
+			       SUM(f.profit) AS netProfit, SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
+			       SUM(CASE WHEN f.status = :lost THEN 1L ELSE 0L END) AS lostCount,
+			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
+			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
+			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			FROM FactBetJpaEntity f, DimTeamJpaEntity tm, DimDateJpaEntity d
+			WHERE (f.team1Id = tm.id OR f.team2Id = tm.id) AND f.dateId = d.id AND f.status <> :pending
+			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
+			  AND (:#{#filter.sportId()} IS NULL OR f.sportId = :#{#filter.sportId()})
+			  AND (:#{#filter.leagueId()} IS NULL OR f.leagueId = :#{#filter.leagueId()})
+			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
+			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
+			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
+			GROUP BY tm.id, tm.name
+			""")
+	List<SegmentedAggregateProjection> aggregateByTeam(@Param("pending") BetStatus pending,
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
@@ -178,9 +187,6 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre, @Param("live") BetType live,
 			@Param("filter") ResolvedStatisticsFilter filter);
 
-	// 6o segmento (epic-014): so 2 buckets fixos (PRE/LIVE) - f.betType IS NOT NULL exclui apostas
-	// sem classificacao de qualquer um dos dois. betType nunca e filtro de negocio, so o campo de
-	// agrupamento em si.
 	@Query("""
 			SELECT f.betType AS betType, SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
 			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
@@ -203,11 +209,6 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			@Param("lost") BetStatus lost, @Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre,
 			@Param("live") BetType live, @Param("filter") ResolvedStatisticsFilter filter);
 
-	// epic-016 (GET /api/v1/statistics/daily): shape enxuto (so totalStaked/netProfit/betCount -
-	// a resposta HTTP nao expoe wonCount/lostCount/avgOdd/etc, entao a query nao os calcula).
-	// FUNCTION('make_date', d.year, d.month, d.day) no SELECT agrupado pelas 3 colunas cruas -
-	// expressao deterministica so das colunas do GROUP BY, permitido por SQL padrao mesmo sem
-	// repetir a expressao no GROUP BY; combinacao provada pelo teste de integracao real.
 	@Query("""
 			SELECT FUNCTION('make_date', d.year, d.month, d.day) AS date, SUM(f.stake) AS totalStaked,
 			       SUM(f.profit) AS netProfit, COUNT(f) AS betCount
@@ -225,8 +226,6 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 	List<DailyAggregateProjection> aggregateByDay(@Param("pending") BetStatus pending,
 			@Param("filter") ResolvedStatisticsFilter filter);
 
-	// epic-011: sportId/leagueId sempre presentes (igualdade direta, sem "IS NULL OR" - o filtro
-	// de dominio garante isso via requireNonNull); teamId casa contra qualquer um dos 2 lados.
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
 			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount, COUNT(f) AS settledCount,
@@ -235,6 +234,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND f.sportId = :#{#filter.sportId()} AND f.leagueId = :#{#filter.leagueId()}
 			  AND (:#{#filter.teamId()} IS NULL OR f.team1Id = :#{#filter.teamId()} OR f.team2Id = :#{#filter.teamId()})
+			  AND (:#{#filter.betType()} IS NULL OR f.betType = :#{#filter.betType()})
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
 			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
@@ -249,6 +249,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND f.sportId = :#{#filter.sportId()} AND f.leagueId = :#{#filter.leagueId()}
 			  AND (:#{#filter.teamId()} IS NULL OR f.team1Id = :#{#filter.teamId()} OR f.team2Id = :#{#filter.teamId()})
+			  AND (:#{#filter.betType()} IS NULL OR f.betType = :#{#filter.betType()})
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
 			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})

@@ -17,9 +17,6 @@ import tools.jackson.databind.ObjectMapper;
 @Repository
 public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
-	// Sem regra de negocio/RNF definindo TTL - rede de seguranca contra chave nunca evitada por
-	// algum caminho esquecido; a invalidacao explicita no consumo do evento e o mecanismo
-	// primario de frescor.
 	private static final Duration SAFETY_NET_TTL = Duration.ofHours(1);
 
 	private static final String KEY_PREFIX = "tenant:";
@@ -28,6 +25,7 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	private static final String HOUSE_SEGMENT = "house";
 	private static final String LEAGUE_SEGMENT = "league";
 	private static final String TIPSTER_SEGMENT = "tipster";
+	private static final String TEAM_SEGMENT = "team";
 	private static final String BET_TYPE_SEGMENT = "byBetType";
 
 	private final StringRedisTemplate redisTemplate;
@@ -99,6 +97,16 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	@Override
+	public Optional<List<SegmentedBetMetrics>> findByTeam() {
+		return findSegmentList(segmentKey(TEAM_SEGMENT));
+	}
+
+	@Override
+	public void saveByTeam(List<SegmentedBetMetrics> metrics) {
+		save(segmentKey(TEAM_SEGMENT), metrics);
+	}
+
+	@Override
 	public Optional<List<SegmentedBetMetrics>> findByBetType() {
 		return findSegmentList(segmentKey(BET_TYPE_SEGMENT));
 	}
@@ -122,7 +130,8 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	public void evict(int year, int month) {
 		redisTemplate.delete(
 				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
-						segmentKey(LEAGUE_SEGMENT), segmentKey(TIPSTER_SEGMENT), segmentKey(BET_TYPE_SEGMENT),
+						segmentKey(LEAGUE_SEGMENT), segmentKey(TIPSTER_SEGMENT), segmentKey(TEAM_SEGMENT),
+						segmentKey(BET_TYPE_SEGMENT),
 						monthlyKey(year, month)));
 	}
 

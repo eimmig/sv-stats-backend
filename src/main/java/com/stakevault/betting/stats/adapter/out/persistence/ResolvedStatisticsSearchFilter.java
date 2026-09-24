@@ -3,9 +3,8 @@ package com.stakevault.betting.stats.adapter.out.persistence;
 import java.time.LocalDate;
 import java.util.UUID;
 
-// Mesmo padrao de ResolvedStatisticsFilter (parametro SpEL unico, evita java:S107) - sportId/
-// leagueId nunca null aqui (StatisticsSearchFilter garante via requireNonNull), teamId opcional
-// (team1Id OR team2Id). from/to ja vem com os limites-sentinela aplicados (ver JpaFactBetRepository).
+import com.stakevault.betting.stats.domain.model.BetType;
+
 record ResolvedStatisticsSearchFilter(UUID sportId, UUID leagueId, UUID teamId, UUID bettingHouseId, UUID marketId,
-		UUID tipsterId, LocalDate from, LocalDate to) {
+		UUID tipsterId, LocalDate from, LocalDate to, BetType betType) {
 }

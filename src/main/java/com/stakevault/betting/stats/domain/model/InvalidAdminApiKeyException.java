@@ -1,6 +1,6 @@
 package com.stakevault.betting.stats.domain.model;
 
-public class InvalidAdminApiKeyException extends RuntimeException implements LocalizedDomainException {
+public class InvalidAdminApiKeyException extends LocalizedRuntimeException {
 
 	public InvalidAdminApiKeyException() {
 		super("missing or invalid X-Admin-Api-Key");
