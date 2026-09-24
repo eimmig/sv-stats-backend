@@ -21,6 +21,8 @@ public interface GetDashboardMetricsUseCase {
 
 	List<SegmentedBetMetrics> getByTipster();
 
+	List<SegmentedBetMetrics> getByTeam();
+
 	BetMetrics getMonthly(int year, int month);
 
 	List<SegmentedBetMetrics> getByBetType();

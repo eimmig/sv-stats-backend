@@ -22,6 +22,8 @@ public interface CalculateMetricsUseCase {
 
 	List<SegmentedBetMetrics> calculateByTipster(StatisticsFilter filter);
 
+	List<SegmentedBetMetrics> calculateByTeam(StatisticsFilter filter);
+
 	List<MonthlyBetMetrics> calculateMonthly(StatisticsFilter filter);
 
 	List<SegmentedBetMetrics> calculateByBetType(StatisticsFilter filter);

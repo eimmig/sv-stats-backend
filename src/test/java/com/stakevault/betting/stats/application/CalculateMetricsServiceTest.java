@@ -126,6 +126,20 @@ class CalculateMetricsServiceTest {
 		assertThat(result.get(0).dimensionName()).isEqualTo("Tipster");
 	}
 
+	@Test
+	void shouldMapByTeamSegmentFromTheTeamAggregate() {
+		String teamId = UUID.randomUUID().toString();
+		when(factBetRepository.aggregateByTeam(StatisticsFilter.none())).thenReturn(
+				List.of(new SegmentedBetAggregate(teamId, "Flamengo",
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1))));
+
+		List<SegmentedBetMetrics> result = service.calculateByTeam(StatisticsFilter.none());
+
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).dimensionId()).isEqualTo(teamId);
+		assertThat(result.get(0).dimensionName()).isEqualTo("Flamengo");
+	}
+
 	// epic-014: dimensionId de byBetType e o proprio valor do enum ("PRE"/"LIVE"), nao um uuid -
 	// mesmo caminho de mapeamento dos outros segmentos, so a fonte do agregado muda.
 	@Test

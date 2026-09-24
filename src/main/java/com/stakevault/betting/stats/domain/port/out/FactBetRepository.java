@@ -36,6 +36,8 @@ public interface FactBetRepository {
 
 	List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter);
 
+	List<SegmentedBetAggregate> aggregateByTeam(StatisticsFilter filter);
+
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 
 	// So 2 buckets fixos (PRE/LIVE), apostas sem betType classificado ficam de fora dos dois.

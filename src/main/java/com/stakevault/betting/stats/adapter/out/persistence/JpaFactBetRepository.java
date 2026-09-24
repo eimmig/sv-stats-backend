@@ -104,6 +104,15 @@ public class JpaFactBetRepository implements FactBetRepository {
 	}
 
 	@Override
+	public List<SegmentedBetAggregate> aggregateByTeam(StatisticsFilter filter) {
+		return jpaRepository.aggregateByTeam(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+				BetType.LIVE, resolve(filter))
+				.stream()
+				.map(JpaFactBetRepository::toSegment)
+				.toList();
+	}
+
+	@Override
 	public List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter) {
 		return jpaRepository.aggregateByMonth(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
 				BetType.LIVE, resolve(filter))
