@@ -1521,6 +1521,81 @@
         }
       ],
       "evidence": "2 subtasks (SV-568/569, story SV-567) done, PRs #72/#73 (subtask->story) + #74 (story->develop->main, promocao real) - CI+SonarCloud verdes. Job 'release' identico ao desenhado/revisado em auth-service feat-020. Verificacao real end-to-end confirmada: push real em main (2026-09-23T23:11Z) - tag v0.1.0 criada, GitHub Release 'Latest' publicado, commit chore(release) empurrado pra main via RELEASE_TOKEN, sem loop de CI. Job 'deploy' (nao relacionado, pre-existente) falhou como esperado - KUBE_CONFIG nao alcanca o cluster a partir de runners hospedados (residual ja documentado). Fecha a parte de stats-service do epic-033 da raiz."
+    },
+    {
+      "id": "feat-023",
+      "name": "Extrair LocalizedRuntimeException (3o harness do epic-034 da raiz)",
+      "goal": "Eliminar o boilerplate repetido das excecoes de dominio localizadas com uma classe base compartilhada, sem mudar o comportamento observavel.",
+      "scope": "As 5 excecoes de `domain/model` que implementam `LocalizedDomainException`.",
+      "description": "3o dos 4 harnesses do epic-034 da raiz (mecanismo ja aplicado em bets-service feat-022 e auth-service feat-021, ver docs/convencoes.md 'LocalizedRuntimeException como base obrigatoria'). Auditado por leitura antes de planejar: 5 excecoes em domain/model implementam LocalizedDomainException, todas public, sem abstracao previa no pacote - InvalidAdminApiKeyException/TenantSchemaNotFoundException (zero-arg), InvalidTenantSlugException (slug + cause), TenantAlreadyProvisionedException (slug), MissingRequiredStatisticsFilterException (fieldName). Fora de escopo: InvalidBetEventException/UnknownBetEventTypeException (adapter/in/messaging, estendem AmqpRejectAndDontRequeueException, nao implementam a interface) e InvalidTenantIdHeader/MissingTenantIdHeader (classes aninhadas privadas de TenantSchemaFilter que implementam a interface mas nao sao excecoes). Base fica public (todas as excecoes do pacote sao public, sem precedente package-private). Sem sonar.cpd.exclusions a remover - refactor preventivo.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "Plan Reviewer (review-suite:ln-11-plan-reviewer) 2026-09-24: READY WITH CONCERNS. Challenge independente feito como self-review (independencia reduzida, refactor mecanico de baixo risco). Confirmado por leitura: nenhum teste depende de construtor exato/reflection (TenantSchemaFilterTest/ProvisionTenantSchemaServiceTest/JdbcFlywayTenantSchemaGatewayIntegrationTest so instanciam TenantSchemaNotFoundException e usam isInstanceOf); DomainExceptionHandler despacha por tipo concreto e ProblemDetailMessages so usa metodos da interface - comportamento observavel preservado; ci.yml sem sonar.cpd.exclusions. 2 MINOR incorporados ao plano: (1) InvalidTenantIdHeader/MissingTenantIdHeader (aninhadas em TenantSchemaFilter) implementam LocalizedDomainException mas nao sao excecoes - explicitamente fora de escopo; (2) slug()/fieldName() sem chamador em main, mantidos por serem API publica das excecoes (regra 3 da convencao) - remover seria outro escopo. MissingRequiredStatisticsFilterException migra sem null-safety nova (preservar comportamento).",
+      "jira": "SV-588",
+      "subtasks": [
+        {
+          "id": "feat-023.1",
+          "name": "Extrair LocalizedRuntimeException e migrar as 5 excecoes",
+          "detail": "Classe base public absorve campo de args + messageArgs(); cada excecao fica so com messageKey()/httpStatusCode() (e accessor proprio quando ja existia).",
+          "checklist": [
+            "LocalizedRuntimeException (public abstract) com os 2 construtores e campo transient Object[] args (clone em messageArgs())",
+            "InvalidAdminApiKeyException/TenantSchemaNotFoundException migram pra super(mensagem)",
+            "InvalidTenantSlugException migra pra super(message, cause, slug==null?\"\":slug), mantem slug/slug()",
+            "TenantAlreadyProvisionedException migra pra super(message, slug==null?\"\":slug), mantem slug/slug()",
+            "MissingRequiredStatisticsFilterException migra pra super(message, fieldName), mantem fieldName/fieldName(), sem null-safety nova",
+            "Testes existentes continuam passando sem modificacao",
+            "mvn verify local verde"
+          ],
+          "validation": "As 5 classes estendem LocalizedRuntimeException, testes existentes verdes sem alteracao.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-589"
+        },
+        {
+          "id": "feat-023.2",
+          "name": "CHANGELOG e verificacao final",
+          "detail": "Fecha a parte de stats-service do epic-034 da raiz.",
+          "checklist": [
+            "Entrada em CHANGELOG.md (Unreleased)",
+            "./init.sh do servico e da raiz verdes",
+            "Delivery Reviewer/Test Suite Auditor/Persistence Auditor rodados sobre o diff real desta feature",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit",
+            "status:done + evidence escritos na branch da story, no PR desta subtask, ANTES do PR story->develop"
+          ],
+          "validation": "init.sh verde, Delivery/Test Suite/Persistence Reviewer sem achado real pendente, evidence preenchida.",
+          "owner": "agente",
+          "status": "done",
+          "jira": "SV-590"
+        }
+      ],
+      "evidence": {
+        "resumo": "Fechado em 2026-09-24 por feat-023.1/feat-023.2 (story SV-588). LocalizedRuntimeException (public abstract) extraida em domain.model; as 5 excecoes que implementam LocalizedDomainException migradas. Comportamento observavel preservado. Fecha a parte de stats-service do epic-034 da raiz.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "PR #75 (SV-589, subtask->story): base com campo transient Object[] args, 2 construtores e messageArgs() devolvendo clone.",
+              "InvalidAdminApiKeyException/TenantSchemaNotFoundException -> super(mensagem); InvalidTenantSlugException -> super(message, cause, slug==null?\"\":slug); TenantAlreadyProvisionedException -> super(message, slug==null?\"\":slug); MissingRequiredStatisticsFilterException -> super(message, fieldName). Accessors slug()/fieldName() mantidos.",
+              "Fora de escopo, conforme plano: InvalidBetEventException/UnknownBetEventTypeException (AmqpRejectAndDontRequeueException) e InvalidTenantIdHeader/MissingTenantIdHeader (aninhadas em TenantSchemaFilter, nao sao excecoes)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "./init.sh (mvn verify, gate JaCoCo) verde: 157 testes, 0 falhas/erros; zero arquivo de teste tocado.",
+              "CI do PR #75 (pipeline) verde.",
+              "Args ponta a ponta cobertos pela borda HTTP: StatisticsSearchControllerIntegrationTest (detail contem sportId) e AdminTenantControllerIntegrationTest (409/422, slug nulo sem vazar 'null').",
+              "Delivery Reviewer (self-conduzido, sem subagente - refactor mecanico): PASS, sem achado. Test Suite Auditor (self-conduzido): testes existentes provam o comportamento na borda HTTP, nenhum teste novo necessario, KEEP em todos. Persistence Auditor: diff nao toca persistencia - PASS sem achado."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Vault: docs/convencoes.md (raiz) atualizado com o caso inverso de exclusao (classe que implementa a interface sem ser excecao) e a interface diferente do api-gateway."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
