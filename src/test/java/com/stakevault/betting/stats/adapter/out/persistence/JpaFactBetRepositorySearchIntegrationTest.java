@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -86,7 +87,7 @@ class JpaFactBetRepositorySearchIntegrationTest extends TenantSchemaIntegrationS
 					BetStatus.WON, null, 1));
 
 			StatisticsSearchFilter filter = new StatisticsSearchFilter(sportId, leagueId, teamA, null, null, null,
-					null, null);
+					null, null, null);
 
 			SearchAggregate aggregate = factBetRepository.aggregateForSearch(filter);
 			assertThat(aggregate.settledCount()).isEqualTo(2);
@@ -100,6 +101,38 @@ class JpaFactBetRepositorySearchIntegrationTest extends TenantSchemaIntegrationS
 			assertThat(timeline.get(0).profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
 			assertThat(timeline.get(1).date()).isEqualTo(LocalDate.of(2026, 9, 5));
 			assertThat(timeline.get(1).profit()).isEqualByComparingTo(BigDecimal.valueOf(-100));
+		}
+	}
+
+	@Test
+	void shouldRestrictAggregateAndTimelineToTheRequestedBetType() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID date1 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 1, 9, 2026, 3, "TUESDAY")).id();
+			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();
+
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,
+					BetStatus.WON, BetType.PRE, 1));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date2, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(-100), false,
+					BetStatus.LOST, BetType.LIVE, 1));
+
+			StatisticsSearchFilter live = new StatisticsSearchFilter(sportId, leagueId, null, null, null, null, null,
+					null, BetType.LIVE);
+			SearchAggregate aggregate = factBetRepository.aggregateForSearch(live);
+			assertThat(aggregate.settledCount()).isEqualTo(1);
+			assertThat(aggregate.netProfit()).isEqualByComparingTo(BigDecimal.valueOf(-100));
+			List<SettledBetPoint> timeline = factBetRepository.findOrderedSettledProfits(live);
+			assertThat(timeline).hasSize(1);
+			assertThat(timeline.get(0).date()).isEqualTo(LocalDate.of(2026, 9, 5));
+
+			StatisticsSearchFilter any = new StatisticsSearchFilter(sportId, leagueId, null, null, null, null, null,
+					null, null);
+			assertThat(factBetRepository.aggregateForSearch(any).settledCount()).isEqualTo(2);
 		}
 	}
 }

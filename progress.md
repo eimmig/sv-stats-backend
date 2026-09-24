@@ -3,7 +3,12 @@
 ## Estado Atual (Current State)
 
 **Última atualização:** 2026-09-24
-**Feature ativa:** nenhuma — `feat-023` fechada, backlog do serviço esgotado.
+**Feature ativa:** nenhuma — `feat-024` fechada, backlog do serviço esgotado.
+
+## `feat-024` fechada — filtro `betType` em `/statistics/search` (epic-035 da raiz, 2026-09-24)
+
+Story SV-607 (subtasks SV-608/609), PRs #78-#80. Param opcional `betType=pre|live`, case-insensitive
+via `BetTypeQueryParamConverter`. Contrato em `docs/contratos-de-api.md`. Consumidor: `web feat-038`.
 
 ## `feat-023` fechada — `LocalizedRuntimeException` (epic-034 da raiz, 2026-09-24)
 

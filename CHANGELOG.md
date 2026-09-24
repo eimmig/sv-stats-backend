@@ -100,3 +100,6 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-588](https://stakevault.atlassian.net/browse/SV-588) - Extrair LocalizedRuntimeException (3o harness do epic-034 da raiz)
 - [SV-589](https://stakevault.atlassian.net/browse/SV-589) - Extrair LocalizedRuntimeException e migrar as 5 excecoes
 - [SV-590](https://stakevault.atlassian.net/browse/SV-590) - CHANGELOG e verificacao final
+- [SV-607](https://stakevault.atlassian.net/browse/SV-607) - Filtro betType (pre/live) em GET /api/v1/statistics/search
+- [SV-608](https://stakevault.atlassian.net/browse/SV-608) - Filtro betType na busca, converter e testes
+- [SV-609](https://stakevault.atlassian.net/browse/SV-609) - Contrato, CHANGELOG e verificacao final
