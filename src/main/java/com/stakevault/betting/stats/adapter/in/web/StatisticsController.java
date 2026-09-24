@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DailyBetMetrics;
 import com.stakevault.betting.stats.domain.model.DimTeam;
 import com.stakevault.betting.stats.domain.model.MissingRequiredStatisticsFilterException;
@@ -59,7 +60,7 @@ public class StatisticsController {
 			@RequestParam(required = false) UUID leagueId, @RequestParam(required = false) UUID teamId,
 			@RequestParam(required = false) UUID bettingHouseId, @RequestParam(required = false) UUID marketId,
 			@RequestParam(required = false) UUID tipsterId, @RequestParam(required = false) LocalDate from,
-			@RequestParam(required = false) LocalDate to) {
+			@RequestParam(required = false) LocalDate to, @RequestParam(required = false) BetType betType) {
 		if (sportId == null) {
 			throw new MissingRequiredStatisticsFilterException("sportId");
 		}
@@ -67,7 +68,7 @@ public class StatisticsController {
 			throw new MissingRequiredStatisticsFilterException("leagueId");
 		}
 		StatisticsSearchFilter filter = new StatisticsSearchFilter(sportId, leagueId, teamId, bettingHouseId,
-				marketId, tipsterId, from, to);
+				marketId, tipsterId, from, to, betType);
 		return searchStatistics.search(filter);
 	}
 

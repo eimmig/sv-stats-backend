@@ -218,6 +218,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	private static ResolvedStatisticsSearchFilter resolve(StatisticsSearchFilter filter) {
 		return new ResolvedStatisticsSearchFilter(filter.sportId(), filter.leagueId(), filter.teamId(),
-				filter.bettingHouseId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter));
+				filter.bettingHouseId(), filter.marketId(), filter.tipsterId(), from(filter), to(filter),
+				filter.betType());
 	}
 }

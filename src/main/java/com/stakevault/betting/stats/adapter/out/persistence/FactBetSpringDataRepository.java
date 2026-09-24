@@ -235,6 +235,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND f.sportId = :#{#filter.sportId()} AND f.leagueId = :#{#filter.leagueId()}
 			  AND (:#{#filter.teamId()} IS NULL OR f.team1Id = :#{#filter.teamId()} OR f.team2Id = :#{#filter.teamId()})
+			  AND (:#{#filter.betType()} IS NULL OR f.betType = :#{#filter.betType()})
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
 			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
@@ -249,6 +250,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND f.sportId = :#{#filter.sportId()} AND f.leagueId = :#{#filter.leagueId()}
 			  AND (:#{#filter.teamId()} IS NULL OR f.team1Id = :#{#filter.teamId()} OR f.team2Id = :#{#filter.teamId()})
+			  AND (:#{#filter.betType()} IS NULL OR f.betType = :#{#filter.betType()})
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
 			  AND (:#{#filter.marketId()} IS NULL OR f.marketId = :#{#filter.marketId()})
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})

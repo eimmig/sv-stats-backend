@@ -1621,7 +1621,7 @@
           ],
           "validation": "mvn verify verde com os testes novos.",
           "owner": "agente",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-608"
         },
         {
