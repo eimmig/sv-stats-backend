@@ -1548,7 +1548,7 @@
           ],
           "validation": "As 5 classes estendem LocalizedRuntimeException, testes existentes verdes sem alteracao.",
           "owner": "agente",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-589"
         },
         {
