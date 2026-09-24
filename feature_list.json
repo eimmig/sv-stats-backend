@@ -1713,11 +1713,40 @@
           ],
           "validation": "init.sh verde, revisoes sem achado pendente, evidence preenchida.",
           "owner": "agente",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-643"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechado em 2026-09-24 por feat-025.1/feat-025.2 (story SV-641, epic-036 da raiz). GET /api/v1/statistics ganha byTeam: cada aposta conta para os 2 times, apostas sem time ficam de fora, mesmos filtros do bundle e cache-aside com chave segment:team.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "PR #81 (SV-642): aggregateByTeam em FactBetSpringDataRepository (juncao f.team1Id = tm.id OR f.team2Id = tm.id, GROUP BY tm.id, tm.name) + porta/adapter; calculateByTeam; getByTeam cache-aside com segment:team; evict() inclui a chave.",
+              "SV-643: StatisticsDashboard.byTeam nos 2 caminhos de GetStatisticsDashboardService (cache sem filtro, calculo direto com filtro)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "FactBetAggregationIntegrationTest (Postgres real): aposta com 2 times conta nos 2; mesmo time nos 2 lados conta 1 vez; sem time e pendente excluidas; filtro de casa aplicado.",
+              "RedisMetricsCacheRepositoryIntegrationTest: save/find e evict da chave segment:team. GetDashboardMetricsServiceTest: acerto e falta do cache.",
+              "StatisticsControllerIntegrationTest: JSON com byTeam com e sem filtro.",
+              "./init.sh do servico (mvn verify, 165 testes, cobertura 98%) e da raiz verdes.",
+              "Delivery Reviewer (self-conduzido): PASS. Persistence Auditor (self-conduzido): PASS - query unica agregada, so leitura, sem indice nas colunas de time (mesmo padrao aceito das outras dimensoes, impacto do OR nao medido). Test Suite Auditor (self-conduzido): CONCERNS -> corrigido (teste unitario de repasse de calculateByTeam removido; coberto pelo IT do controller)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Teste unitario de mapeamento de calculateByTeam removido por achado do Test Suite Auditor.",
+              "Nenhum apontamento novo fora de escopo.",
+              "Vault: docs/contratos-de-api.md (byTeam, soma excede o overall por desenho) e docs/services/stats-service.md (secao do segmento)."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
