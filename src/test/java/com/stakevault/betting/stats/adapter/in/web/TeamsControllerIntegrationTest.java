@@ -85,7 +85,6 @@ class TeamsControllerIntegrationTest extends TenantSchemaIntegrationSupport {
 			basketballId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Basketball")).id();
 			dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Flamengo", soccerId));
 			dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Vasco", soccerId));
-			// mesmo nome, esporte diferente - nao deve aparecer na listagem de soccer.
 			dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Flamengo", basketballId));
 		}
 

@@ -24,9 +24,6 @@ import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 @Repository
 public class JpaFactBetRepository implements FactBetRepository {
 
-	// Limites-sentinela em vez de null: Postgres nao consegue inferir o tipo de um parametro
-	// null usado so dentro de CAST/FUNCTION - fora de qualquer intervalo real de aposta, sem
-	// risco de overflow de driver como LocalDate.MIN/MAX.
 	private static final LocalDate MIN_DATE = LocalDate.of(1900, 1, 1);
 	private static final LocalDate MAX_DATE = LocalDate.of(2999, 12, 31);
 
@@ -122,9 +119,6 @@ public class JpaFactBetRepository implements FactBetRepository {
 				.toList();
 	}
 
-	// 6o segmento (epic-014) - so 2 buckets fixos (PRE/LIVE), apostas sem betType classificado
-	// ficam de fora dos dois (WHERE f.betType IS NOT NULL na query). dimensionId/dimensionName =
-	// o proprio valor do enum (.name()), unico segmento sem uuid de catalogo por tras.
 	@Override
 	public List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter) {
 		return jpaRepository.aggregateByBetType(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
@@ -167,9 +161,6 @@ public class JpaFactBetRepository implements FactBetRepository {
 				entity.getStatus(), entity.getBetType(), entity.getBetCount());
 	}
 
-	// SUM/COUNT sobre um grupo vazio (nenhuma aposta liquidada) retorna null em SQL, nao zero -
-	// avgOdd e a excecao deliberada (fica null, nunca coalescido pra ZERO, mesmo tratamento ja
-	// usado por SearchAggregate.avgOdd).
 	private static BetAggregate toAggregate(AggregateProjection projection) {
 		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
 		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
@@ -188,8 +179,6 @@ public class JpaFactBetRepository implements FactBetRepository {
 				toAggregate(projection));
 	}
 
-	// SUM/COUNT sobre um grupo vazio nunca ocorre aqui (a linha so existe se GROUP BY produziu
-	// pelo menos 1 aposta liquidada naquele dia) - null-safety mantida por simetria com toAggregate.
 	private static DailyBetAggregate toDailyAggregate(DailyAggregateProjection projection) {
 		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
 		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
@@ -210,8 +199,6 @@ public class JpaFactBetRepository implements FactBetRepository {
 		return filter.to() != null ? filter.to() : MAX_DATE;
 	}
 
-	// Agrupa os 7 campos de filtro num unico parametro de @Query (SpEL) - achado real do
-	// SonarCloud (java:S107, mais de 7 parametros por metodo) quando cada campo era um @Param.
 	private static ResolvedStatisticsFilter resolve(StatisticsFilter filter) {
 		return new ResolvedStatisticsFilter(filter.bettingHouseId(), filter.sportId(), filter.leagueId(),
 				filter.marketId(), filter.tipsterId(), from(filter), to(filter));

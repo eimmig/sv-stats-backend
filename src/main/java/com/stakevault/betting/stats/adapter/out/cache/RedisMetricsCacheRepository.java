@@ -17,9 +17,6 @@ import tools.jackson.databind.ObjectMapper;
 @Repository
 public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
-	// Sem regra de negocio/RNF definindo TTL - rede de seguranca contra chave nunca evitada por
-	// algum caminho esquecido; a invalidacao explicita no consumo do evento e o mecanismo
-	// primario de frescor.
 	private static final Duration SAFETY_NET_TTL = Duration.ofHours(1);
 
 	private static final String KEY_PREFIX = "tenant:";

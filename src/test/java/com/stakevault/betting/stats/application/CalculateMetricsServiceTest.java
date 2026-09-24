@@ -39,14 +39,9 @@ class CalculateMetricsServiceTest {
 
 	@ParameterizedTest(name = "staked={0} profit={1} won={2} settled={3} -> roi={4} winRate={5}")
 	@CsvSource({
-			// caso normal: 2 apostas de 100, uma ganha (+50), taxa de acerto 50%.
 			"200, -50, 1, 2, -0.2500, 0.5000",
-			// total investido zero (nenhuma aposta liquidada) - RN04 nao define, retorna ZERO.
 			"0, 0, 0, 0, 0.0000, 0.0000",
-			// liquidadas=0 mas totalStaked>0 nao acontece na pratica (settledCount conta a
-			// propria agregacao), mas a formula de winRate e blindada de qualquer forma.
 			"100, 100, 1, 1, 1.0000, 1.0000",
-			// nenhuma vitoria.
 			"100, -100, 0, 1, -1.0000, 0.0000" })
 	void shouldComputeRoiAndWinRateFromAggregate(String staked, String profit, long won, long settled, String roi,
 			String winRate) {
@@ -60,8 +55,6 @@ class CalculateMetricsServiceTest {
 		assertThat(metrics.settledCount()).isEqualTo(settled);
 	}
 
-	// epic-014: os campos novos so precisam ser copiados do agregado bruto pra metrica de negocio
-	// - a formula/decisao de negocio (contagem/media) ja e provada no repositorio.
 	@Test
 	void shouldCopyNewCountsAndAvgOddFromAggregateToMetrics() {
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
@@ -95,9 +88,6 @@ class CalculateMetricsServiceTest {
 		assertThat(segment.metrics().winRate()).isEqualByComparingTo(BigDecimal.ONE);
 	}
 
-	// epic-018: calculateByLeague/calculateByTipster reaproveitam a mesma toSegmentedMetrics de
-	// calculateBySport - este teste prova so a fiacao (metodo certo do repositorio chamado), a
-	// formula ja esta provada por shouldMapSegmentedAggregatesPreservingDimensionIdentity acima.
 	@Test
 	void shouldMapByLeagueSegmentFromTheLeagueAggregate() {
 		String leagueId = UUID.randomUUID().toString();
@@ -126,8 +116,6 @@ class CalculateMetricsServiceTest {
 		assertThat(result.get(0).dimensionName()).isEqualTo("Tipster");
 	}
 
-	// epic-014: dimensionId de byBetType e o proprio valor do enum ("PRE"/"LIVE"), nao um uuid -
-	// mesmo caminho de mapeamento dos outros segmentos, so a fonte do agregado muda.
 	@Test
 	void shouldMapByBetTypeSegmentUsingEnumNameAsDimensionId() {
 		when(factBetRepository.aggregateByBetType(StatisticsFilter.none())).thenReturn(
@@ -142,8 +130,6 @@ class CalculateMetricsServiceTest {
 		assertThat(result.get(0).dimensionName()).isEqualTo("PRE");
 	}
 
-	// epic-016: mesma regra RN04 de calculateOverall (roi=ZERO se totalStaked=0), reaproveitada
-	// pelo helper privado roiOf - shape enxuto (sem wonCount/avgOdd/etc).
 	@Test
 	void shouldComputeDailyRoiReusingTheSameZeroSafeDivision() {
 		java.time.LocalDate day = java.time.LocalDate.of(2026, 9, 6);

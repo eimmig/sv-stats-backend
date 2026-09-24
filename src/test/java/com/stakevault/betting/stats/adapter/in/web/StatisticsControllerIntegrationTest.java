@@ -113,15 +113,11 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		JsonNode body = objectMapper.readTree(response.body());
 		assertThat(body.path("overall").path("totalStaked").asDouble()).isEqualTo(100.0);
 		assertThat(body.path("overall").path("settledCount").asInt()).isEqualTo(1);
-		// Cada item de segmento/mes aninha as metricas sob "metrics", nao achatado - ver
-		// docs/API-CONTRACTS.md.
 		JsonNode sportSegment = body.path("bySport").get(0);
 		assertThat(sportSegment.path("dimensionName").asString()).isEqualTo("Soccer");
 		assertThat(sportSegment.path("metrics").path("totalStaked").asDouble()).isEqualTo(100.0);
 		assertThat(body.path("byMarket").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
 		assertThat(body.path("byBettingHouse").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
-		// epic-018: byLeague segue o mesmo formato; byTipster fica vazio porque seedSettledBet nao
-		// atribui tipster (tipsterId opcional em FACT_BET) - prova a exclusao ponta a ponta.
 		assertThat(body.path("byLeague").get(0).path("dimensionName").asString()).isEqualTo("League");
 		assertThat(body.path("byLeague").get(0).path("metrics").path("settledCount").asInt()).isEqualTo(1);
 		assertThat(body.path("byTipster")).isEmpty();
@@ -134,8 +130,6 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		}
 	}
 
-	// epic-014: byBetType e o 6o segmento, so 2 buckets fixos - a aposta sem betType classificado
-	// (seedSettledBet default) nao aparece em nenhum dos dois.
 	@Test
 	void shouldReturnByBetTypeSegmentWithExactlyTwoBuckets() throws Exception {
 		seedSettledBet("Soccer", BetType.PRE);
@@ -220,8 +214,6 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		assertThat(response.statusCode()).isEqualTo(400);
 	}
 
-	// epic-016: shape enxuto (date/totalStaked/netProfit/roi/betCount), array com 1 item pro
-	// unico dia semeado - confirma o contrato real de docs/API-CONTRACTS.md via HTTP end-to-end.
 	@Test
 	void shouldReturnDailyBreakdownForSettledBet() throws Exception {
 		seedSettledBet("Soccer");

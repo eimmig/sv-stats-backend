@@ -102,8 +102,6 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().dateId()).isEqualTo(dateId);
 		assertThat(captor.getValue().betType()).isEqualTo(BetType.PRE);
 		verify(processedEventRepository).save(any());
-		// RN06 exclui pending de toda agregacao - inserir uma linha pending e invisivel pras
-		// metricas cacheadas, evitar aqui seria desperdicio.
 		verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
 	}
 
@@ -170,13 +168,10 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
 		assertThat(captor.getValue().isWin()).isTrue();
 		verify(processedEventRepository).save(any());
-		// evict usa o mes de settledAt (RN06 - so a liquidacao muda o que as queries enxergam).
 		var settledDate = settledAt.atZone(ZoneOffset.UTC).toLocalDate();
 		verify(metricsCacheRepository).evict(settledDate.getYear(), settledDate.getMonthValue());
 	}
 
-	// dateId reflete a data do JOGO (betDate), resolvida por processCreated - processSettled nao
-	// pode recalcula-lo a partir de settledAt (mes de liquidacao pode divergir do mes do jogo).
 	@Test
 	void shouldPreserveExistingDateIdWhenSettlingAnAlreadyCreatedBet() {
 		UUID eventId = UUID.randomUUID();
@@ -201,8 +196,6 @@ class ProcessBetEventServiceTest {
 		verify(dimensionResolver, never()).resolveDate(any());
 	}
 
-	// epic-014: BetSettledEvent nao carrega betType (so BetCreated tem esse campo) - processSettled
-	// precisa preservar o valor ja gravado no insert, nao perde-lo/anula-lo a cada liquidacao.
 	@Test
 	void shouldPreserveExistingBetTypeWhenSettlingAnAlreadyCreatedBet() {
 		UUID eventId = UUID.randomUUID();
@@ -225,8 +218,6 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().betType()).isEqualTo(BetType.PRE);
 	}
 
-	// BetSettled chegando antes do BetCreated correspondente (mensagens fora de ordem) - sem linha
-	// existente, betType nasce null (so BetCreated grava esse campo).
 	@Test
 	void shouldLeaveBetTypeNullWhenSettledArrivesBeforeCreated() {
 		UUID eventId = UUID.randomUUID();
@@ -247,9 +238,6 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().betType()).isNull();
 	}
 
-	// feat-018.3: team1Id/team1Name/team2Id/team2Name sao dimensao aditiva em BetSettled -
-	// quando o evento nao traz (null), processSettled preserva o que ja foi gravado no insert em
-	// vez de apagar (mesmo padrao de dateId/betType acima).
 	@Test
 	void shouldPreserveExistingTeamIdsWhenSettledEventDoesNotCarryThem() {
 		UUID eventId = UUID.randomUUID();

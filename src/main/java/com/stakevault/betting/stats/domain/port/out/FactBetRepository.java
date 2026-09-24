@@ -20,8 +20,6 @@ public interface FactBetRepository {
 
 	Optional<FactBet> findById(UUID id);
 
-	// RN06: as 4 agregacoes abaixo ja excluem status=pending. RF11/RN08: filter aplica os
-	// predicados opcionais - StatisticsFilter.none() equivale a nenhum filtro.
 	BetAggregate aggregateOverall(StatisticsFilter filter);
 
 	List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter);
@@ -30,8 +28,6 @@ public interface FactBetRepository {
 
 	List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter);
 
-	// aggregateByTipster exclui tipsterId nulo (campo opcional em FACT_BET, diferente de
-	// leagueId que e sempre presente).
 	List<SegmentedBetAggregate> aggregateByLeague(StatisticsFilter filter);
 
 	List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter);
@@ -40,19 +36,11 @@ public interface FactBetRepository {
 
 	List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter);
 
-	// So 2 buckets fixos (PRE/LIVE), apostas sem betType classificado ficam de fora dos dois.
 	List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter);
 
-	// GET /api/v1/statistics/daily: array esparso ordenado por data ascendente - so dias com
-	// pelo menos 1 aposta liquidada geram linha.
 	List<DailyBetAggregate> aggregateByDay(StatisticsFilter filter);
 
-	// Agregado + serie ordenada especificos de GET /api/v1/statistics/search - separados dos 5
-	// metodos acima (dashboard consolidado) porque o filtro exige sportId/leagueId e adiciona
-	// teamId (team1Id OR team2Id).
 	SearchAggregate aggregateForSearch(StatisticsSearchFilter filter);
 
-	// Ordenada por date crescente - base do calculo de drawdown/Sharpe e do campo "timeline" da
-	// resposta HTTP.
 	List<SettledBetPoint> findOrderedSettledProfits(StatisticsSearchFilter filter);
 }

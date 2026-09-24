@@ -90,9 +90,6 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 		}
 	}
 
-	// epic-018 (achado do plan review): prova que evict() inclui as 2 chaves novas - byLeague/
-	// byTipster obsoletos apos BetSettled seriam um bug silencioso (sem excecao, so cache
-	// desatualizado ate o TTL de seguranca de 1h) se esquecidos aqui.
 	@Test
 	void shouldEvictOverallSegmentsAndTheGivenMonth() {
 		try (var _ = TenantContextScope.open(newTenant())) {

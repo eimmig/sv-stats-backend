@@ -207,7 +207,6 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
 		try (var _ = TenantContextScope.open(schema)) {
-			// BetCreated chegando depois nao deve reverter a liquidacao ja aplicada.
 			FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 			assertThat(factBet.status()).isEqualTo(BetStatus.WON);
 			assertThat(factBet.profit()).isEqualByComparingTo(BigDecimal.valueOf(50.0));
@@ -225,7 +224,6 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 			}
 		});
 
-		// Mesmo eventId, betDate diferente - se fosse reprocessado, sobrescreveria o dateId.
 		publish("bet.created", betCreatedBody(eventId, betId, tenantSlug));
 
 		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
@@ -255,10 +253,6 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		});
 	}
 
-	// Cenario central do feat-018: um time ja resolvido por nome antes do catalogo TEAM de
-	// bets-service existir (id local, sem catalogId no evento) tem que continuar respondendo
-	// pelo mesmo id quando reaparece com o id real do catalogo - senao o segundo BetCreated
-	// violaria UNIQUE(name, sport_id) e cairia na DLQ sem se recuperar sozinho.
 	@Test
 	void shouldKeepTheFirstResolvedTeamIdWhenTheSameNameReappearsWithADifferentCatalogId() {
 		UUID firstBetId = UUID.randomUUID();
@@ -305,8 +299,6 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		});
 	}
 
-	// feat-018.3: BetSettled sem team1Id/team1Name (bet que ja tem o time resolvido pelo insert
-	// de BetCreated) nao deve apagar o que ja foi gravado.
 	@Test
 	void shouldPreserveTeamDimensionWhenBetSettledDoesNotCarryIt() {
 		UUID betId = UUID.randomUUID();
