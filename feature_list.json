@@ -1755,7 +1755,7 @@
       "scope": "ci.yml: push pra main passa a rodar os 2 steps (continue-on-error, nao bloqueia deploy/release); push pra develop continua pulado (API do SonarCloud recusa branch != main com 403).",
       "description": "Achado real do usuario (2026-09-29), parte do epic-038 da raiz: o mesmo ci.yml deste repositorio tem o gap identico ja corrigido em services/auth-service feat-022 e replicado em services/bets-service feat-023 - o passo 'Validar zero issues no SonarCloud' e o WAIT_FLAG do passo SonarCloud pulam TODO evento push (nao so develop). Correcao identica: habilitar os 2 steps em push so pra main (nunca develop - API do SonarCloud recusa branch != main com 403), com continue-on-error nesses 2 steps quando push.",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-29, Plan Reviewer reaproveitado condensado de services/auth-service feat-022 (ja replicado sem achado novo em services/bets-service feat-023) - mesma mudanca mecanica, mesmo ci.yml gerado a partir do mesmo template. Confirmado por leitura do ci.yml deste repositorio: mesma estrutura WAIT_FLAG/step 6.",
       "jira": "SV-671",
       "subtasks": [
@@ -1775,7 +1775,7 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": "Fechada em 2026-09-29. 1 subtask (SV-672, story SV-671), PR #87 (subtask->story) + #88 (story->develop). Replica em stats-service a correcao de services/auth-service feat-022 / services/bets-service feat-023. CI+SonarCloud verdes nos 2 PRs. Fecha a parte stats-service do epic-038 da raiz."
     }
   ]
 }
