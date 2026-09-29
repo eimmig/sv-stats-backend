@@ -1747,6 +1747,35 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-026",
+      "name": "Validar SonarCloud tambem em push pra main (nao so pull_request)",
+      "goal": "Fechar o mesmo gap de CI ja corrigido em auth-service feat-022: validate-sonar-issues.py e sonar.qualitygate.wait nunca rodavam em push, so em pull_request - nenhum ponto do pipeline revalidava a branch inteira apos merge.",
+      "scope": "ci.yml: push pra main passa a rodar os 2 steps (continue-on-error, nao bloqueia deploy/release); push pra develop continua pulado (API do SonarCloud recusa branch != main com 403).",
+      "description": "Achado real do usuario (2026-09-29), parte do epic-038 da raiz: o mesmo ci.yml deste repositorio tem o gap identico ja corrigido em services/auth-service feat-022 e replicado em services/bets-service feat-023 - o passo 'Validar zero issues no SonarCloud' e o WAIT_FLAG do passo SonarCloud pulam TODO evento push (nao so develop). Correcao identica: habilitar os 2 steps em push so pra main (nunca develop - API do SonarCloud recusa branch != main com 403), com continue-on-error nesses 2 steps quando push.",
+      "dependencies": [],
+      "status": "in-progress",
+      "plan_review": "2026-09-29, Plan Reviewer reaproveitado condensado de services/auth-service feat-022 (ja replicado sem achado novo em services/bets-service feat-023) - mesma mudanca mecanica, mesmo ci.yml gerado a partir do mesmo template. Confirmado por leitura do ci.yml deste repositorio: mesma estrutura WAIT_FLAG/step 6.",
+      "jira": "SV-671",
+      "subtasks": [
+        {
+          "id": "feat-026.1",
+          "name": "ci.yml: push so pra main habilita os 2 steps de SonarCloud, com continue-on-error",
+          "status": "done",
+          "jira": "SV-672",
+          "detail": "Mesma correcao de services/auth-service feat-022.2 / services/bets-service feat-023.1, aplicada aqui.",
+          "checklist": [
+            "WAIT_FLAG so zera quando push E ref_name==develop (nao mais todo push).",
+            "Step 'Validar zero issues no SonarCloud' pula so quando push E ref_name==develop.",
+            "continue-on-error: true nos 2 steps quando github.event_name == 'push'.",
+            "CHANGELOG.md: entrada em [Unreleased]."
+          ],
+          "validation": "yaml.safe_load no ci.yml; PR subtask->story com CI verde; PR story->develop confirma SonarCloud Code Analysis pass.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

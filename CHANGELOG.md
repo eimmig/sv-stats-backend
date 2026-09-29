@@ -17,6 +17,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-641](https://stakevault.atlassian.net/browse/SV-641) - Segmento byTeam em GET /api/v1/statistics
 - [SV-642](https://stakevault.atlassian.net/browse/SV-642) - Agregacao por time com cache
 - [SV-643](https://stakevault.atlassian.net/browse/SV-643) - byTeam no bundle, contrato e verificacao final
+- [SV-671](https://stakevault.atlassian.net/browse/SV-671) - Validar SonarCloud tambem em push pra main (nao so pull_request)
+- [SV-672](https://stakevault.atlassian.net/browse/SV-672) - ci.yml: push so pra main habilita os 2 steps de SonarCloud, com continue-on-error
 
 ## [0.1.0] - 2026-09-23
 
