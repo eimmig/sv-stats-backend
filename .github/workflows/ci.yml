@@ -58,12 +58,13 @@ jobs:
 
       - name: SonarCloud
         if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true'
+        continue-on-error: ${{ github.event_name == 'push' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           WAIT_FLAG="-Dsonar.qualitygate.wait=true"
-          if [ "${{ github.event_name == 'push' }}" = "true" ]; then
+          if [ "${{ github.event_name == 'push' && github.ref_name == 'develop' }}" = "true" ]; then
             WAIT_FLAG=""
           fi
           mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
@@ -74,7 +75,8 @@ jobs:
 
       # 6. Gate de issue/hotspot do SonarCloud
       - name: Validar zero issues no SonarCloud
-        if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true' && github.event_name != 'push'
+        if: hashFiles('pom.xml') != '' && steps.story-gate.outputs.applies == 'true' && !(github.event_name == 'push' && github.ref_name == 'develop')
+        continue-on-error: ${{ github.event_name == 'push' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >

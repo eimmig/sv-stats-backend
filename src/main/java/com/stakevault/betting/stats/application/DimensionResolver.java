@@ -48,30 +48,22 @@ public class DimensionResolver {
 	}
 
 	public UUID resolveBettingHouse(UUID id, String name) {
-		if (!bettingHouseRepository.existsById(id)) {
-			bettingHouseRepository.save(new DimBettingHouse(id, name));
-		}
+		bettingHouseRepository.insertIfAbsent(new DimBettingHouse(id, name));
 		return id;
 	}
 
 	public UUID resolveSport(UUID id, String name) {
-		if (!sportRepository.existsById(id)) {
-			sportRepository.save(new DimSport(id, name));
-		}
+		sportRepository.insertIfAbsent(new DimSport(id, name));
 		return id;
 	}
 
 	public UUID resolveLeague(UUID id, String name) {
-		if (!leagueRepository.existsById(id)) {
-			leagueRepository.save(new DimLeague(id, name));
-		}
+		leagueRepository.insertIfAbsent(new DimLeague(id, name));
 		return id;
 	}
 
 	public UUID resolveMarket(UUID id, String name) {
-		if (!marketRepository.existsById(id)) {
-			marketRepository.save(new DimMarket(id, name));
-		}
+		marketRepository.insertIfAbsent(new DimMarket(id, name));
 		return id;
 	}
 
@@ -79,9 +71,7 @@ public class DimensionResolver {
 		if (id == null) {
 			return null;
 		}
-		if (!tipsterRepository.existsById(id)) {
-			tipsterRepository.save(new DimTipster(id, name));
-		}
+		tipsterRepository.insertIfAbsent(new DimTipster(id, name));
 		return id;
 	}
 
@@ -89,8 +79,13 @@ public class DimensionResolver {
 		LocalDate date = instant.atZone(ZoneOffset.UTC).toLocalDate();
 		return dateRepository.findByDayAndMonthAndYear(date.getDayOfMonth(), date.getMonthValue(), date.getYear())
 				.map(DimDate::id)
-				.orElseGet(() -> dateRepository.save(new DimDate(UUID.randomUUID(), date.getDayOfMonth(),
-						date.getMonthValue(), date.getYear(), quarterOf(date), date.getDayOfWeek().name())).id());
+				.orElseGet(() -> {
+					dateRepository.insertIfAbsent(new DimDate(UUID.randomUUID(), date.getDayOfMonth(),
+							date.getMonthValue(), date.getYear(), quarterOf(date), date.getDayOfWeek().name()));
+					return dateRepository
+							.findByDayAndMonthAndYear(date.getDayOfMonth(), date.getMonthValue(), date.getYear())
+							.orElseThrow().id();
+				});
 	}
 
 	public UUID resolveTeam(UUID id, String name, UUID sportId) {
@@ -102,10 +97,8 @@ public class DimensionResolver {
 			return existing.get().id();
 		}
 		UUID resolvedId = id != null ? id : UUID.randomUUID();
-		if (id == null || !teamRepository.existsById(id)) {
-			teamRepository.save(new DimTeam(resolvedId, name, sportId));
-		}
-		return resolvedId;
+		teamRepository.insertIfAbsent(new DimTeam(resolvedId, name, sportId));
+		return teamRepository.findByNameAndSportId(name, sportId).map(DimTeam::id).orElse(resolvedId);
 	}
 
 	private static int quarterOf(LocalDate date) {

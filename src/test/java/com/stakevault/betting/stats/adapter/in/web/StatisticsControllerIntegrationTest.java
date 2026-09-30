@@ -22,7 +22,6 @@ import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
-import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
@@ -36,6 +35,7 @@ import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
+import com.stakevault.betting.stats.support.DimDateFixtures;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -95,7 +95,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
 			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
-			UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
+			UUID dateId = DimDateFixtures.ensure(dimDateRepository, 6, 9, 2026, 3, "SUNDAY");
 			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
 					null, null, BigDecimal.valueOf(100), null, BigDecimal.valueOf(50), true, BetStatus.WON, betType,
 					1));
@@ -163,7 +163,7 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
 			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
-			UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
+			UUID dateId = DimDateFixtures.ensure(dimDateRepository, 6, 9, 2026, 3, "SUNDAY");
 			UUID team1 = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Flamengo", sportId)).id();
 			UUID team2 = dimTeamRepository.save(new DimTeam(UUID.randomUUID(), "Vasco", sportId)).id();
 			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,

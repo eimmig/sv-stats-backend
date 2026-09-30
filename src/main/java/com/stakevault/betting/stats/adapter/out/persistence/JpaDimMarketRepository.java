@@ -23,6 +23,11 @@ public class JpaDimMarketRepository implements DimMarketRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimMarket dimMarket) {
+		jpaRepository.insertIfAbsent(dimMarket.id(), dimMarket.name());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}

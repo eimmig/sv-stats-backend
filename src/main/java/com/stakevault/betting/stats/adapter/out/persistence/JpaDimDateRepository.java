@@ -24,6 +24,12 @@ public class JpaDimDateRepository implements DimDateRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimDate dimDate) {
+		jpaRepository.insertIfAbsent(dimDate.id(), dimDate.day(), dimDate.month(), dimDate.year(),
+				dimDate.quarter(), dimDate.dayOfWeek());
+	}
+
+	@Override
 	public Optional<DimDate> findByDayAndMonthAndYear(int day, int month, int year) {
 		return jpaRepository.findByDayAndMonthAndYear(day, month, year).map(JpaDimDateRepository::toDomain);
 	}
