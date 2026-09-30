@@ -1776,6 +1776,86 @@
         }
       ],
       "evidence": "Fechada em 2026-09-29. 1 subtask (SV-672, story SV-671), PR #87 (subtask->story) + #88 (story->develop). Replica em stats-service a correcao de services/auth-service feat-022 / services/bets-service feat-023. CI+SonarCloud verdes nos 2 PRs. Fecha a parte stats-service do epic-038 da raiz."
+    },
+    {
+      "id": "feat-027",
+      "name": "Consumo tolerante a ordem e dimensoes idempotentes (+ Testcontainers PG18/Redis 8)",
+      "goal": "Permitir varios consumidores concorrentes (HPA) sem corromper o fato nem derrubar mensagens na DLQ.",
+      "scope": "ProcessBetEventService.processCreated e DimensionResolver.resolve*; testes de integracao; imagens do Testcontainers (postgres:18-alpine, redis:8-alpine). Fora de escopo: reordenacao por bet no broker (consistent-hash), reprocessamento de dados ja gravados errado.",
+      "description": "Achado do Plan Reviewer de infra feat-011 (2026-09-30): processSettled grava a linha do fato mesmo sem BetCreated; processCreated depois ve status != PENDING e pula, deixando betType null e dateId = data da liquidacao. resolve* fazem existsById + save (check-then-insert, sem ON CONFLICT): sob concorrencia gera violacao de chave duplicada que so cura pelo retry de 3 tentativas. Com replicas>1 isso passa a acontecer.",
+      "dependencies": [],
+      "status": "not-started",
+      "plan_review": "2026-09-30, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano de infra (imagens PG18/Redis 8 + HPAs). Veredito: REVISE (Parte B) / READY WITH CONCERNS (Parte A). Achados absorvidos nas subtasks: (1) MAJOR - stats-service nao e seguro com mais de um consumidor (processSettled cria a linha do fato sem BetCreated e processCreated depois pula, deixando betType null e dateId errado; DimensionResolver faz existsById+save sem ON CONFLICT) - vira stats-service feat-027, pre-requisito do HPA de stats (infra feat-011). (2) MINOR - PG18 muda PGDATA para /var/lib/postgresql/18/docker e VOLUME para /var/lib/postgresql (docker inspect postgres:18-alpine); mountPath precisa mudar, senao os dados caem na camada do container e somem no restart sem erro; dados PG17 existentes ficam orfaos (aceito, ambiente de teste). (3) MINOR - remover replicas dos 4 Deployments com HPA (CI so faz rollout restart, so o apply manual reaplicaria replicas:1). (4) MINOR - alvo de CPU 70% (nao 60%: 60m de request e ultrapassado so pelo pico de partida da JVM), scaleDown com stabilizationWindowSeconds 300; capacidade do no k3s desconhecida, risco residual. (5) MINOR - alinhar Testcontainers (postgres:17-alpine/redis:7-alpine) nos 3 servicos Java. Limitacao: rodada independente em contextos isolados nao executada (autoavaliacao), impacto baixo.",
+      "jira": "SV-709",
+      "subtasks": [
+        {
+          "id": "feat-027.1",
+          "name": "Teste que reproduz BetSettled antes de BetCreated",
+          "status": "not-started",
+          "jira": "SV-710",
+          "detail": "Prova o defeito antes de corrigir (falha no estado atual).",
+          "checklist": [
+            "Teste de integracao (Testcontainers) processando BetSettled e depois BetCreated do mesmo bet: espera betType e dateId vindos do BetCreated e status/profit do BetSettled."
+          ],
+          "validation": "Teste vermelho antes da 027.2, verde depois.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-027.2",
+          "name": "processCreated completa a linha criada por um BetSettled adiantado",
+          "status": "not-started",
+          "jira": "SV-711",
+          "detail": "Nao pular quando existe linha ja liquidada mas sem betType/dateId do BetCreated.",
+          "checklist": [
+            "Se existing.status != PENDING e a linha nasceu sem betType, atualizar dateId, betType e campos descritivos do BetCreated preservando status/profit/isWin.",
+            "Manter RN06: PENDING continua fora das metricas."
+          ],
+          "validation": "Teste da 027.1 verde; testes existentes de idempotencia continuam verdes.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-027.3",
+          "name": "Dimensoes e dim_date idempotentes sob concorrencia",
+          "status": "not-started",
+          "jira": "SV-712",
+          "detail": "Trocar existsById+save por inserir-ignorando-conflito.",
+          "checklist": [
+            "resolve* usam INSERT ... ON CONFLICT DO NOTHING (por id; dim_team por (name, sport_id); dim_date por (day, month, year)).",
+            "Teste com 2+ threads resolvendo a mesma dimensao ao mesmo tempo sem excecao."
+          ],
+          "validation": "Teste concorrente verde e repetido 10x sem flakiness.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-027.4",
+          "name": "Testcontainers: postgres:18-alpine e redis:8-alpine",
+          "status": "not-started",
+          "jira": "SV-713",
+          "detail": "Alinha teste com ambiente (infra feat-010).",
+          "checklist": [
+            "TestcontainersConfiguration.java: postgres:18-alpine e redis:8-alpine."
+          ],
+          "validation": "mvn verify verde.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-027.5",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-714",
+          "detail": "Fecha a feature.",
+          "checklist": [
+            "CHANGELOG.md: entrada em [Unreleased].",
+            "./init.sh verde.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados.",
+            "docs/services/stats-service.md secao Idempotencia: documentar tolerancia a ordem e dimensoes idempotentes.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit."
+          ],
+          "validation": "./init.sh verde e CI do PR passando.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }
