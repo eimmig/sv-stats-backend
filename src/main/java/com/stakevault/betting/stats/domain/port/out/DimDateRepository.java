@@ -8,5 +8,7 @@ public interface DimDateRepository {
 
 	DimDate save(DimDate dimDate);
 
+	void insertIfAbsent(DimDate dimDate);
+
 	Optional<DimDate> findByDayAndMonthAndYear(int day, int month, int year);
 }

@@ -8,5 +8,7 @@ public interface DimBettingHouseRepository {
 
 	DimBettingHouse save(DimBettingHouse dimBettingHouse);
 
+	void insertIfAbsent(DimBettingHouse dimBettingHouse);
+
 	boolean existsById(UUID id);
 }

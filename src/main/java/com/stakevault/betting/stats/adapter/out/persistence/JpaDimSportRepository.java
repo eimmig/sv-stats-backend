@@ -23,6 +23,11 @@ public class JpaDimSportRepository implements DimSportRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimSport dimSport) {
+		jpaRepository.insertIfAbsent(dimSport.id(), dimSport.name());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}

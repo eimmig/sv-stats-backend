@@ -8,5 +8,7 @@ public interface DimMarketRepository {
 
 	DimMarket save(DimMarket dimMarket);
 
+	void insertIfAbsent(DimMarket dimMarket);
+
 	boolean existsById(UUID id);
 }

@@ -23,6 +23,11 @@ public class JpaDimBettingHouseRepository implements DimBettingHouseRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimBettingHouse dimBettingHouse) {
+		jpaRepository.insertIfAbsent(dimBettingHouse.id(), dimBettingHouse.name());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}

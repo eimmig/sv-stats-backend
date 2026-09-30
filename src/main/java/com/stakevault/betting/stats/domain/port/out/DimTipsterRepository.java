@@ -8,5 +8,7 @@ public interface DimTipsterRepository {
 
 	DimTipster save(DimTipster dimTipster);
 
+	void insertIfAbsent(DimTipster dimTipster);
+
 	boolean existsById(UUID id);
 }

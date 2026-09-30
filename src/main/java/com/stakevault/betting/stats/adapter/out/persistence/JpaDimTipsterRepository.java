@@ -23,6 +23,11 @@ public class JpaDimTipsterRepository implements DimTipsterRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimTipster dimTipster) {
+		jpaRepository.insertIfAbsent(dimTipster.id(), dimTipster.name());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}
