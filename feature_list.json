@@ -1841,7 +1841,7 @@
         {
           "id": "feat-027.5",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-714",
           "detail": "Fecha a feature.",
           "checklist": [
@@ -1855,6 +1855,36 @@
           "owner": "agente"
         }
       ],
+      "evidence": ""
+    },
+    {
+      "id": "feat-028",
+      "name": "Corrida entre BetCreated e BetSettled da mesma aposta em fact_bet: teste de convergencia e insercao idempotente",
+      "goal": "Provar (e, se preciso, tornar deterministica) a convergencia quando dois consumidores processam o BetCreated e o BetSettled da mesma aposta ao mesmo tempo.",
+      "scope": "Teste de integracao no nivel do listener; opcionalmente INSERT ... ON CONFLICT no fact_bet. Fora de escopo: reordenacao no broker.",
+      "description": "Achado do Test Suite Auditor e do Persistence Auditor de feat-027 (2026-09-30): processCreated e processSettled fazem findById vazio + save da mesma PK; sob 2 consumidores a segunda transacao viola a PK de fact_bet e so converge pelo retry do listener (3 tentativas, 1 s), sem nenhum teste que prove.",
+      "dependencies": [
+        "feat-027"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
+    },
+    {
+      "id": "feat-029",
+      "name": "Invalidar o cache em afterCommit e remover existsById morto das portas de dimensao",
+      "goal": "Fechar a janela de cache obsoleto antes do commit e limpar codigo morto deixado por feat-027.",
+      "scope": "ProcessBetEventService.evictMetricsFor via TransactionSynchronization.afterCommit; remover existsById das 6 portas/adapters de dimensao migrando as fixtures de teste para insertIfAbsent; MERGE dos testes de repasse do DimensionResolverTest.",
+      "description": "Achados P3 de feat-027 (2026-09-30): (1) evictMetricsFor roda dentro da transacao, um leitor pode repopular o cache com o estado antigo antes do commit (padrao ja existia em processSettled; feat-027 o replica no caminho de correcao do BetCreated); TTL de seguranca de 1 h limita. (2) existsById nas 6 portas de dimensao ficou sem chamador de producao, so testes de adapter usam.",
+      "dependencies": [
+        "feat-027"
+      ],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
       "evidence": ""
     }
   ]
