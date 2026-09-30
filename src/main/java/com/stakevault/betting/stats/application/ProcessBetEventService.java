@@ -59,9 +59,24 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 			factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
 					tipsterId, team1Id, team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING,
 					event.betType(), 1));
+		} else if (existing.get().betType() == null) {
+			completeFactBetSettledBeforeCreated(existing.get(), event);
 		}
 
 		markProcessed(eventId);
+	}
+
+	private void completeFactBetSettledBeforeCreated(FactBet settled, BetCreatedEvent event) {
+		UUID dateId = dimensionResolver.resolveDate(event.betDate());
+		UUID team1Id = settled.team1Id() != null ? settled.team1Id()
+				: dimensionResolver.resolveTeam(event.team1Id(), event.team1(), settled.sportId());
+		UUID team2Id = settled.team2Id() != null ? settled.team2Id()
+				: dimensionResolver.resolveTeam(event.team2Id(), event.team2(), settled.sportId());
+		factBetRepository.save(new FactBet(settled.id(), dateId, settled.bettingHouseId(), settled.sportId(),
+				settled.leagueId(), settled.marketId(), settled.tipsterId(), team1Id, team2Id, settled.stake(),
+				settled.odd(), settled.profit(), settled.isWin(), settled.status(), event.betType(),
+				settled.betCount()));
+		evictMetricsFor(event.betDate());
 	}
 
 	@Override
