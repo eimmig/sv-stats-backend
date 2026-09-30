@@ -11,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
-import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
@@ -24,6 +23,7 @@ import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
+import com.stakevault.betting.stats.support.DimDateFixtures;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
 class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport {
@@ -49,7 +49,7 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	private FactBet newFactBet() {
-		UUID dateId = dimDateRepository.save(new DimDate(UUID.randomUUID(), 6, 9, 2026, 3, "SUNDAY")).id();
+		UUID dateId = DimDateFixtures.ensure(dimDateRepository, 6, 9, 2026, 3, "SUNDAY");
 		UUID bettingHouseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 		UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
 		UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();

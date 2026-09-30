@@ -10,6 +10,8 @@ public interface DimTeamRepository {
 
 	DimTeam save(DimTeam dimTeam);
 
+	void insertIfAbsent(DimTeam dimTeam);
+
 	boolean existsById(UUID id);
 
 	Optional<DimTeam> findByNameAndSportId(String name, UUID sportId);

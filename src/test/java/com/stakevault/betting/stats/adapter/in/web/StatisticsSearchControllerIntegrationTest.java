@@ -21,7 +21,6 @@ import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
-import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
@@ -33,6 +32,7 @@ import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 import com.stakevault.betting.stats.domain.port.out.DimMarketRepository;
 import com.stakevault.betting.stats.domain.port.out.DimSportRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
+import com.stakevault.betting.stats.support.DimDateFixtures;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -123,8 +123,8 @@ class StatisticsSearchControllerIntegrationTest extends TenantSchemaIntegrationS
 			leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
-			UUID date1 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 1, 9, 2026, 3, "TUESDAY")).id();
-			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();
+			UUID date1 = DimDateFixtures.ensure(dimDateRepository, 1, 9, 2026, 3, "TUESDAY");
+			UUID date2 = DimDateFixtures.ensure(dimDateRepository, 5, 9, 2026, 3, "SATURDAY");
 
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
 					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,
@@ -159,8 +159,8 @@ class StatisticsSearchControllerIntegrationTest extends TenantSchemaIntegrationS
 			leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
 			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
-			UUID date1 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 1, 9, 2026, 3, "TUESDAY")).id();
-			UUID date2 = dimDateRepository.save(new DimDate(UUID.randomUUID(), 5, 9, 2026, 3, "SATURDAY")).id();
+			UUID date1 = DimDateFixtures.ensure(dimDateRepository, 1, 9, 2026, 3, "TUESDAY");
+			UUID date2 = DimDateFixtures.ensure(dimDateRepository, 5, 9, 2026, 3, "SATURDAY");
 
 			factBetRepository.save(new FactBet(UUID.randomUUID(), date1, houseId, sportId, leagueId, marketId, null,
 					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.5), BigDecimal.valueOf(50), true,

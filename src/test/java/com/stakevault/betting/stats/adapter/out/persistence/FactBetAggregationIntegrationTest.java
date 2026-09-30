@@ -15,7 +15,6 @@ import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DailyBetAggregate;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
-import com.stakevault.betting.stats.domain.model.DimDate;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
 import com.stakevault.betting.stats.domain.model.DimSport;
@@ -34,6 +33,7 @@ import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 import com.stakevault.betting.stats.domain.port.out.DimTipsterRepository;
 import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 import com.stakevault.betting.stats.support.TenantSchemaIntegrationSupport;
+import com.stakevault.betting.stats.support.DimDateFixtures;
 
 class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 
@@ -67,9 +67,7 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 	}
 
 	private UUID newDateId(int day, int month, int year) {
-		return dimDateRepository.save(new DimDate(UUID.randomUUID(), day, month, year, (month - 1) / 3 + 1,
-				"SUNDAY"))
-				.id();
+		return DimDateFixtures.ensure(dimDateRepository, day, month, year, (month - 1) / 3 + 1, "SUNDAY");
 	}
 
 	private UUID newLeagueId() {

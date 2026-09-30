@@ -7,6 +7,7 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+- Consumo tolerante a consumidores concorrentes (`feat-027`): `BetCreated` que chega depois de um `BetSettled` completa `betType`, `dateId` e times da linha do fato; dimensões gravadas com `INSERT ... ON CONFLICT DO NOTHING`; `UNIQUE (day, month, year)` em `dim_date`; testes de integração em PostgreSQL 18 e Redis 8
 - Remover todos os comentários restantes do código, testes e configuração (convenção de zero comentário, `docs/convencoes.md`)
 - [SV-588](https://stakevault.atlassian.net/browse/SV-588) - Extrair LocalizedRuntimeException (3o harness do epic-034 da raiz)
 - [SV-589](https://stakevault.atlassian.net/browse/SV-589) - Extrair LocalizedRuntimeException e migrar as 5 excecoes

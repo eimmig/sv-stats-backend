@@ -23,6 +23,11 @@ public class JpaDimLeagueRepository implements DimLeagueRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimLeague dimLeague) {
+		jpaRepository.insertIfAbsent(dimLeague.id(), dimLeague.name());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}

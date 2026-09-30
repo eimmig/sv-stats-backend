@@ -51,9 +51,13 @@ class ProcessBetEventServiceTest {
 	}
 
 	private BetCreatedEvent createdEvent(UUID betId) {
+		return createdEvent(betId, Instant.now());
+	}
+
+	private BetCreatedEvent createdEvent(UUID betId, Instant betDate) {
 		return new BetCreatedEvent(betId, UUID.randomUUID(), "House", UUID.randomUUID(), "Sport", UUID.randomUUID(),
 				"League", UUID.randomUUID(), "Market", null, null, null, "Team A", null, "Team B",
-				BigDecimal.valueOf(100), BigDecimal.valueOf(2), BetType.PRE, Instant.now());
+				BigDecimal.valueOf(100), BigDecimal.valueOf(2), BetType.PRE, betDate);
 	}
 
 	private BetSettledEvent settledEvent(UUID betId, Instant settledAt) {
@@ -120,6 +124,37 @@ class ProcessBetEventServiceTest {
 		verify(factBetRepository, never()).save(any());
 		verify(processedEventRepository).save(any());
 		verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
+	}
+
+	@Test
+	void shouldCompleteBetTypeAndDateWhenCreatedArrivesAfterAnEarlySettle() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID settledDateId = UUID.randomUUID();
+		UUID createdDateId = UUID.randomUUID();
+		UUID houseId = UUID.randomUUID();
+		Instant createdAt = Instant.parse("2026-09-01T10:00:00Z");
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.of(
+				new FactBet(betId, settledDateId, houseId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null,
+						null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2), BigDecimal.valueOf(50), true,
+						BetStatus.WON, null, 1)));
+		when(dimensionResolver.resolveDate(any())).thenReturn(createdDateId);
+
+		service.processCreated(eventId, createdEvent(betId, createdAt));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		FactBet saved = captor.getValue();
+		assertThat(saved.betType()).isEqualTo(BetType.PRE);
+		assertThat(saved.dateId()).isEqualTo(createdDateId);
+		assertThat(saved.status()).isEqualTo(BetStatus.WON);
+		assertThat(saved.profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
+		assertThat(saved.isWin()).isTrue();
+		assertThat(saved.bettingHouseId()).isEqualTo(houseId);
+		verify(processedEventRepository).save(any());
+		var betDate = createdAt.atZone(ZoneOffset.UTC).toLocalDate();
+		verify(metricsCacheRepository).evict(betDate.getYear(), betDate.getMonthValue());
 	}
 
 	@Test
