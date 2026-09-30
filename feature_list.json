@@ -1784,7 +1784,7 @@
       "scope": "ProcessBetEventService.processCreated e DimensionResolver.resolve*; testes de integracao; imagens do Testcontainers (postgres:18-alpine, redis:8-alpine). Fora de escopo: reordenacao por bet no broker (consistent-hash), reprocessamento de dados ja gravados errado.",
       "description": "Achado do Plan Reviewer de infra feat-011 (2026-09-30): processSettled grava a linha do fato mesmo sem BetCreated; processCreated depois ve status != PENDING e pula, deixando betType null e dateId = data da liquidacao. resolve* fazem existsById + save (check-then-insert, sem ON CONFLICT): sob concorrencia gera violacao de chave duplicada que so cura pelo retry de 3 tentativas. Com replicas>1 isso passa a acontecer.",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-09-30, Plan Reviewer (review-suite:ln-11-plan-reviewer) rodado contra o plano de infra (imagens PG18/Redis 8 + HPAs). Veredito: REVISE (Parte B) / READY WITH CONCERNS (Parte A). Achados absorvidos nas subtasks: (1) MAJOR - stats-service nao e seguro com mais de um consumidor (processSettled cria a linha do fato sem BetCreated e processCreated depois pula, deixando betType null e dateId errado; DimensionResolver faz existsById+save sem ON CONFLICT) - vira stats-service feat-027, pre-requisito do HPA de stats (infra feat-011). (2) MINOR - PG18 muda PGDATA para /var/lib/postgresql/18/docker e VOLUME para /var/lib/postgresql (docker inspect postgres:18-alpine); mountPath precisa mudar, senao os dados caem na camada do container e somem no restart sem erro; dados PG17 existentes ficam orfaos (aceito, ambiente de teste). (3) MINOR - remover replicas dos 4 Deployments com HPA (CI so faz rollout restart, so o apply manual reaplicaria replicas:1). (4) MINOR - alvo de CPU 70% (nao 60%: 60m de request e ultrapassado so pelo pico de partida da JVM), scaleDown com stabilizationWindowSeconds 300; capacidade do no k3s desconhecida, risco residual. (5) MINOR - alinhar Testcontainers (postgres:17-alpine/redis:7-alpine) nos 3 servicos Java. Limitacao: rodada independente em contextos isolados nao executada (autoavaliacao), impacto baixo.",
       "jira": "SV-709",
       "subtasks": [
@@ -1855,7 +1855,38 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-09-30. O stats-service passa a aceitar consumidores concorrentes: BetCreated que chega depois de um BetSettled completa a linha do fato, as 7 dimensoes sao gravadas com INSERT ... ON CONFLICT DO NOTHING e dim_date ganhou UNIQUE (day, month, year). Testcontainers em postgres:18-alpine e redis:8-alpine.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "ProcessBetEventService.processCreated: se a linha ja existe liquidada e sem betType (nasceu de um BetSettled adiantado), atualiza dateId (data do jogo), betType e times preservando status/profit/isWin e invalida o cache do mes da aposta.",
+              "DimensionResolver: existsById+save trocado por insertIfAbsent (INSERT nativo ON CONFLICT DO NOTHING, @Transactional) nas 7 dimensoes; resolveDate e resolveTeam releem por chave natural depois do insert para devolver o id que ganhou a corrida.",
+              "Migration V20260930120000: UNIQUE (day, month, year) em dim_date.",
+              "Testcontainers: postgres:18-alpine e redis:8-alpine; docs/services/stats-service.md atualizada (o defeito estava documentado como residual aceito)."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "mvn verify completo: 175 testes, 0 falhas, gate de cobertura ok (com -Dspring-boot.repackage.skip=true porque o jar do stats-service local estava em uso).",
+              "Contra-prova: o teste de concorrencia (8 threads x 5 repeticoes, PG18 real) falha com o resolver antigo (duplicate key em dim_betting_house_pkey); o teste de independencia de ordem (BetCreated/BetSettled em qualquer ordem, banco real) falha com o ProcessBetEventService antigo.",
+              "CI do GitHub verde nos 5 PRs de subtask (SV-710, 712, 713, 714 e o de story).",
+              "Delivery Reviewer: PASS (3 P3). Test Suite Auditor: CONCERNS, o P2 (ordem invertida sem prova com banco real) foi resolvido com o teste novo. Persistence Auditor: CONCERNS (P2 corrida BetCreated/BetSettled em fact_bet curada pelo retry do listener; P3 cache antes do commit).",
+              "Verificado que nenhum dos 8 schemas de tenant locais tem duplicatas em dim_date antes da migration."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "As subtasks .1 (teste que reproduz) e .2 (correcao) foram entregues no mesmo PR (SV-710): um PR so com teste vermelho nao passaria na CI.",
+              "A constraint em dim_date quebrou 5 classes de teste de integracao que gravavam a mesma data duas vezes (so foi visto na CI porque localmente rodei testes direcionados); corrigido com DimDateFixtures e @Transactional nos insertIfAbsent.",
+              "Achados fora de escopo viraram feat-028 (teste/convergencia da corrida em fact_bet) e feat-029 (cache em afterCommit e existsById morto)."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-028",
