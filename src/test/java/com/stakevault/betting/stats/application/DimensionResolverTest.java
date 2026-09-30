@@ -2,6 +2,7 @@ package com.stakevault.betting.stats.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimDate;
+import com.stakevault.betting.stats.domain.model.DimLeague;
+import com.stakevault.betting.stats.domain.model.DimMarket;
+import com.stakevault.betting.stats.domain.model.DimSport;
 import com.stakevault.betting.stats.domain.model.DimTeam;
+import com.stakevault.betting.stats.domain.model.DimTipster;
 import com.stakevault.betting.stats.domain.port.out.DimBettingHouseRepository;
 import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
@@ -55,24 +61,40 @@ class DimensionResolverTest {
 	}
 
 	@Test
-	void shouldCreateBettingHouseWhenMissing() {
+	void shouldInsertBettingHouseIgnoringConflictAndReturnTheEventId() {
 		UUID id = UUID.randomUUID();
-		when(bettingHouseRepository.existsById(id)).thenReturn(false);
 
 		UUID resolved = resolver.resolveBettingHouse(id, "House");
 
 		assertThat(resolved).isEqualTo(id);
-		verify(bettingHouseRepository).save(new DimBettingHouse(id, "House"));
+		verify(bettingHouseRepository).insertIfAbsent(new DimBettingHouse(id, "House"));
+		verify(bettingHouseRepository, never()).existsById(any());
+		verify(bettingHouseRepository, never()).save(any());
 	}
 
 	@Test
-	void shouldNotRecreateBettingHouseWhenAlreadyExists() {
+	void shouldInsertSportLeagueAndMarketIgnoringConflict() {
+		UUID sportId = UUID.randomUUID();
+		UUID leagueId = UUID.randomUUID();
+		UUID marketId = UUID.randomUUID();
+
+		assertThat(resolver.resolveSport(sportId, "Sport")).isEqualTo(sportId);
+		assertThat(resolver.resolveLeague(leagueId, "League")).isEqualTo(leagueId);
+		assertThat(resolver.resolveMarket(marketId, "Market")).isEqualTo(marketId);
+
+		verify(sportRepository).insertIfAbsent(new DimSport(sportId, "Sport"));
+		verify(leagueRepository).insertIfAbsent(new DimLeague(leagueId, "League"));
+		verify(marketRepository).insertIfAbsent(new DimMarket(marketId, "Market"));
+	}
+
+	@Test
+	void shouldInsertTipsterIgnoringConflictWhenIdIsPresent() {
 		UUID id = UUID.randomUUID();
-		when(bettingHouseRepository.existsById(id)).thenReturn(true);
 
-		resolver.resolveBettingHouse(id, "House");
+		UUID resolved = resolver.resolveTipster(id, "Tipster");
 
-		verify(bettingHouseRepository, never()).save(any());
+		assertThat(resolved).isEqualTo(id);
+		verify(tipsterRepository).insertIfAbsent(new DimTipster(id, "Tipster"));
 	}
 
 	@Test
@@ -80,7 +102,7 @@ class DimensionResolverTest {
 		UUID resolved = resolver.resolveTipster(null, "Tipster");
 
 		assertThat(resolved).isNull();
-		verify(tipsterRepository, never()).existsById(any());
+		verify(tipsterRepository, never()).insertIfAbsent(any());
 	}
 
 	@Test
@@ -93,27 +115,44 @@ class DimensionResolverTest {
 		UUID resolved = resolver.resolveDate(instant);
 
 		assertThat(resolved).isEqualTo(existingId);
-		verify(dateRepository, never()).save(any());
+		verify(dateRepository, never()).insertIfAbsent(any());
 	}
 
 	@Test
-	void shouldCreateDateRowWithCorrectFieldsWhenMissing() {
+	void shouldInsertDateRowWithCorrectFieldsWhenMissing() {
 		Instant instant = Instant.parse("2026-09-06T12:00:00Z");
-		when(dateRepository.findByDayAndMonthAndYear(6, 9, 2026)).thenReturn(Optional.empty());
-		when(dateRepository.save(any()))
-				.thenAnswer(invocation -> invocation.getArgument(0));
+		AtomicReference<DimDate> inserted = new AtomicReference<>();
+		doAnswer(invocation -> {
+			inserted.set(invocation.getArgument(0));
+			return null;
+		}).when(dateRepository).insertIfAbsent(any());
+		when(dateRepository.findByDayAndMonthAndYear(6, 9, 2026)).thenReturn(Optional.empty())
+				.thenAnswer(invocation -> Optional.of(inserted.get()));
 
 		UUID resolved = resolver.resolveDate(instant);
 
-		ArgumentCaptor<DimDate> captor = ArgumentCaptor.forClass(DimDate.class);
-		verify(dateRepository).save(captor.capture());
-		DimDate saved = captor.getValue();
+		DimDate saved = inserted.get();
 		assertThat(resolved).isEqualTo(saved.id());
 		assertThat(saved.day()).isEqualTo(6);
 		assertThat(saved.month()).isEqualTo(9);
 		assertThat(saved.year()).isEqualTo(2026);
 		assertThat(saved.quarter()).isEqualTo(3);
 		assertThat(saved.dayOfWeek()).isEqualTo("SUNDAY");
+	}
+
+	@Test
+	void shouldReturnTheRowThatWonTheRaceWhenAnotherConsumerInsertedTheSameDay() {
+		UUID winnerId = UUID.randomUUID();
+		Instant instant = Instant.parse("2026-09-06T12:00:00Z");
+		when(dateRepository.findByDayAndMonthAndYear(6, 9, 2026)).thenReturn(Optional.empty())
+				.thenReturn(Optional.of(new DimDate(winnerId, 6, 9, 2026, 3, "SUNDAY")));
+
+		UUID resolved = resolver.resolveDate(instant);
+
+		assertThat(resolved).isEqualTo(winnerId);
+		ArgumentCaptor<DimDate> captor = ArgumentCaptor.forClass(DimDate.class);
+		verify(dateRepository).insertIfAbsent(captor.capture());
+		assertThat(captor.getValue().id()).isNotEqualTo(winnerId);
 	}
 
 	@Test
@@ -136,7 +175,7 @@ class DimensionResolverTest {
 		UUID resolved = resolver.resolveTeam(null, "Flamengo", sportId);
 
 		assertThat(resolved).isEqualTo(existingId);
-		verify(teamRepository, never()).save(any());
+		verify(teamRepository, never()).insertIfAbsent(any());
 	}
 
 	@Test
@@ -150,52 +189,68 @@ class DimensionResolverTest {
 		UUID resolved = resolver.resolveTeam(catalogId, "Flamengo", sportId);
 
 		assertThat(resolved).isEqualTo(localLegacyId);
-		verify(teamRepository, never()).save(any());
-		verify(teamRepository, never()).existsById(any());
+		verify(teamRepository, never()).insertIfAbsent(any());
 	}
 
 	@Test
-	void shouldCreateTeamRowWithTheEventIdWhenSeenForTheFirstTime() {
+	void shouldInsertTeamRowWithTheEventIdWhenSeenForTheFirstTime() {
 		UUID catalogId = UUID.randomUUID();
 		UUID sportId = UUID.randomUUID();
-		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty());
-		when(teamRepository.existsById(catalogId)).thenReturn(false);
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty())
+				.thenReturn(Optional.of(new DimTeam(catalogId, "Flamengo", sportId)));
 
 		UUID resolved = resolver.resolveTeam(catalogId, "Flamengo", sportId);
 
 		assertThat(resolved).isEqualTo(catalogId);
-		verify(teamRepository).save(new DimTeam(catalogId, "Flamengo", sportId));
+		verify(teamRepository).insertIfAbsent(new DimTeam(catalogId, "Flamengo", sportId));
 	}
 
 	@Test
-	void shouldCreateTeamRowWithARandomIdWhenTheEventHasNoId() {
+	void shouldInsertTeamRowWithARandomIdWhenTheEventHasNoId() {
 		UUID sportId = UUID.randomUUID();
-		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty());
-		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+		AtomicReference<DimTeam> inserted = new AtomicReference<>();
+		doAnswer(invocation -> {
+			inserted.set(invocation.getArgument(0));
+			return null;
+		}).when(teamRepository).insertIfAbsent(any());
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty())
+				.thenAnswer(invocation -> Optional.of(inserted.get()));
 
 		UUID resolved = resolver.resolveTeam(null, "Flamengo", sportId);
 
-		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
-		verify(teamRepository).save(captor.capture());
-		DimTeam saved = captor.getValue();
+		DimTeam saved = inserted.get();
 		assertThat(resolved).isEqualTo(saved.id());
 		assertThat(saved.name()).isEqualTo("Flamengo");
 		assertThat(saved.sportId()).isEqualTo(sportId);
-		verify(teamRepository, never()).existsById(any());
+	}
+
+	@Test
+	void shouldReturnTheTeamThatWonTheRaceWhenAnotherConsumerInsertedTheSameNameAndSport() {
+		UUID winnerId = UUID.randomUUID();
+		UUID sportId = UUID.randomUUID();
+		when(teamRepository.findByNameAndSportId("Flamengo", sportId)).thenReturn(Optional.empty())
+				.thenReturn(Optional.of(new DimTeam(winnerId, "Flamengo", sportId)));
+
+		UUID resolved = resolver.resolveTeam(UUID.randomUUID(), "Flamengo", sportId);
+
+		assertThat(resolved).isEqualTo(winnerId);
 	}
 
 	@Test
 	void shouldNotReuseTeamFromADifferentSport() {
 		UUID soccerSportId = UUID.randomUUID();
 		UUID basketballSportId = UUID.randomUUID();
-		when(teamRepository.findByNameAndSportId("Flamengo", basketballSportId)).thenReturn(Optional.empty());
-		when(teamRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+		AtomicReference<DimTeam> inserted = new AtomicReference<>();
+		doAnswer(invocation -> {
+			inserted.set(invocation.getArgument(0));
+			return null;
+		}).when(teamRepository).insertIfAbsent(any());
+		when(teamRepository.findByNameAndSportId("Flamengo", basketballSportId)).thenReturn(Optional.empty())
+				.thenAnswer(invocation -> Optional.of(inserted.get()));
 
 		resolver.resolveTeam(null, "Flamengo", basketballSportId);
 
 		verify(teamRepository, never()).findByNameAndSportId("Flamengo", soccerSportId);
-		ArgumentCaptor<DimTeam> captor = ArgumentCaptor.forClass(DimTeam.class);
-		verify(teamRepository).save(captor.capture());
-		assertThat(captor.getValue().sportId()).isEqualTo(basketballSportId);
+		assertThat(inserted.get().sportId()).isEqualTo(basketballSportId);
 	}
 }

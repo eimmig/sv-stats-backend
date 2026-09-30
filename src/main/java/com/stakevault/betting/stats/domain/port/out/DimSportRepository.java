@@ -8,5 +8,7 @@ public interface DimSportRepository {
 
 	DimSport save(DimSport dimSport);
 
+	void insertIfAbsent(DimSport dimSport);
+
 	boolean existsById(UUID id);
 }

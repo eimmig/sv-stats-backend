@@ -25,6 +25,11 @@ public class JpaDimTeamRepository implements DimTeamRepository {
 	}
 
 	@Override
+	public void insertIfAbsent(DimTeam dimTeam) {
+		jpaRepository.insertIfAbsent(dimTeam.id(), dimTeam.name(), dimTeam.sportId());
+	}
+
+	@Override
 	public boolean existsById(UUID id) {
 		return jpaRepository.existsById(id);
 	}

@@ -8,5 +8,7 @@ public interface DimLeagueRepository {
 
 	DimLeague save(DimLeague dimLeague);
 
+	void insertIfAbsent(DimLeague dimLeague);
+
 	boolean existsById(UUID id);
 }
