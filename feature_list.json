@@ -1816,7 +1816,7 @@
         {
           "id": "feat-027.3",
           "name": "Dimensoes e dim_date idempotentes sob concorrencia",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-712",
           "detail": "Trocar existsById+save por inserir-ignorando-conflito.",
           "checklist": [
@@ -1829,7 +1829,7 @@
         {
           "id": "feat-027.4",
           "name": "Testcontainers: postgres:18-alpine e redis:8-alpine",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-713",
           "detail": "Alinha teste com ambiente (infra feat-010).",
           "checklist": [
