@@ -19,6 +19,12 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-643](https://stakevault.atlassian.net/browse/SV-643) - byTeam no bundle, contrato e verificacao final
 - [SV-671](https://stakevault.atlassian.net/browse/SV-671) - Validar SonarCloud tambem em push pra main (nao so pull_request)
 - [SV-672](https://stakevault.atlassian.net/browse/SV-672) - ci.yml: push so pra main habilita os 2 steps de SonarCloud, com continue-on-error
+- [SV-709](https://stakevault.atlassian.net/browse/SV-709) - Consumo tolerante a ordem e dimensoes idempotentes (+ Testcontainers PG18/Redis 8)
+- [SV-710](https://stakevault.atlassian.net/browse/SV-710) - Teste que reproduz BetSettled antes de BetCreated
+- [SV-711](https://stakevault.atlassian.net/browse/SV-711) - processCreated completa a linha criada por um BetSettled adiantado
+- [SV-712](https://stakevault.atlassian.net/browse/SV-712) - Dimensoes e dim_date idempotentes sob concorrencia
+- [SV-713](https://stakevault.atlassian.net/browse/SV-713) - Testcontainers: postgres:18-alpine e redis:8-alpine
+- [SV-714](https://stakevault.atlassian.net/browse/SV-714) - CHANGELOG e verificacao final
 
 ## [0.1.0] - 2026-09-23
 
