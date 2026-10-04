@@ -1917,6 +1917,19 @@
       "jira": "",
       "subtasks": [],
       "evidence": ""
+    },
+    {
+      "id": "feat-030",
+      "name": "Testar /actuator/health/liveness no HealthChecksTest",
+      "goal": "Garantir que o endpoint de liveness que o Kubernetes usa continue respondendo 200.",
+      "scope": "HealthChecksTest: uma asserção de GET /actuator/health/liveness com status 200 e UP, ao lado das de /actuator/health e /readiness.",
+      "description": "Achado do Delivery Reviewer de infra feat-012 (2026-10-04): os manifests do infra passaram a usar /actuator/health/liveness no livenessProbe e no startupProbe, mas nenhum teste deste serviço cobre esse endpoint; se uma mudança de configuração do Actuator o desligar, os pods entram em CrashLoop sem nenhum teste avisar.",
+      "dependencies": [],
+      "status": "not-started",
+      "plan_review": "",
+      "jira": "",
+      "subtasks": [],
+      "evidence": ""
     }
   ]
 }
