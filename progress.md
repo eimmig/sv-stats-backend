@@ -684,3 +684,12 @@ leitor repopulava o cache com o estado de antes do commit. `existsById` saiu das
 dimensão (sem chamador de produção) e os testes de repasse do `DimensionResolverTest` foram fundidos.
 Plan Reviewer, Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta.
 `./init.sh` verde. Vault: `docs/services/stats-service.md`. Story SV-753, subtasks SV-754/755/756.
+
+## `feat-031` fechada — await determinístico nos testes de listener (2026-10-06)
+
+Apontamento de `feat-029` (init.sh local vermelho, CI verde): `findById().orElseThrow()` dentro de
+`await().untilAsserted(...)` lança `NoSuchElementException`, que o Awaitility não repete; a primeira leitura
+(~100 ms após o publish) derrubava o teste antes de o listener terminar a mensagem, e a falha em cascata
+(`DROP SCHEMA` concorrendo, `deadlock detected`, retry com backoff) quebrava os testes seguintes. Corrigido
+com `ignoreException(NoSuchElementException.class)`. Só `src/test`. `./init.sh` verde. Vault:
+`docs/testes.md`. Story SV-757, subtasks SV-758/759.
