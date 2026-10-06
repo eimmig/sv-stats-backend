@@ -2152,7 +2152,7 @@
       "subtasks": [
         {
           "id": "feat-031.1",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-758",
           "owner": "agente",
           "name": "Awaitility ignora NoSuchElementException nos testes de listener",
