@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-06
+
 ## [0.2.1] - 2026-09-30
 
 - Consumo tolerante a consumidores concorrentes (`feat-027`): `BetCreated` que chega depois de um `BetSettled` completa `betType`, `dateId` e times da linha do fato; dimensões gravadas com `INSERT ... ON CONFLICT DO NOTHING`; `UNIQUE (day, month, year)` em `dim_date`; testes de integração em PostgreSQL 18 e Redis 8
