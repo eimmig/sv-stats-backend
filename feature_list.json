@@ -2138,6 +2138,75 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-031",
+      "name": "BetEventListenerIntegrationTest: await que nao tolera a primeira leitura vazia",
+      "goal": "Tornar deterministico o teste de integracao do listener, que falha sempre que o processamento da primeira mensagem demora mais que o poll inicial do Awaitility.",
+      "scope": "Awaitility dos testes de BetEventListenerIntegrationTest e CacheInvalidationOnEventIntegrationTest passam a ignorar NoSuchElementException enquanto a linha ainda nao existe. Fora de escopo: tempo de processamento da mensagem.",
+      "description": "Achado de 2026-10-06 ao fechar feat-029 (init.sh local vermelho, CI verde): os testes fazem factBetRepository.findById(betId).orElseThrow() dentro de await().untilAsserted(...), e o Awaitility so repete AssertionError; a NoSuchElementException da primeira leitura (100 ms depois do publish, antes de o listener terminar a primeira mensagem, que migra o schema) derruba o teste na hora. O DROP SCHEMA do afterEach entao concorre com a mensagem em processamento (deadlock detected), a mensagem falha com TenantSchemaNotFoundException e o retry com backoff do listener bloqueia as mensagens dos testes seguintes, que estouram os 5 s: 1 falha de ConditionTimeout e 3 erros em cascata. Confirmado por log DEBUG do AMQP: mensagem recebida em 48.521 e primeiro poll em ~48.6.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-10-06, Plan Reviewer (revisao direta, escopo so src/test, sem BLOCKER): READY. Causa verificada por log DEBUG do AMQP e por bissecao (o mesmo teste falha no commit anterior a feat-028, entao nao e regressao): mensagem recebida em 14:56:48.521 e primeiro poll do Awaitility ~100 ms depois do publish, antes do fim do processamento; orElseThrow() lanca NoSuchElementException, que untilAsserted nao repete. Correcao minima: ignoreException(NoSuchElementException.class) nos awaits que leem a linha; alternativa rejeitada: trocar orElseThrow por assertThat(...).isPresent() em cada ponto (mais invasivo, mesmo efeito). Sem codigo de producao.",
+      "jira": "SV-757",
+      "subtasks": [
+        {
+          "id": "feat-031.1",
+          "status": "done",
+          "jira": "SV-758",
+          "owner": "agente",
+          "name": "Awaitility ignora NoSuchElementException nos testes de listener",
+          "detail": "untilAsserted so repete AssertionError; o orElseThrow() da primeira leitura aborta o await antes de o listener processar a mensagem, e a falha em cascata deixa mensagens retentando por segundos.",
+          "checklist": [
+            "Todo await().atMost(...).untilAsserted dos dois testes de integracao do listener ganha ignoreException(NoSuchElementException.class).",
+            "BetEventListenerIntegrationTest inteiro verde localmente.",
+            "Sem comentario no codigo."
+          ],
+          "validation": "mvn test -Dtest=BetEventListenerIntegrationTest,CacheInvalidationOnEventIntegrationTest verde."
+        },
+        {
+          "id": "feat-031.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-759",
+          "detail": "Fechamento da feature: changelog, init.sh e skills de revisao.",
+          "checklist": [
+            "CHANGELOG.md com linhas em [Unreleased].",
+            "./init.sh do servico passa.",
+            "Delivery Reviewer e Test Suite Auditor rodados.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde e evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Fechada em 2026-10-06. Os testes de integracao do listener deixam de depender da velocidade da maquina: o Awaitility repete enquanto a linha ainda nao existe.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "Os 14 await().untilAsserted de BetEventListenerIntegrationTest e CacheInvalidationOnEventIntegrationTest ganham ignoreException(NoSuchElementException.class).",
+              "Sem mudanca de codigo de producao."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "Antes: BetEventListenerIntegrationTest falhava sempre no ambiente local (1 falha e 3 erros, o mesmo teste isolado tambem falhava, e falhava no commit anterior a feat-028, entao nao era regressao). Log DEBUG do AMQP: mensagem recebida em 48.521, primeiro poll ~100 ms apos o publish.",
+              "Depois: os dois testes de listener verdes e ./init.sh do servico verde (mvn verify com Testcontainers, gate de cobertura incluso).",
+              "PRs da subtask e da story: CI e SonarCloud verdes.",
+              "Delivery Reviewer, Test Suite Auditor e Persistence Auditor: PASS, sem achado (so src/test)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Gotcha registrado em docs/testes.md (secao Awaitility). Feature criada como apontamento de feat-029 (init.sh local vermelho, CI verde)."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
