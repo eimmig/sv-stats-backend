@@ -1903,7 +1903,7 @@
       "subtasks": [
         {
           "id": "feat-028.1",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-750",
           "owner": "agente",
           "name": "Porta FactBetRepository.insertIfAbsent (INSERT ON CONFLICT DO NOTHING)",

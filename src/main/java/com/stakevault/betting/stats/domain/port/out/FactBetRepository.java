@@ -18,6 +18,8 @@ public interface FactBetRepository {
 
 	FactBet save(FactBet factBet);
 
+	boolean insertIfAbsent(FactBet factBet);
+
 	Optional<FactBet> findById(UUID id);
 
 	BetAggregate aggregateOverall(StatisticsFilter filter);

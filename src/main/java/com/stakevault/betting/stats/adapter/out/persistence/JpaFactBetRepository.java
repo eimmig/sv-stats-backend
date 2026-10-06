@@ -26,6 +26,8 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	private static final LocalDate MIN_DATE = LocalDate.of(1900, 1, 1);
 	private static final LocalDate MAX_DATE = LocalDate.of(2999, 12, 31);
+	private static final BetStatusAttributeConverter STATUS_CONVERTER = new BetStatusAttributeConverter();
+	private static final BetTypeAttributeConverter BET_TYPE_CONVERTER = new BetTypeAttributeConverter();
 
 	private final FactBetSpringDataRepository jpaRepository;
 
@@ -42,6 +44,15 @@ public class JpaFactBetRepository implements FactBetRepository {
 				})
 				.orElseGet(() -> new FactBetJpaEntity(factBet));
 		return toDomain(jpaRepository.save(entity));
+	}
+
+	@Override
+	public boolean insertIfAbsent(FactBet factBet) {
+		return jpaRepository.insertIfAbsent(factBet.id(), factBet.dateId(), factBet.bettingHouseId(),
+				factBet.sportId(), factBet.leagueId(), factBet.marketId(), factBet.tipsterId(), factBet.team1Id(),
+				factBet.team2Id(), factBet.stake(), factBet.odd(), factBet.profit(), factBet.isWin(),
+				STATUS_CONVERTER.convertToDatabaseColumn(factBet.status()),
+				BET_TYPE_CONVERTER.convertToDatabaseColumn(factBet.betType()), factBet.betCount()) > 0;
 	}
 
 	@Override
