@@ -1897,10 +1897,57 @@
       "dependencies": [
         "feat-027"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-10-06, Plan Reviewer (revisao direta, escopo de 1 servico, sem BLOCKER): READY WITH CONCERNS absorvidas nas subtasks. Evidencia verificada no codigo: ProcessBetEventService le findById vazio e chama factBetRepository.save; JpaFactBetRepository.save faz um SEGUNDO findById e, se a outra transacao ja commitou, applyFrom sobrescreve a linha (hipotese do achado confirmada por leitura: sem violacao de PK, evento marcado PROCESSED, sem retry). Created sobre linha liquidada zera status para PENDING; Settled sobre linha criada zera betType para null. Correcao escolhida: INSERT ... ON CONFLICT DO NOTHING (precedente: insertIfAbsent das dimensoes em feat-027), pois lock por betId exigiria advisory lock (SQL cru, nao precedido) e coluna de versao exigiria migration; o ON CONFLICT bloqueia ate a transacao concorrente commitar e a perdedora relê e aplica o merge existente. Teste deterministico via MockitoSpyBean pausando findById (corrida real e estreita demais para @RepeatedTest). Contrato de evento inalterado, sem migration, sem mudanca de API; fora de escopo: reordenacao no broker, redelivery do mesmo evento.",
+      "jira": "SV-749",
+      "subtasks": [
+        {
+          "id": "feat-028.1",
+          "status": "in-progress",
+          "jira": "SV-750",
+          "owner": "agente",
+          "name": "Porta FactBetRepository.insertIfAbsent (INSERT ON CONFLICT DO NOTHING)",
+          "detail": "Mesmo mecanismo que feat-027 usou nas portas de dimensao. Devolve true so quando a linha foi inserida; false quando outra transacao ja a inseriu. Elimina o merge cego do save(), que relê a linha e sobrescreve uma liquidacao ja commitada com PENDING.",
+          "checklist": [
+            "FactBetSpringDataRepository.insertIfAbsent nativo com ON CONFLICT (id) DO NOTHING, status e bet_type convertidos pelos AttributeConverter existentes.",
+            "FactBetRepository.insertIfAbsent(FactBet) devolve boolean; JpaFactBetRepository implementa.",
+            "Teste de integracao do adapter: primeira chamada insere (true), segunda com a mesma id devolve false e nao altera a linha.",
+            "Sem comentario no codigo; sem SQL fora do padrao ja usado nas dimensoes."
+          ],
+          "validation": "mvn test no teste de integracao do adapter verde."
+        },
+        {
+          "id": "feat-028.2",
+          "status": "not-started",
+          "jira": "SV-751",
+          "owner": "agente",
+          "name": "ProcessBetEventService converge Created/Settled concorrentes e teste de concorrencia",
+          "detail": "processCreated e processSettled passam a tentar insertIfAbsent primeiro; quando perdem a corrida, relêem a linha ja commitada e aplicam o merge existente (Created preserva liquidacao, Settled preserva betType/times), em vez de sobrescrevê-la.",
+          "checklist": [
+            "Teste de integracao deterministico (MockitoSpyBean em FactBetRepository.findById pausa um consumidor depois da leitura vazia): Created pausado, Settled commita, Created retoma: linha final WON com betType preenchido.",
+            "Teste simetrico: Settled pausado, Created commita, Settled retoma: linha final WON com betType preservado.",
+            "Confirmar que os dois testes FALHAM no codigo antigo antes da correcao.",
+            "ProcessBetEventServiceTest ajustado para o novo fluxo (insertIfAbsent) e cobrindo o ramo de corrida perdida.",
+            "ProcessBetEventOrderIndependenceIntegrationTest continua verde."
+          ],
+          "validation": "mvn test nos testes de ProcessBetEvent verdes; testes de concorrencia vermelhos no codigo antigo e verdes no novo."
+        },
+        {
+          "id": "feat-028.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-752",
+          "detail": "Fechamento da feature: changelog, init.sh e skills de revisao.",
+          "checklist": [
+            "CHANGELOG.md com linhas em [Unreleased].",
+            "./init.sh do servico passa.",
+            "Delivery Reviewer e Test Suite Auditor rodados.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde e evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {

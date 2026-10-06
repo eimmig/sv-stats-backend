@@ -19,6 +19,10 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-746](https://stakevault.atlassian.net/browse/SV-746) - Testar /actuator/health/liveness no HealthChecksTest
 - [SV-747](https://stakevault.atlassian.net/browse/SV-747) - Teste de GET /actuator/health/liveness
 - [SV-748](https://stakevault.atlassian.net/browse/SV-748) - CHANGELOG e verificacao final
+- [SV-749](https://stakevault.atlassian.net/browse/SV-749) - Corrida entre BetCreated e BetSettled da mesma aposta em fact_bet: teste de convergencia e insercao idempotente
+- [SV-750](https://stakevault.atlassian.net/browse/SV-750) - Porta FactBetRepository.insertIfAbsent (INSERT ON CONFLICT DO NOTHING)
+- [SV-751](https://stakevault.atlassian.net/browse/SV-751) - ProcessBetEventService converge Created/Settled concorrentes e teste de concorrencia
+- [SV-752](https://stakevault.atlassian.net/browse/SV-752) - CHANGELOG e verificacao final
 
 ## [0.2.0] - 2026-09-24
 
