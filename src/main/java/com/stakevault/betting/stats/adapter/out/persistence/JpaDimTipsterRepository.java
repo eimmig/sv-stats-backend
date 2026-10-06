@@ -1,7 +1,5 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
-import java.util.UUID;
-
 import org.springframework.stereotype.Repository;
 
 import com.stakevault.betting.stats.domain.model.DimTipster;
@@ -25,10 +23,5 @@ public class JpaDimTipsterRepository implements DimTipsterRepository {
 	@Override
 	public void insertIfAbsent(DimTipster dimTipster) {
 		jpaRepository.insertIfAbsent(dimTipster.id(), dimTipster.name());
-	}
-
-	@Override
-	public boolean existsById(UUID id) {
-		return jpaRepository.existsById(id);
 	}
 }
