@@ -48,11 +48,11 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public boolean insertIfAbsent(FactBet factBet) {
-		return jpaRepository.insertIfAbsent(factBet.id(), factBet.dateId(), factBet.bettingHouseId(),
-				factBet.sportId(), factBet.leagueId(), factBet.marketId(), factBet.tipsterId(), factBet.team1Id(),
-				factBet.team2Id(), factBet.stake(), factBet.odd(), factBet.profit(), factBet.isWin(),
-				STATUS_CONVERTER.convertToDatabaseColumn(factBet.status()),
-				BET_TYPE_CONVERTER.convertToDatabaseColumn(factBet.betType()), factBet.betCount()) > 0;
+		return jpaRepository.insertIfAbsent(new NewFactBetRow(factBet.id(), factBet.dateId(),
+				factBet.bettingHouseId(), factBet.sportId(), factBet.leagueId(), factBet.marketId(),
+				factBet.tipsterId(), factBet.team1Id(), factBet.team2Id(), factBet.stake(), factBet.odd(),
+				factBet.profit(), factBet.isWin(), STATUS_CONVERTER.convertToDatabaseColumn(factBet.status()),
+				BET_TYPE_CONVERTER.convertToDatabaseColumn(factBet.betType()), factBet.betCount())) > 0;
 	}
 
 	@Override

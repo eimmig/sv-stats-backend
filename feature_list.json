@@ -1974,7 +1974,8 @@
             "titulo": "O que divergiu do plano",
             "itens": [
               "Nada. A hipotese do achado de producao (2026-10-04) foi confirmada por leitura do codigo e por reproducao deterministica; docs/services/stats-service.md atualizado de hipotese para causa raiz.",
-              "Fora de escopo, mantido: reordenacao no broker; invalidacao de cache em afterCommit segue em feat-029."
+              "Fora de escopo, mantido: reordenacao no broker; invalidacao de cache em afterCommit segue em feat-029.",
+              "SonarCloud java:S107 (16 parametros no insertIfAbsent nativo) reprovou o PR da story; corrigido passando o record NewFactBetRow via SpEL. Regra registrada em docs/testes.md."
             ]
           }
         ]

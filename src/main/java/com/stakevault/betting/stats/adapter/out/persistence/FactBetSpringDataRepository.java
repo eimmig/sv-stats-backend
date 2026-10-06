@@ -1,6 +1,5 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,17 +19,15 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 	@Query(value = """
 			INSERT INTO fact_bet (id, date_id, betting_house_id, sport_id, league_id, market_id, tipster_id,
 			                      team1_id, team2_id, stake, odd, profit, is_win, status, bet_type, bet_count)
-			VALUES (:id, :dateId, :bettingHouseId, :sportId, :leagueId, :marketId, CAST(:tipsterId AS uuid),
-			        CAST(:team1Id AS uuid), CAST(:team2Id AS uuid), :stake, CAST(:odd AS numeric),
-			        CAST(:profit AS numeric), CAST(:isWin AS boolean), :status, CAST(:betType AS varchar), :betCount)
+			VALUES (:#{#row.id()}, :#{#row.dateId()}, :#{#row.bettingHouseId()}, :#{#row.sportId()},
+			        :#{#row.leagueId()}, :#{#row.marketId()}, CAST(:#{#row.tipsterId()} AS uuid),
+			        CAST(:#{#row.team1Id()} AS uuid), CAST(:#{#row.team2Id()} AS uuid), :#{#row.stake()},
+			        CAST(:#{#row.odd()} AS numeric), CAST(:#{#row.profit()} AS numeric),
+			        CAST(:#{#row.isWin()} AS boolean), :#{#row.status()}, CAST(:#{#row.betType()} AS varchar),
+			        :#{#row.betCount()})
 			ON CONFLICT (id) DO NOTHING
 			""", nativeQuery = true)
-	int insertIfAbsent(@Param("id") UUID id, @Param("dateId") UUID dateId,
-			@Param("bettingHouseId") UUID bettingHouseId, @Param("sportId") UUID sportId,
-			@Param("leagueId") UUID leagueId, @Param("marketId") UUID marketId, @Param("tipsterId") UUID tipsterId,
-			@Param("team1Id") UUID team1Id, @Param("team2Id") UUID team2Id, @Param("stake") BigDecimal stake,
-			@Param("odd") BigDecimal odd, @Param("profit") BigDecimal profit, @Param("isWin") Boolean isWin,
-			@Param("status") String status, @Param("betType") String betType, @Param("betCount") int betCount);
+	int insertIfAbsent(@Param("row") NewFactBetRow row);
 
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
