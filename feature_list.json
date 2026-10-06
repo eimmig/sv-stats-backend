@@ -2026,7 +2026,7 @@
         {
           "id": "feat-029.3",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-756",
           "detail": "Fechamento da feature: changelog, init.sh e skills de revisao.",
           "checklist": [

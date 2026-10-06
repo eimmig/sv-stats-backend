@@ -675,3 +675,12 @@ tinha commitado, sem violar a PK e sem retry. Correção: `FactBetRepository.ins
 (`@MockitoSpyBean` pausando o `findById`) falhou no código antigo e passa no novo. Plan Reviewer,
 Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta. `./init.sh` verde. Vault:
 `docs/services/stats-service.md` atualizado. Story SV-749, subtasks SV-750/751/752.
+
+## `feat-029` fechada — cache em afterCommit e existsById morto (2026-10-06)
+
+Achados P3 de `feat-027`. `evictMetricsFor` agora registra a invalidação em `afterCommit`
+(`TransactionSynchronizationManager`; sem transação ativa invalida na hora), fechando a janela em que um
+leitor repopulava o cache com o estado de antes do commit. `existsById` saiu das 6 portas/adapters de
+dimensão (sem chamador de produção) e os testes de repasse do `DimensionResolverTest` foram fundidos.
+Plan Reviewer, Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta.
+`./init.sh` verde. Vault: `docs/services/stats-service.md`. Story SV-753, subtasks SV-754/755/756.
