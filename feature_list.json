@@ -1990,10 +1990,55 @@
       "dependencies": [
         "feat-027"
       ],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-10-06, Plan Reviewer (revisao direta, escopo de 1 servico, sem BLOCKER): READY. Verificado: existsById so tem chamador nos testes de adapter e em um never() do DimensionResolverTest (grep em src), as 6 dimensoes ja usam insertIfAbsent (feat-027); evictMetricsFor e chamado dentro das duas transacoes de ProcessBetEventService (processSettled e completeFactBetSettledBeforeCreated). Mecanismo escolhido: TransactionSynchronizationManager (ja disponivel via spring-tx, sem dependencia nova); sem transacao ativa invalida imediatamente para nao perder a invalidacao em chamada direta. Cache TTL 1 h continua como rede de seguranca. Sem mudanca de contrato, migration ou API.",
+      "jira": "SV-753",
+      "subtasks": [
+        {
+          "id": "feat-029.1",
+          "status": "in-progress",
+          "jira": "SV-754",
+          "owner": "agente",
+          "name": "Remover existsById morto das 6 portas de dimensao",
+          "detail": "Depois de feat-027 as dimensoes sao gravadas por insertIfAbsent e nenhum codigo de producao chama existsById; so os testes de adapter o usam. Codigo morto na porta de dominio convida a voltar ao check-then-act.",
+          "checklist": [
+            "existsById removido das 6 portas (DimBettingHouse, DimLeague, DimMarket, DimSport, DimTeam, DimTipster) e dos 6 adapters Jpa.",
+            "Testes de adapter migrados: a existencia passa a ser conferida por contagem via JdbcTemplate e a fixture usa insertIfAbsent onde cabe.",
+            "DimensionResolverTest: remove o never().existsById e funde os testes de repasse (casa, esporte, liga, mercado, tipster) em um unico teste.",
+            "Sem comentario no codigo."
+          ],
+          "validation": "mvn test dos testes de dimensao verde."
+        },
+        {
+          "id": "feat-029.2",
+          "status": "not-started",
+          "jira": "SV-755",
+          "owner": "agente",
+          "name": "Invalidar o cache de metricas em afterCommit",
+          "detail": "Hoje evictMetricsFor roda dentro da transacao: um leitor pode repopular o cache com o estado antigo antes do commit, e o TTL de 1 h so limita o estrago. Invalidar depois do commit fecha a janela; se a transacao reverter, o cache nao e tocado.",
+          "checklist": [
+            "evictMetricsFor registra TransactionSynchronization.afterCommit quando ha transacao ativa; sem transacao (chamada direta, testes unitarios), invalida na hora.",
+            "Teste unitario: com sincronizacao ativa, evict nao roda antes do commit, roda no afterCommit e nao roda no rollback.",
+            "Testes existentes de processSettled/processCreated continuam verdes."
+          ],
+          "validation": "mvn test de ProcessBetEvent* verde."
+        },
+        {
+          "id": "feat-029.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-756",
+          "detail": "Fechamento da feature: changelog, init.sh e skills de revisao.",
+          "checklist": [
+            "CHANGELOG.md com linhas em [Unreleased].",
+            "./init.sh do servico passa.",
+            "Delivery Reviewer e Test Suite Auditor rodados.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde e evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     },
     {
