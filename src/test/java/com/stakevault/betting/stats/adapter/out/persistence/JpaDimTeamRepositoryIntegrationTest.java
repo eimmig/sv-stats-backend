@@ -74,16 +74,16 @@ class JpaDimTeamRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	@Test
-	void shouldReportExistenceById() {
+	void shouldInsertIfAbsentOnlyOnce() {
 		try (var _ = TenantContextScope.open(schema)) {
 			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
 			UUID id = UUID.randomUUID();
 
-			assertThat(dimTeamRepository.existsById(id)).isFalse();
+			dimTeamRepository.insertIfAbsent(new DimTeam(id, "Flamengo", sportId));
+			dimTeamRepository.insertIfAbsent(new DimTeam(id, "Vasco", sportId));
 
-			dimTeamRepository.save(new DimTeam(id, "Flamengo", sportId));
-
-			assertThat(dimTeamRepository.existsById(id)).isTrue();
+			assertThat(dimTeamRepository.findByNameAndSportId("Flamengo", sportId)).isPresent();
+			assertThat(dimTeamRepository.findByNameAndSportId("Vasco", sportId)).isEmpty();
 		}
 	}
 

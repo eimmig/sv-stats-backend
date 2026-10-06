@@ -1996,7 +1996,7 @@
       "subtasks": [
         {
           "id": "feat-029.1",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-754",
           "owner": "agente",
           "name": "Remover existsById morto das 6 portas de dimensao",

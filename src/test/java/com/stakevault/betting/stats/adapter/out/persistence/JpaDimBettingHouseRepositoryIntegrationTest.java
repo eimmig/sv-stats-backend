@@ -2,6 +2,7 @@ package com.stakevault.betting.stats.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -24,16 +25,31 @@ class JpaDimBettingHouseRepositoryIntegrationTest extends TenantSchemaIntegratio
 	}
 
 	@Test
-	void shouldSaveAndReportExisting() {
+	void shouldSaveAndPersistTheRow() {
 		UUID id = UUID.randomUUID();
 
 		try (var _ = TenantContextScope.open(schema)) {
-			assertThat(dimBettingHouseRepository.existsById(id)).isFalse();
-
 			DimBettingHouse saved = dimBettingHouseRepository.save(new DimBettingHouse(id, "Bet365"));
 
 			assertThat(saved.name()).isEqualTo("Bet365");
-			assertThat(dimBettingHouseRepository.existsById(id)).isTrue();
+			assertThat(namesOf(id)).containsExactly("Bet365");
 		}
+	}
+
+	@Test
+	void shouldInsertIfAbsentOnlyOnce() {
+		UUID id = UUID.randomUUID();
+
+		try (var _ = TenantContextScope.open(schema)) {
+			dimBettingHouseRepository.insertIfAbsent(new DimBettingHouse(id, "Bet365"));
+			dimBettingHouseRepository.insertIfAbsent(new DimBettingHouse(id, "Other"));
+
+			assertThat(namesOf(id)).containsExactly("Bet365");
+		}
+	}
+
+	private List<String> namesOf(UUID id) {
+		return jdbcTemplate.queryForList("SELECT name FROM \"" + schema.value() + "\".dim_betting_house WHERE id = ?",
+				String.class, id);
 	}
 }
