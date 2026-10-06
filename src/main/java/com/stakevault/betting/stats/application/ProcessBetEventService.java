@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
@@ -127,7 +129,17 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 
 	private void evictMetricsFor(Instant instant) {
 		LocalDate date = instant.atZone(ZoneOffset.UTC).toLocalDate();
-		metricsCacheRepository.evict(date.getYear(), date.getMonthValue());
+		Runnable eviction = () -> metricsCacheRepository.evict(date.getYear(), date.getMonthValue());
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			eviction.run();
+			return;
+		}
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				eviction.run();
+			}
+		});
 	}
 
 	private void markProcessed(UUID eventId) {
