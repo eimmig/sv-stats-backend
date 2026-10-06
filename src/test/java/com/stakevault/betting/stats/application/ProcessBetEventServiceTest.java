@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
@@ -383,5 +385,49 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().betType()).isEqualTo(BetType.LIVE);
 		assertThat(captor.getValue().dateId()).isEqualTo(createdDateId);
 		verify(processedEventRepository).save(any());
+	}
+
+	@Test
+	void shouldEvictTheCacheOnlyAfterTheTransactionCommits() {
+		UUID eventId = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-09-15T12:00:00Z");
+		stubDimensionsForSettled();
+
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			service.processSettled(eventId, settledEvent(UUID.randomUUID(), settledAt));
+
+			verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
+			TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+			verify(metricsCacheRepository).evict(2026, 9);
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+		}
+	}
+
+	@Test
+	void shouldNotEvictTheCacheWhenTheTransactionRollsBack() {
+		UUID eventId = UUID.randomUUID();
+		stubDimensionsForSettled();
+
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			service.processSettled(eventId, settledEvent(UUID.randomUUID(), Instant.parse("2026-09-15T12:00:00Z")));
+
+			TransactionSynchronizationManager.getSynchronizations()
+					.forEach(synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+			verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+		}
+	}
+
+	private void stubDimensionsForSettled() {
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 	}
 }

@@ -2011,7 +2011,7 @@
         },
         {
           "id": "feat-029.2",
-          "status": "not-started",
+          "status": "done",
           "jira": "SV-755",
           "owner": "agente",
           "name": "Invalidar o cache de metricas em afterCommit",
