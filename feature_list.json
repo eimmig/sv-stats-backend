@@ -1925,7 +1925,7 @@
       "scope": "HealthChecksTest: uma asserção de GET /actuator/health/liveness com status 200 e UP, ao lado das de /actuator/health e /readiness.",
       "description": "Achado do Delivery Reviewer de infra feat-012 (2026-10-04): os manifests do infra passaram a usar /actuator/health/liveness no livenessProbe e no startupProbe, mas nenhum teste deste serviço cobre esse endpoint; se uma mudança de configuração do Actuator o desligar, os pods entram em CrashLoop sem nenhum teste avisar.",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-10-06, Plan Reviewer reaproveitado de services/api-gateway feat-020 (READY, sem BLOCKER/MAJOR): probes ja habilitados no application.yml e infra/k8s usa /actuator/health/liveness; HealthChecksTest so cobre /actuator/health (com nome enganoso shouldRespondUpForLiveness) e /readiness. Achado do SonarCloud java:S5976 em feat-020: testes de corpo identico viram @ParameterizedTest (docs/testes.md). Readiness fica separado por assertar db/rabbit. Escopo so src/test.",
       "jira": "SV-746",
       "subtasks": [
@@ -1959,7 +1959,34 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-10-06. HealthChecksTest cobre /actuator/health/liveness (200 e status UP), o endpoint usado pelos probes do Kubernetes.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "shouldRespondUp virou @ParameterizedTest sobre /actuator/health e /actuator/health/liveness, ambos esperando 200 e status UP.",
+              "Testes de readiness (db e rabbit) mantidos separados.",
+              "Sem mudanca de codigo de producao."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "mvn test -Dtest=HealthChecksTest: 3 casos, 0 falha.",
+              "./init.sh do servico verde (mvn verify com Testcontainers, gate de cobertura incluso).",
+              "PR da subtask e PR da story: CI e SonarCloud verdes.",
+              "Delivery Reviewer e Test Suite Auditor: PASS, sem achado (escopo trivial, revisao direta)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Regra java:S5976 (api-gateway feat-020) aplicada desde o inicio, ja documentada em docs/testes.md. Vault revisado, sem nota nova."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
