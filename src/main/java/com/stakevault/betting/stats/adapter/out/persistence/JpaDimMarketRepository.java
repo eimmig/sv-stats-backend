@@ -1,7 +1,5 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
-import java.util.UUID;
-
 import org.springframework.stereotype.Repository;
 
 import com.stakevault.betting.stats.domain.model.DimMarket;
@@ -25,10 +23,5 @@ public class JpaDimMarketRepository implements DimMarketRepository {
 	@Override
 	public void insertIfAbsent(DimMarket dimMarket) {
 		jpaRepository.insertIfAbsent(dimMarket.id(), dimMarket.name());
-	}
-
-	@Override
-	public boolean existsById(UUID id) {
-		return jpaRepository.existsById(id);
 	}
 }

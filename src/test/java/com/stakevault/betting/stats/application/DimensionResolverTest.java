@@ -61,40 +61,25 @@ class DimensionResolverTest {
 	}
 
 	@Test
-	void shouldInsertBettingHouseIgnoringConflictAndReturnTheEventId() {
-		UUID id = UUID.randomUUID();
-
-		UUID resolved = resolver.resolveBettingHouse(id, "House");
-
-		assertThat(resolved).isEqualTo(id);
-		verify(bettingHouseRepository).insertIfAbsent(new DimBettingHouse(id, "House"));
-		verify(bettingHouseRepository, never()).existsById(any());
-		verify(bettingHouseRepository, never()).save(any());
-	}
-
-	@Test
-	void shouldInsertSportLeagueAndMarketIgnoringConflict() {
+	void shouldInsertEveryEventDimensionIgnoringConflictAndReturnTheEventId() {
+		UUID houseId = UUID.randomUUID();
 		UUID sportId = UUID.randomUUID();
 		UUID leagueId = UUID.randomUUID();
 		UUID marketId = UUID.randomUUID();
+		UUID tipsterId = UUID.randomUUID();
 
+		assertThat(resolver.resolveBettingHouse(houseId, "House")).isEqualTo(houseId);
 		assertThat(resolver.resolveSport(sportId, "Sport")).isEqualTo(sportId);
 		assertThat(resolver.resolveLeague(leagueId, "League")).isEqualTo(leagueId);
 		assertThat(resolver.resolveMarket(marketId, "Market")).isEqualTo(marketId);
+		assertThat(resolver.resolveTipster(tipsterId, "Tipster")).isEqualTo(tipsterId);
 
+		verify(bettingHouseRepository).insertIfAbsent(new DimBettingHouse(houseId, "House"));
 		verify(sportRepository).insertIfAbsent(new DimSport(sportId, "Sport"));
 		verify(leagueRepository).insertIfAbsent(new DimLeague(leagueId, "League"));
 		verify(marketRepository).insertIfAbsent(new DimMarket(marketId, "Market"));
-	}
-
-	@Test
-	void shouldInsertTipsterIgnoringConflictWhenIdIsPresent() {
-		UUID id = UUID.randomUUID();
-
-		UUID resolved = resolver.resolveTipster(id, "Tipster");
-
-		assertThat(resolved).isEqualTo(id);
-		verify(tipsterRepository).insertIfAbsent(new DimTipster(id, "Tipster"));
+		verify(tipsterRepository).insertIfAbsent(new DimTipster(tipsterId, "Tipster"));
+		verify(bettingHouseRepository, never()).save(any());
 	}
 
 	@Test

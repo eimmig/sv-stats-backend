@@ -12,8 +12,6 @@ public interface DimTeamRepository {
 
 	void insertIfAbsent(DimTeam dimTeam);
 
-	boolean existsById(UUID id);
-
 	Optional<DimTeam> findByNameAndSportId(String name, UUID sportId);
 
 	List<DimTeam> findBySportId(UUID sportId);
