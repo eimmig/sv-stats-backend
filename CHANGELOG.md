@@ -27,6 +27,9 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-754](https://stakevault.atlassian.net/browse/SV-754) - Remover existsById morto das 6 portas de dimensao
 - [SV-755](https://stakevault.atlassian.net/browse/SV-755) - Invalidar o cache de metricas em afterCommit
 - [SV-756](https://stakevault.atlassian.net/browse/SV-756) - CHANGELOG e verificacao final
+- [SV-757](https://stakevault.atlassian.net/browse/SV-757) - BetEventListenerIntegrationTest: await que nao tolera a primeira leitura vazia
+- [SV-758](https://stakevault.atlassian.net/browse/SV-758) - Awaitility ignora NoSuchElementException nos testes de listener
+- [SV-759](https://stakevault.atlassian.net/browse/SV-759) - CHANGELOG e verificacao final
 
 ## [0.2.0] - 2026-09-24
 
