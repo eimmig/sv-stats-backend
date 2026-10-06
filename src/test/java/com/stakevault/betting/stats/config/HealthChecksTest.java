@@ -8,6 +8,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
@@ -30,9 +32,10 @@ class HealthChecksTest {
 		return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 	}
 
-	@Test
-	void shouldRespondUpForLiveness() throws Exception {
-		HttpResponse<String> response = get("/actuator/health");
+	@ParameterizedTest
+	@ValueSource(strings = { "/actuator/health", "/actuator/health/liveness" })
+	void shouldRespondUp(String path) throws Exception {
+		HttpResponse<String> response = get(path);
 
 		assertThat(response.statusCode()).isEqualTo(200);
 		assertThat(response.body()).contains("\"status\":\"UP\"");
