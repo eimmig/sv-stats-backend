@@ -1897,7 +1897,7 @@
       "dependencies": [
         "feat-027"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-10-06, Plan Reviewer (revisao direta, escopo de 1 servico, sem BLOCKER): READY WITH CONCERNS absorvidas nas subtasks. Evidencia verificada no codigo: ProcessBetEventService le findById vazio e chama factBetRepository.save; JpaFactBetRepository.save faz um SEGUNDO findById e, se a outra transacao ja commitou, applyFrom sobrescreve a linha (hipotese do achado confirmada por leitura: sem violacao de PK, evento marcado PROCESSED, sem retry). Created sobre linha liquidada zera status para PENDING; Settled sobre linha criada zera betType para null. Correcao escolhida: INSERT ... ON CONFLICT DO NOTHING (precedente: insertIfAbsent das dimensoes em feat-027), pois lock por betId exigiria advisory lock (SQL cru, nao precedido) e coluna de versao exigiria migration; o ON CONFLICT bloqueia ate a transacao concorrente commitar e a perdedora relê e aplica o merge existente. Teste deterministico via MockitoSpyBean pausando findById (corrida real e estreita demais para @RepeatedTest). Contrato de evento inalterado, sem migration, sem mudanca de API; fora de escopo: reordenacao no broker, redelivery do mesmo evento.",
       "jira": "SV-749",
       "subtasks": [
@@ -1948,7 +1948,37 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-10-06. Causa raiz da corrida em fact_bet confirmada e corrigida: BetCreated e BetSettled concorrentes da mesma aposta agora convergem sempre para a linha liquidada com betType preenchido.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "FactBetRepository.insertIfAbsent (INSERT ... ON CONFLICT DO NOTHING, mesmo mecanismo das dimensoes de feat-027) devolve se a linha foi inserida.",
+              "processCreated e processSettled inserem primeiro; ao perder a corrida, relem a linha ja commitada e aplicam o merge existente (Created preserva a liquidacao, Settled preserva betType/times/data).",
+              "Causa raiz: JpaFactBetRepository.save relia a linha e o applyFrom sobrescrevia, sem violar a PK e sem retry (liquidacao voltava a PENDING, ou a linha liquidada perdia o betType).",
+              "Sem migration, sem mudanca de contrato de evento ou de API."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "ProcessBetEventConcurrencyIntegrationTest (MockitoSpyBean pausa o findById de um consumidor ate o outro commitar) reproduz os 2 sentidos da corrida: FALHOU no codigo antigo (expected WON, expected LIVE) e passa no novo.",
+              "Teste de integracao do adapter para insertIfAbsent (insere uma vez, nao altera linha existente, persiste todas as colunas); ProcessBetEventServiceTest ajustado com 2 casos de corrida perdida; ProcessBetEventOrderIndependenceIntegrationTest continua verde.",
+              "./init.sh do servico verde (mvn verify com Testcontainers, gate de cobertura incluso).",
+              "PRs das subtasks e da story: CI e SonarCloud verdes.",
+              "Delivery Reviewer, Test Suite Auditor e Persistence Auditor: PASS, sem achado (revisao direta: ON CONFLICT espera a transacao concorrente commitar; se ela reverter, o insert segue; sem lock novo, sem coluna nova)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. A hipotese do achado de producao (2026-10-04) foi confirmada por leitura do codigo e por reproducao deterministica; docs/services/stats-service.md atualizado de hipotese para causa raiz.",
+              "Fora de escopo, mantido: reordenacao no broker; invalidacao de cache em afterCommit segue em feat-029."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-029",
