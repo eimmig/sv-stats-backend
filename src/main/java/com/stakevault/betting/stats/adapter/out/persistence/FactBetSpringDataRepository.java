@@ -1,16 +1,36 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
 
 interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UUID> {
+
+	@Transactional
+	@Modifying(flushAutomatically = true)
+	@Query(value = """
+			INSERT INTO fact_bet (id, date_id, betting_house_id, sport_id, league_id, market_id, tipster_id,
+			                      team1_id, team2_id, stake, odd, profit, is_win, status, bet_type, bet_count)
+			VALUES (:id, :dateId, :bettingHouseId, :sportId, :leagueId, :marketId, CAST(:tipsterId AS uuid),
+			        CAST(:team1Id AS uuid), CAST(:team2Id AS uuid), :stake, CAST(:odd AS numeric),
+			        CAST(:profit AS numeric), CAST(:isWin AS boolean), :status, CAST(:betType AS varchar), :betCount)
+			ON CONFLICT (id) DO NOTHING
+			""", nativeQuery = true)
+	int insertIfAbsent(@Param("id") UUID id, @Param("dateId") UUID dateId,
+			@Param("bettingHouseId") UUID bettingHouseId, @Param("sportId") UUID sportId,
+			@Param("leagueId") UUID leagueId, @Param("marketId") UUID marketId, @Param("tipsterId") UUID tipsterId,
+			@Param("team1Id") UUID team1Id, @Param("team2Id") UUID team2Id, @Param("stake") BigDecimal stake,
+			@Param("odd") BigDecimal odd, @Param("profit") BigDecimal profit, @Param("isWin") Boolean isWin,
+			@Param("status") String status, @Param("betType") String betType, @Param("betCount") int betCount);
 
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
