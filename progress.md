@@ -657,3 +657,11 @@ publicado (`feat-020`, companion de `bets-service feat-019`) - sincronizado ante
 Mesmo residual de ambiente (processos `java.exe` órfãos) documentado em
 `services/auth-service/progress.md` - `mvn test` local verde, `mvn verify` completo confirmado
 pelo CI.
+
+## `feat-030` fechada — testar /actuator/health/liveness (2026-10-06)
+
+Mesma lacuna de `api-gateway feat-020` (achado do Delivery Reviewer de `infra feat-012`): nenhum teste
+cobria `/actuator/health/liveness`, usado pelos probes do Kubernetes. `HealthChecksTest` agora
+parametriza `/actuator/health` e `/actuator/health/liveness`; readiness (db e rabbit) segue separado por assertar
+`db`. Só `src/test`. Plan Reviewer: READY (reaproveitado). Delivery Reviewer e Test Suite Auditor:
+PASS, sem achado. `./init.sh` verde. Vault sem nota nova. Story SV-746, subtasks SV-747/748.
