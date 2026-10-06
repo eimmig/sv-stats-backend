@@ -1990,7 +1990,7 @@
       "dependencies": [
         "feat-027"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-10-06, Plan Reviewer (revisao direta, escopo de 1 servico, sem BLOCKER): READY. Verificado: existsById so tem chamador nos testes de adapter e em um never() do DimensionResolverTest (grep em src), as 6 dimensoes ja usam insertIfAbsent (feat-027); evictMetricsFor e chamado dentro das duas transacoes de ProcessBetEventService (processSettled e completeFactBetSettledBeforeCreated). Mecanismo escolhido: TransactionSynchronizationManager (ja disponivel via spring-tx, sem dependencia nova); sem transacao ativa invalida imediatamente para nao perder a invalidacao em chamada direta. Cache TTL 1 h continua como rede de seguranca. Sem mudanca de contrato, migration ou API.",
       "jira": "SV-753",
       "subtasks": [
@@ -2039,7 +2039,35 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-10-06. O cache de metricas passa a ser invalidado em afterCommit, e o existsById morto sai das 6 portas de dimensao.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "ProcessBetEventService.evictMetricsFor registra a invalidacao como TransactionSynchronization.afterCommit; sem transacao ativa invalida imediatamente.",
+              "existsById removido das 6 portas de dimensao e dos 6 adapters; testes de adapter conferem as linhas persistidas por JdbcTemplate e cobrem insertIfAbsent (insere uma vez, nao sobrescreve).",
+              "DimensionResolverTest: testes de repasse (casa, esporte, liga, mercado, tipster) fundidos em um.",
+              "Sem migration, sem mudanca de contrato ou API."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "ProcessBetEventServiceTest: com sincronizacao ativa o evict nao roda antes do commit, roda no afterCommit e nao roda no rollback.",
+              "./init.sh do servico verde (mvn verify com Testcontainers, gate de cobertura incluso).",
+              "PRs das subtasks e da story: CI e SonarCloud verdes.",
+              "Delivery Reviewer, Test Suite Auditor e Persistence Auditor: PASS, sem achado (revisao direta)."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Vault: docs/services/stats-service.md ganhou a nota da invalidacao em afterCommit."
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "feat-030",
