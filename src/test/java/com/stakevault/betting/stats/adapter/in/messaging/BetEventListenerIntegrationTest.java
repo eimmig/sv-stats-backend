@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -152,7 +153,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.created", betCreatedBody(eventId, betId, tenantSlug));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 				assertThat(factBet.status()).isEqualTo(BetStatus.PENDING);
@@ -168,7 +169,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 	void shouldUpsertFactBetOnBetSettled() {
 		UUID betId = UUID.randomUUID();
 		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), betId, tenantSlug));
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(factBetRepository.findById(betId)).isPresent();
 			}
@@ -176,7 +177,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.settled", betSettledBody(UUID.randomUUID().toString(), betId, tenantSlug));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 				assertThat(factBet.status()).isEqualTo(BetStatus.WON);
@@ -197,7 +198,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		UUID betId = UUID.randomUUID();
 
 		publish("bet.settled", betSettledBody(UUID.randomUUID().toString(), betId, tenantSlug));
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(factBetRepository.findById(betId)).isPresent();
 			}
@@ -205,7 +206,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), betId, tenantSlug));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
 		try (var _ = TenantContextScope.open(schema)) {
 			FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 			assertThat(factBet.status()).isEqualTo(BetStatus.WON);
@@ -218,7 +219,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		UUID betId = UUID.randomUUID();
 		String eventId = UUID.randomUUID().toString();
 		publish("bet.created", betCreatedBody(eventId, betId, tenantSlug));
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(factBetRepository.findById(betId)).isPresent();
 			}
@@ -226,7 +227,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.created", betCreatedBody(eventId, betId, tenantSlug));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> assertThat(queueMessageCount(QUEUE)).isZero());
 		Integer processedCount;
 		try (var _ = TenantContextScope.open(schema)) {
 			processedCount = jdbcTemplate.queryForObject(
@@ -245,7 +246,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		publish("bet.created",
 				betCreatedBody(UUID.randomUUID().toString(), betId, tenantSlug, sportId, catalogTeamId, "Flamengo"));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 				assertThat(factBet.team1Id()).isEqualTo(catalogTeamId);
@@ -263,7 +264,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), firstBetId, tenantSlug, sportId,
 				legacyLocalTeamId, "Flamengo"));
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(factBetRepository.findById(firstBetId)).isPresent();
 			}
@@ -272,7 +273,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		publish("bet.created", betCreatedBody(UUID.randomUUID().toString(), secondBetId, tenantSlug, sportId,
 				laterCatalogTeamId, "Flamengo"));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(secondBetId).orElseThrow();
 				assertThat(factBet.team1Id()).isEqualTo(legacyLocalTeamId);
@@ -291,7 +292,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 		publish("bet.settled", betSettledBody(UUID.randomUUID().toString(), betId, tenantSlug, sportId,
 				catalogTeamId, "Flamengo"));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 				assertThat(factBet.team1Id()).isEqualTo(catalogTeamId);
@@ -307,7 +308,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.created",
 				betCreatedBody(UUID.randomUUID().toString(), betId, tenantSlug, sportId, catalogTeamId, "Flamengo"));
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(factBetRepository.findById(betId)).isPresent();
 			}
@@ -315,7 +316,7 @@ class BetEventListenerIntegrationTest extends TenantSchemaIntegrationSupport {
 
 		publish("bet.settled", betSettledBody(UUID.randomUUID().toString(), betId, tenantSlug));
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				FactBet factBet = factBetRepository.findById(betId).orElseThrow();
 				assertThat(factBet.status()).isEqualTo(BetStatus.WON);
