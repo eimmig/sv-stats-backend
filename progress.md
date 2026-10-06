@@ -657,3 +657,39 @@ publicado (`feat-020`, companion de `bets-service feat-019`) - sincronizado ante
 Mesmo residual de ambiente (processos `java.exe` órfãos) documentado em
 `services/auth-service/progress.md` - `mvn test` local verde, `mvn verify` completo confirmado
 pelo CI.
+
+## `feat-030` fechada — testar /actuator/health/liveness (2026-10-06)
+
+Mesma lacuna de `api-gateway feat-020` (achado do Delivery Reviewer de `infra feat-012`): nenhum teste
+cobria `/actuator/health/liveness`, usado pelos probes do Kubernetes. `HealthChecksTest` agora
+parametriza `/actuator/health` e `/actuator/health/liveness`; readiness (db e rabbit) segue separado por assertar
+`db`. Só `src/test`. Plan Reviewer: READY (reaproveitado). Delivery Reviewer e Test Suite Auditor:
+PASS, sem achado. `./init.sh` verde. Vault sem nota nova. Story SV-746, subtasks SV-747/748.
+
+## `feat-028` fechada — corrida BetCreated x BetSettled em `fact_bet` (2026-10-06)
+
+Causa raiz do achado da rodada de produção de 2026-10-04 (18 apostas `pending` em `fact_bet` apesar de
+liquidadas): o `save` do adapter relia a linha e o `applyFrom` sobrescrevia o que a outra transação já
+tinha commitado, sem violar a PK e sem retry. Correção: `FactBetRepository.insertIfAbsent`
+(`ON CONFLICT DO NOTHING`) e, ao perder a corrida, releitura + merge existente. Teste determinístico
+(`@MockitoSpyBean` pausando o `findById`) falhou no código antigo e passa no novo. Plan Reviewer,
+Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta. `./init.sh` verde. Vault:
+`docs/services/stats-service.md` atualizado. Story SV-749, subtasks SV-750/751/752.
+
+## `feat-029` fechada — cache em afterCommit e existsById morto (2026-10-06)
+
+Achados P3 de `feat-027`. `evictMetricsFor` agora registra a invalidação em `afterCommit`
+(`TransactionSynchronizationManager`; sem transação ativa invalida na hora), fechando a janela em que um
+leitor repopulava o cache com o estado de antes do commit. `existsById` saiu das 6 portas/adapters de
+dimensão (sem chamador de produção) e os testes de repasse do `DimensionResolverTest` foram fundidos.
+Plan Reviewer, Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta.
+`./init.sh` verde. Vault: `docs/services/stats-service.md`. Story SV-753, subtasks SV-754/755/756.
+
+## `feat-031` fechada — await determinístico nos testes de listener (2026-10-06)
+
+Apontamento de `feat-029` (init.sh local vermelho, CI verde): `findById().orElseThrow()` dentro de
+`await().untilAsserted(...)` lança `NoSuchElementException`, que o Awaitility não repete; a primeira leitura
+(~100 ms após o publish) derrubava o teste antes de o listener terminar a mensagem, e a falha em cascata
+(`DROP SCHEMA` concorrendo, `deadlock detected`, retry com backoff) quebrava os testes seguintes. Corrigido
+com `ignoreException(NoSuchElementException.class)`. Só `src/test`. `./init.sh` verde. Vault:
+`docs/testes.md`. Story SV-757, subtasks SV-758/759.

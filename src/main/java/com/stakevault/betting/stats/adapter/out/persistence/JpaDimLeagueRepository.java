@@ -1,7 +1,5 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
-import java.util.UUID;
-
 import org.springframework.stereotype.Repository;
 
 import com.stakevault.betting.stats.domain.model.DimLeague;
@@ -25,10 +23,5 @@ public class JpaDimLeagueRepository implements DimLeagueRepository {
 	@Override
 	public void insertIfAbsent(DimLeague dimLeague) {
 		jpaRepository.insertIfAbsent(dimLeague.id(), dimLeague.name());
-	}
-
-	@Override
-	public boolean existsById(UUID id) {
-		return jpaRepository.existsById(id);
 	}
 }

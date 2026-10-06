@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -86,7 +87,7 @@ class CacheInvalidationOnEventIntegrationTest extends TenantSchemaIntegrationSup
 				.build();
 		rabbitTemplate.send(EXCHANGE, "bet.settled", message);
 
-		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+		await().atMost(Duration.ofSeconds(5)).ignoreException(NoSuchElementException.class).untilAsserted(() -> {
 			try (var _ = TenantContextScope.open(schema)) {
 				assertThat(cacheRepository.findOverall()).isEmpty();
 			}

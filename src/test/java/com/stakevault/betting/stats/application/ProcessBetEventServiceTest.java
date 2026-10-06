@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
@@ -91,6 +93,7 @@ class ProcessBetEventServiceTest {
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
 		when(factBetRepository.findById(betId)).thenReturn(Optional.empty());
 		UUID dateId = UUID.randomUUID();
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 		when(dimensionResolver.resolveDate(any())).thenReturn(dateId);
 		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -100,7 +103,8 @@ class ProcessBetEventServiceTest {
 		service.processCreated(eventId, createdEvent(betId));
 
 		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
-		verify(factBetRepository).save(captor.capture());
+		verify(factBetRepository).insertIfAbsent(captor.capture());
+		verify(factBetRepository, never()).save(any());
 		assertThat(captor.getValue().status()).isEqualTo(BetStatus.PENDING);
 		assertThat(captor.getValue().profit()).isNull();
 		assertThat(captor.getValue().dateId()).isEqualTo(dateId);
@@ -184,11 +188,12 @@ class ProcessBetEventServiceTest {
 	}
 
 	@Test
-	void shouldUpsertFactBetAndMarkProcessedOnSettled() {
+	void shouldInsertFactBetAndMarkProcessedOnSettled() {
 		UUID eventId = UUID.randomUUID();
 		UUID betId = UUID.randomUUID();
 		Instant settledAt = Instant.parse("2026-09-15T12:00:00Z");
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
 		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -198,7 +203,8 @@ class ProcessBetEventServiceTest {
 		service.processSettled(eventId, settledEvent(betId, settledAt));
 
 		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
-		verify(factBetRepository).save(captor.capture());
+		verify(factBetRepository).insertIfAbsent(captor.capture());
+		verify(factBetRepository, never()).save(any());
 		assertThat(captor.getValue().status()).isEqualTo(BetStatus.WON);
 		assertThat(captor.getValue().profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
 		assertThat(captor.getValue().isWin()).isTrue();
@@ -260,6 +266,7 @@ class ProcessBetEventServiceTest {
 		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
 		when(factBetRepository.findById(betId)).thenReturn(Optional.empty());
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
 		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -269,7 +276,8 @@ class ProcessBetEventServiceTest {
 		service.processSettled(eventId, settledEvent(betId, settledAt));
 
 		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
-		verify(factBetRepository).save(captor.capture());
+		verify(factBetRepository).insertIfAbsent(captor.capture());
+		verify(factBetRepository, never()).save(any());
 		assertThat(captor.getValue().betType()).isNull();
 	}
 
@@ -307,6 +315,7 @@ class ProcessBetEventServiceTest {
 		Instant settledAt = Instant.parse("2026-10-15T12:00:00Z");
 		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
 		when(factBetRepository.findById(betId)).thenReturn(Optional.empty());
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
 		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -318,7 +327,107 @@ class ProcessBetEventServiceTest {
 				settledEvent(betId, settledAt, catalogTeam1Id, "Flamengo", null, null));
 
 		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
-		verify(factBetRepository).save(captor.capture());
+		verify(factBetRepository).insertIfAbsent(captor.capture());
+		verify(factBetRepository, never()).save(any());
 		assertThat(captor.getValue().team1Id()).isEqualTo(catalogTeam1Id);
+	}
+
+	@Test
+	void shouldCompleteTheCommittedSettledRowWhenCreatedLosesTheInsertRace() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID settledTeamId = UUID.randomUUID();
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.empty(), Optional.of(
+				new FactBet(betId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, settledTeamId, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2),
+						BigDecimal.valueOf(50), true, BetStatus.WON, null, 1)));
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(false);
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processCreated(eventId, createdEvent(betId));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().status()).isEqualTo(BetStatus.WON);
+		assertThat(captor.getValue().profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
+		assertThat(captor.getValue().betType()).isEqualTo(BetType.PRE);
+		assertThat(captor.getValue().team1Id()).isEqualTo(settledTeamId);
+		verify(processedEventRepository).save(any());
+	}
+
+	@Test
+	void shouldMergeTheCommittedCreatedRowWhenSettledLosesTheInsertRace() {
+		UUID eventId = UUID.randomUUID();
+		UUID betId = UUID.randomUUID();
+		UUID createdDateId = UUID.randomUUID();
+		when(processedEventRepository.existsByEventId(eventId)).thenReturn(false);
+		when(factBetRepository.findById(betId)).thenReturn(Optional.empty(), Optional.of(
+				new FactBet(betId, createdDateId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+						UUID.randomUUID(), null, null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2), null, null,
+						BetStatus.PENDING, BetType.LIVE, 1)));
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(false);
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.processSettled(eventId, settledEvent(betId, Instant.parse("2026-10-15T12:00:00Z")));
+
+		ArgumentCaptor<FactBet> captor = ArgumentCaptor.forClass(FactBet.class);
+		verify(factBetRepository).save(captor.capture());
+		assertThat(captor.getValue().status()).isEqualTo(BetStatus.WON);
+		assertThat(captor.getValue().betType()).isEqualTo(BetType.LIVE);
+		assertThat(captor.getValue().dateId()).isEqualTo(createdDateId);
+		verify(processedEventRepository).save(any());
+	}
+
+	@Test
+	void shouldEvictTheCacheOnlyAfterTheTransactionCommits() {
+		UUID eventId = UUID.randomUUID();
+		Instant settledAt = Instant.parse("2026-09-15T12:00:00Z");
+		stubDimensionsForSettled();
+
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			service.processSettled(eventId, settledEvent(UUID.randomUUID(), settledAt));
+
+			verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
+			TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+			verify(metricsCacheRepository).evict(2026, 9);
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+		}
+	}
+
+	@Test
+	void shouldNotEvictTheCacheWhenTheTransactionRollsBack() {
+		UUID eventId = UUID.randomUUID();
+		stubDimensionsForSettled();
+
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			service.processSettled(eventId, settledEvent(UUID.randomUUID(), Instant.parse("2026-09-15T12:00:00Z")));
+
+			TransactionSynchronizationManager.getSynchronizations()
+					.forEach(synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+			verify(metricsCacheRepository, never()).evict(anyInt(), anyInt());
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+		}
+	}
+
+	private void stubDimensionsForSettled() {
+		when(dimensionResolver.resolveDate(any())).thenReturn(UUID.randomUUID());
+		when(dimensionResolver.resolveBettingHouse(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveSport(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveLeague(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(dimensionResolver.resolveMarket(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(factBetRepository.insertIfAbsent(any())).thenReturn(true);
 	}
 }

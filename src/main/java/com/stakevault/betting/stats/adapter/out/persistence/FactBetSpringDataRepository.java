@@ -4,13 +4,30 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.stakevault.betting.stats.domain.model.BetStatus;
 import com.stakevault.betting.stats.domain.model.BetType;
 
 interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UUID> {
+
+	@Transactional
+	@Modifying(flushAutomatically = true)
+	@Query(value = """
+			INSERT INTO fact_bet (id, date_id, betting_house_id, sport_id, league_id, market_id, tipster_id,
+			                      team1_id, team2_id, stake, odd, profit, is_win, status, bet_type, bet_count)
+			VALUES (:#{#row.id()}, :#{#row.dateId()}, :#{#row.bettingHouseId()}, :#{#row.sportId()},
+			        :#{#row.leagueId()}, :#{#row.marketId()}, CAST(:#{#row.tipsterId()} AS uuid),
+			        CAST(:#{#row.team1Id()} AS uuid), CAST(:#{#row.team2Id()} AS uuid), :#{#row.stake()},
+			        CAST(:#{#row.odd()} AS numeric), CAST(:#{#row.profit()} AS numeric),
+			        CAST(:#{#row.isWin()} AS boolean), :#{#row.status()}, CAST(:#{#row.betType()} AS varchar),
+			        :#{#row.betCount()})
+			ON CONFLICT (id) DO NOTHING
+			""", nativeQuery = true)
+	int insertIfAbsent(@Param("row") NewFactBetRow row);
 
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
