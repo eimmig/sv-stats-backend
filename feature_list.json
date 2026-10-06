@@ -1931,7 +1931,7 @@
       "subtasks": [
         {
           "id": "feat-030.1",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-747",
           "owner": "agente",
           "name": "Teste de GET /actuator/health/liveness",
