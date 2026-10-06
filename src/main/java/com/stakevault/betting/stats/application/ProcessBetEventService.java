@@ -45,25 +45,33 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		}
 
 		Optional<FactBet> existing = factBetRepository.findById(event.betId());
-		if (existing.isEmpty() || existing.get().status() == BetStatus.PENDING) {
-			UUID dateId = dimensionResolver.resolveDate(event.betDate());
-			UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(),
-					event.bettingHouseName());
-			UUID sportId = dimensionResolver.resolveSport(event.sportId(), event.sportName());
-			UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
-			UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
-			UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
-			UUID team1Id = dimensionResolver.resolveTeam(event.team1Id(), event.team1(), sportId);
-			UUID team2Id = dimensionResolver.resolveTeam(event.team2Id(), event.team2(), sportId);
+		if (existing.isEmpty() && factBetRepository.insertIfAbsent(pendingFactBet(event))) {
+			markProcessed(eventId);
+			return;
+		}
 
-			factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-					tipsterId, team1Id, team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING,
-					event.betType(), 1));
-		} else if (existing.get().betType() == null) {
-			completeFactBetSettledBeforeCreated(existing.get(), event);
+		FactBet current = existing.orElseGet(() -> factBetRepository.findById(event.betId()).orElseThrow());
+		if (current.status() == BetStatus.PENDING) {
+			factBetRepository.save(pendingFactBet(event));
+		} else if (current.betType() == null) {
+			completeFactBetSettledBeforeCreated(current, event);
 		}
 
 		markProcessed(eventId);
+	}
+
+	private FactBet pendingFactBet(BetCreatedEvent event) {
+		UUID dateId = dimensionResolver.resolveDate(event.betDate());
+		UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(), event.bettingHouseName());
+		UUID sportId = dimensionResolver.resolveSport(event.sportId(), event.sportName());
+		UUID leagueId = dimensionResolver.resolveLeague(event.leagueId(), event.leagueName());
+		UUID marketId = dimensionResolver.resolveMarket(event.marketId(), event.marketName());
+		UUID tipsterId = dimensionResolver.resolveTipster(event.tipsterId(), event.tipsterName());
+		UUID team1Id = dimensionResolver.resolveTeam(event.team1Id(), event.team1(), sportId);
+		UUID team2Id = dimensionResolver.resolveTeam(event.team2Id(), event.team2(), sportId);
+
+		return new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId, tipsterId, team1Id,
+				team2Id, event.stake(), event.odd(), null, null, BetStatus.PENDING, event.betType(), 1);
 	}
 
 	private void completeFactBetSettledBeforeCreated(FactBet settled, BetCreatedEvent event) {
@@ -87,6 +95,19 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		}
 
 		Optional<FactBet> existing = factBetRepository.findById(event.betId());
+		FactBet settled = settledFactBet(event, existing);
+		if (existing.isEmpty() && !factBetRepository.insertIfAbsent(settled)) {
+			Optional<FactBet> concurrent = factBetRepository.findById(event.betId());
+			factBetRepository.save(settledFactBet(event, concurrent));
+		} else if (existing.isPresent()) {
+			factBetRepository.save(settled);
+		}
+		evictMetricsFor(event.settledAt());
+
+		markProcessed(eventId);
+	}
+
+	private FactBet settledFactBet(BetSettledEvent event, Optional<FactBet> existing) {
 		UUID dateId = existing.map(FactBet::dateId).orElseGet(() -> dimensionResolver.resolveDate(event.settledAt()));
 		BetType betType = existing.map(FactBet::betType).orElse(null);
 		UUID bettingHouseId = dimensionResolver.resolveBettingHouse(event.bettingHouseId(), event.bettingHouseName());
@@ -99,12 +120,9 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 		UUID team2Id = event.team2Name() != null ? dimensionResolver.resolveTeam(event.team2Id(), event.team2Name(), sportId)
 				: existing.map(FactBet::team2Id).orElse(null);
 
-		factBetRepository.save(new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId,
-				tipsterId, team1Id, team2Id, event.stake(), event.odd(), event.profit(),
-				event.status() == BetStatus.WON, event.status(), betType, 1));
-		evictMetricsFor(event.settledAt());
-
-		markProcessed(eventId);
+		return new FactBet(event.betId(), dateId, bettingHouseId, sportId, leagueId, marketId, tipsterId, team1Id,
+				team2Id, event.stake(), event.odd(), event.profit(), event.status() == BetStatus.WON, event.status(),
+				betType, 1);
 	}
 
 	private void evictMetricsFor(Instant instant) {

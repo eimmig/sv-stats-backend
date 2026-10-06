@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetStatus;
+import com.stakevault.betting.stats.domain.model.BetType;
 import com.stakevault.betting.stats.domain.model.DimBettingHouse;
 import com.stakevault.betting.stats.domain.model.DimLeague;
 import com.stakevault.betting.stats.domain.model.DimMarket;
@@ -96,6 +97,46 @@ class JpaFactBetRepositoryIntegrationTest extends TenantSchemaIntegrationSupport
 			assertThat(found.status()).isEqualTo(BetStatus.WON);
 			assertThat(found.profit()).isEqualByComparingTo(BigDecimal.valueOf(150));
 			assertThat(found.isWin()).isTrue();
+		}
+	}
+
+	@Test
+	void shouldInsertOnlyOnceAndKeepTheExistingRowWhenTheIdAlreadyExists() {
+		try (var _ = TenantContextScope.open(schema)) {
+			FactBet first = newFactBet();
+			FactBet competing = new FactBet(first.id(), first.dateId(), first.bettingHouseId(), first.sportId(),
+					first.leagueId(), first.marketId(), null, null, null, first.stake(), BigDecimal.valueOf(2),
+					BigDecimal.valueOf(150), true, BetStatus.WON, BetType.LIVE, 1);
+
+			boolean firstInserted = factBetRepository.insertIfAbsent(first);
+			boolean competingInserted = factBetRepository.insertIfAbsent(competing);
+
+			assertThat(firstInserted).isTrue();
+			assertThat(competingInserted).isFalse();
+			FactBet found = factBetRepository.findById(first.id()).orElseThrow();
+			assertThat(found.status()).isEqualTo(BetStatus.PENDING);
+			assertThat(found.betType()).isNull();
+			assertThat(found.profit()).isNull();
+		}
+	}
+
+	@Test
+	void shouldPersistEveryColumnWhenInsertingIfAbsent() {
+		try (var _ = TenantContextScope.open(schema)) {
+			FactBet base = newFactBet();
+			FactBet settled = new FactBet(base.id(), base.dateId(), base.bettingHouseId(), base.sportId(),
+					base.leagueId(), base.marketId(), null, null, null, base.stake(), BigDecimal.valueOf(2),
+					BigDecimal.valueOf(100), true, BetStatus.WON, BetType.LIVE, 1);
+
+			factBetRepository.insertIfAbsent(settled);
+
+			FactBet found = factBetRepository.findById(settled.id()).orElseThrow();
+			assertThat(found.status()).isEqualTo(BetStatus.WON);
+			assertThat(found.betType()).isEqualTo(BetType.LIVE);
+			assertThat(found.odd()).isEqualByComparingTo(BigDecimal.valueOf(2));
+			assertThat(found.profit()).isEqualByComparingTo(BigDecimal.valueOf(100));
+			assertThat(found.isWin()).isTrue();
+			assertThat(found.tipsterId()).isNull();
 		}
 	}
 

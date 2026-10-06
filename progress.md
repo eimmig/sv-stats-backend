@@ -665,3 +665,13 @@ cobria `/actuator/health/liveness`, usado pelos probes do Kubernetes. `HealthChe
 parametriza `/actuator/health` e `/actuator/health/liveness`; readiness (db e rabbit) segue separado por assertar
 `db`. Só `src/test`. Plan Reviewer: READY (reaproveitado). Delivery Reviewer e Test Suite Auditor:
 PASS, sem achado. `./init.sh` verde. Vault sem nota nova. Story SV-746, subtasks SV-747/748.
+
+## `feat-028` fechada — corrida BetCreated x BetSettled em `fact_bet` (2026-10-06)
+
+Causa raiz do achado da rodada de produção de 2026-10-04 (18 apostas `pending` em `fact_bet` apesar de
+liquidadas): o `save` do adapter relia a linha e o `applyFrom` sobrescrevia o que a outra transação já
+tinha commitado, sem violar a PK e sem retry. Correção: `FactBetRepository.insertIfAbsent`
+(`ON CONFLICT DO NOTHING`) e, ao perder a corrida, releitura + merge existente. Teste determinístico
+(`@MockitoSpyBean` pausando o `findById`) falhou no código antigo e passa no novo. Plan Reviewer,
+Delivery Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta. `./init.sh` verde. Vault:
+`docs/services/stats-service.md` atualizado. Story SV-749, subtasks SV-750/751/752.
