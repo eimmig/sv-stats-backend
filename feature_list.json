@@ -1925,10 +1925,40 @@
       "scope": "HealthChecksTest: uma asserção de GET /actuator/health/liveness com status 200 e UP, ao lado das de /actuator/health e /readiness.",
       "description": "Achado do Delivery Reviewer de infra feat-012 (2026-10-04): os manifests do infra passaram a usar /actuator/health/liveness no livenessProbe e no startupProbe, mas nenhum teste deste serviço cobre esse endpoint; se uma mudança de configuração do Actuator o desligar, os pods entram em CrashLoop sem nenhum teste avisar.",
       "dependencies": [],
-      "status": "not-started",
-      "plan_review": "",
-      "jira": "",
-      "subtasks": [],
+      "status": "in-progress",
+      "plan_review": "2026-10-06, Plan Reviewer reaproveitado de services/api-gateway feat-020 (READY, sem BLOCKER/MAJOR): probes ja habilitados no application.yml e infra/k8s usa /actuator/health/liveness; HealthChecksTest so cobre /actuator/health (com nome enganoso shouldRespondUpForLiveness) e /readiness. Achado do SonarCloud java:S5976 em feat-020: testes de corpo identico viram @ParameterizedTest (docs/testes.md). Readiness fica separado por assertar db/rabbit. Escopo so src/test.",
+      "jira": "SV-746",
+      "subtasks": [
+        {
+          "id": "feat-030.1",
+          "status": "in-progress",
+          "jira": "SV-747",
+          "owner": "agente",
+          "name": "Teste de GET /actuator/health/liveness",
+          "detail": "Os manifests do infra usam esse path no livenessProbe e no startupProbe; sem teste, uma mudanca de config do Actuator derruba os pods em CrashLoop sem aviso.",
+          "checklist": [
+            "HealthChecksTest cobre /actuator/health e /actuator/health/liveness com 200 e \"status\":\"UP\" via @ParameterizedTest.",
+            "Teste de readiness mantido separado (asserta o db).",
+            "Sem comentario no codigo."
+          ],
+          "validation": "mvn test -Dtest=HealthChecksTest verde."
+        },
+        {
+          "id": "feat-030.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-748",
+          "detail": "Fechamento da feature: changelog, init.sh e skills de revisao.",
+          "checklist": [
+            "CHANGELOG.md com linhas em [Unreleased].",
+            "./init.sh do servico passa.",
+            "Delivery Reviewer e Test Suite Auditor rodados.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde e evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
       "evidence": ""
     }
   ]
