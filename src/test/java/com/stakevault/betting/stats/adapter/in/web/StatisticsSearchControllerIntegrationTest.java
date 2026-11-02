@@ -151,6 +151,37 @@ class StatisticsSearchControllerIntegrationTest extends TenantSchemaIntegrationS
 	}
 
 	@Test
+	void shouldLeaveVoidBetsOutOfTheWinRateDenominator() throws Exception {
+		UUID sportId;
+		UUID leagueId;
+		try (var _ = TenantContextScope.open(schema)) {
+			sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID date = DimDateFixtures.ensure(dimDateRepository, 1, 9, 2026, 3, "TUESDAY");
+
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), true,
+					BetStatus.WON, null, 1));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(-100), false,
+					BetStatus.LOST, null, 1));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), date, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.ZERO, false,
+					BetStatus.VOID, null, 1));
+		}
+
+		HttpResponse<String> response = get("sportId=" + sportId + "&leagueId=" + leagueId, "X-Tenant-Id",
+				tenantSlug);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		JsonNode summary = objectMapper.readTree(response.body()).path("summary");
+		assertThat(summary.path("betCount").asInt()).isEqualTo(3);
+		assertThat(summary.path("winRate").asDouble()).isEqualTo(0.5);
+	}
+
+	@Test
 	void shouldFilterByBetTypeCaseInsensitivelyAndRejectAnUnknownValue() throws Exception {
 		UUID sportId;
 		UUID leagueId;
