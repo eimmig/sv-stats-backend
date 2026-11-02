@@ -93,9 +93,10 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 
 	private static BetMetrics toMetrics(BetAggregate aggregate) {
 		BigDecimal roi = roiOf(aggregate.netProfit(), aggregate.totalStaked());
-		BigDecimal winRate = aggregate.settledCount() == 0 ? BigDecimal.ZERO
+		long decided = aggregate.wonCount() + aggregate.lostCount();
+		BigDecimal winRate = decided == 0 ? BigDecimal.ZERO
 				: BigDecimal.valueOf(aggregate.wonCount())
-						.divide(BigDecimal.valueOf(aggregate.settledCount()), SCALE, RoundingMode.HALF_UP);
+						.divide(BigDecimal.valueOf(decided), SCALE, RoundingMode.HALF_UP);
 		return new BetMetrics(aggregate.totalStaked(), aggregate.netProfit(), roi, winRate, aggregate.settledCount(),
 				aggregate.wonCount(), aggregate.lostCount(), aggregate.voidCount(), aggregate.preCount(),
 				aggregate.liveCount(), aggregate.avgOdd());

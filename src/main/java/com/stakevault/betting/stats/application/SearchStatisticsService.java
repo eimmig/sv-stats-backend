@@ -48,8 +48,9 @@ public class SearchStatisticsService implements SearchStatisticsUseCase {
 	}
 
 	private static BigDecimal winRate(SearchAggregate aggregate) {
-		return aggregate.settledCount() == 0 ? BigDecimal.ZERO
+		long decided = aggregate.wonCount() + aggregate.lostCount();
+		return decided == 0 ? BigDecimal.ZERO
 				: BigDecimal.valueOf(aggregate.wonCount())
-						.divide(BigDecimal.valueOf(aggregate.settledCount()), SCALE, RoundingMode.HALF_UP);
+						.divide(BigDecimal.valueOf(decided), SCALE, RoundingMode.HALF_UP);
 	}
 }
