@@ -2207,6 +2207,79 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-032",
+      "name": "winRate sem apostas devolvidas no denominador",
+      "goal": "Padronizar a taxa de acerto do sistema em ganhas / (ganhas + perdidas), igual a taxaAcertoEntradas do Relatorio do periodo e a definicao do TCC 2.",
+      "scope": "winRate de CalculateMetricsService (GET /api/v1/statistics, overall e segmentos, e o que mais reaproveitar BetMetrics) e de SearchStatisticsService (GET /api/v1/statistics/search) passa a dividir por wonCount + lostCount. Atualizar docs/estatisticas.md (uma unica definicao de taxa de acerto), docs/contratos-de-api.md e docs/services/stats-service.md. Fora de escopo: mudar o contrato (nome e tipo do campo winRate continuam iguais) e o calculo do EV no apps/web, que ja usa a definicao padronizada.",
+      "description": "Epic-042, apontamento da revisao do TCC 2 (2026-10-16). Hoje winRate = wonCount / settledCount, com void no denominador (decisao de interpretacao de feat-004, registrada em docs/estatisticas.md); o Relatorio do periodo usa wonCount / (wonCount + lostCount). Usuario decidiu que devolvidas nao entram na taxa de acerto. Pontos para o Plan Reviewer: (1) SearchAggregate nao carrega lostCount hoje, a query de aggregateForSearch precisa passar a contar perdidas; (2) recorte so com devolvidas (wonCount + lostCount = 0) - manter 0 como o caso settledCount = 0 atual ou devolver null; (3) metricas ja em cache no Redis guardam o winRate antigo ate expirar ou ser evictadas - definir se precisa invalidar no deploy; (4) testes que fixam o valor antigo com void.",
+      "dependencies": [],
+      "status": "done",
+      "plan_review": "2026-11-02, Plan Reviewer (risco baixo, auto-revisao sem subagente): READY WITH CONCERNS. Verificado no repositorio: CalculateMetricsService.toMetrics e SearchStatisticsService.winRate dividem por settledCount (COUNT(f) dos nao pendentes, void incluso); BetAggregate ja carrega lostCount (query com :lost), SearchAggregate e AggregateWithOddProjection nao; CalculateMetricsServiceTest fixa winRate por (won, settled); cache Redis com SAFETY_NET_TTL de 1 h e eviction por mes so em BetSettled. Decisoes: (1) won + lost = 0 devolve 0, como settledCount = 0 hoje (winRate nunca null no contrato); (2) sem invalidacao no deploy: valor antigo dura no maximo 1 h pelo TTL, registrado na evidencia; (3) aggregateForSearch ganha lostCount com :lost, mesmo padrao das outras queries; (4) contrato inalterado (nome e tipo de winRate).",
+      "jira": "SV-791",
+      "subtasks": [
+        {
+          "id": "feat-032.1",
+          "name": "winRate com ganhas / (ganhas + perdidas)",
+          "status": "done",
+          "jira": "SV-792",
+          "detail": "Troca o denominador nos dois calculos e faz a busca contar perdidas.",
+          "checklist": [
+            "CalculateMetricsService.toMetrics divide por wonCount + lostCount.",
+            "SearchAggregate, AggregateWithOddProjection e aggregateForSearch com lostCount (:lost).",
+            "SearchStatisticsService.winRate divide por wonCount + lostCount.",
+            "CalculateMetricsServiceTest com casos de void (vermelhos antes da troca).",
+            "JpaFactBetRepositorySearchIntegrationTest e StatisticsSearchControllerIntegrationTest com aposta void no recorte."
+          ],
+          "validation": "mvn verify verde; testes novos falham com a formula antiga.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-032.2",
+          "name": "CHANGELOG e verificacao final",
+          "status": "done",
+          "jira": "SV-793",
+          "detail": "Fechamento: vault com uma definicao unica, init.sh e skills de revisao.",
+          "checklist": [
+            "CHANGELOG.md com linhas em [Unreleased].",
+            "docs/estatisticas.md, docs/contratos-de-api.md e docs/services/stats-service.md com uma unica definicao de taxa de acerto (commit no sv-harness).",
+            "./init.sh do servico passa.",
+            "Delivery Reviewer, Test Suite Auditor e Persistence Auditor rodados.",
+            "Vault (docs/) revisado: alguma descoberta desta feature - mecanismo reaproveitavel, gotcha de lib/config, lacuna de especificacao, decisao que diverge do ja documentado - sem nota correspondente? Se sim, atualizar/criar a nota do assunto (nao docs/DECISIONS-LOG.md a menos que divirja do TCC 1) no mesmo commit"
+          ],
+          "validation": "init.sh verde e evidence preenchida.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": {
+        "resumo": "Fechada em 2026-11-02. winRate = wonCount / (wonCount + lostCount) em todos os endpoints do stats-service; aposta devolvida fora do denominador, igual a taxaAcertoEntradas do web e a equacao do TCC 2.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "CalculateMetricsService.toMetrics (overall, segmentos, meses e byBetType de GET /api/v1/statistics) e SearchStatisticsService.winRate (GET /api/v1/statistics/search) dividem por wonCount + lostCount; sem ganhas nem perdidas devolve 0.",
+              "aggregateForSearch ganhou lostCount (SUM(CASE WHEN f.status = :lost ...)), em SearchAggregate e AggregateWithOddProjection, mesmo padrao das outras queries.",
+              "Vault (sv-harness 16cadf7): docs/estatisticas.md com uma definicao unica e nota do valor antigo; docs/services/stats-service.md e docs/contratos-de-api.md alinhados."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "CalculateMetricsServiceTest: casos com void (1 ganha, 1 perdida, 1 devolvida -> 0.5000; so devolvida -> 0) FALHARAM com a formula antiga ('expected 0.5000 but was 0.3333') e passam.",
+              "StatisticsSearchControllerIntegrationTest.shouldLeaveVoidBetsOutOfTheWinRateDenominator (Testcontainers, HTTP real): falhou com 0.3333 e passa com 0.5.",
+              "./init.sh (mvn verify, gate de cobertura) verde; CI do PR #106 verde.",
+              "Delivery Reviewer, Test Suite Auditor e Persistence Auditor (auto-revisao): PASS. Consumidores do web (dashboard, visao geral, comparativo, busca) so exibem o campo."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Metricas ja no Redis mantem o valor antigo por no maximo 1 h apos o deploy (SAFETY_NET_TTL), aceito no plan_review. Producao so muda depois do rollout manual do stats-service no k3s."
+            ]
+          }
+        ]
+      }
     }
   ]
 }

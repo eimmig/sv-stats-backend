@@ -693,3 +693,13 @@ Apontamento de `feat-029` (init.sh local vermelho, CI verde): `findById().orElse
 (`DROP SCHEMA` concorrendo, `deadlock detected`, retry com backoff) quebrava os testes seguintes. Corrigido
 com `ignoreException(NoSuchElementException.class)`. Só `src/test`. `./init.sh` verde. Vault:
 `docs/testes.md`. Story SV-757, subtasks SV-758/759.
+
+## `feat-032` fechada — winRate sem apostas devolvidas no denominador (2026-11-02)
+
+`epic-042`, decisão do usuário de 2026-10-16. `winRate = wonCount / (wonCount + lostCount)` em
+`CalculateMetricsService` (todo `GET /api/v1/statistics`) e `SearchStatisticsService`; a query da busca
+passou a contar `lostCount`. Sem ganhas nem perdidas devolve `0`. Testes com `void` (unitário e HTTP com
+Testcontainers) falharam com a fórmula antiga (`0.3333`) e passam (`0.5`). Plan Reviewer, Delivery
+Reviewer, Test Suite Auditor e Persistence Auditor por revisão direta. `./init.sh` verde. Vault:
+`docs/estatisticas.md`, `docs/services/stats-service.md`, `docs/contratos-de-api.md`. Cache antigo dura no
+máximo 1 h após o deploy (TTL). Produção só muda após rollout manual. Story SV-791, subtasks SV-792/793.

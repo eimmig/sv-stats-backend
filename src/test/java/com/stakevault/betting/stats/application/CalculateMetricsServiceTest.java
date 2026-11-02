@@ -37,16 +37,19 @@ class CalculateMetricsServiceTest {
 		service = new CalculateMetricsService(factBetRepository);
 	}
 
-	@ParameterizedTest(name = "staked={0} profit={1} won={2} settled={3} -> roi={4} winRate={5}")
+	@ParameterizedTest(name = "staked={0} profit={1} won={2} lost={3} void={4} -> roi={5} winRate={6}")
 	@CsvSource({
-			"200, -50, 1, 2, -0.2500, 0.5000",
-			"0, 0, 0, 0, 0.0000, 0.0000",
-			"100, 100, 1, 1, 1.0000, 1.0000",
-			"100, -100, 0, 1, -1.0000, 0.0000" })
-	void shouldComputeRoiAndWinRateFromAggregate(String staked, String profit, long won, long settled, String roi,
-			String winRate) {
-		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
-				new BetAggregate(new BigDecimal(staked), new BigDecimal(profit), won, 0, 0, 0, 0, null, settled));
+			"200, -50, 1, 1, 0, -0.2500, 0.5000",
+			"0, 0, 0, 0, 0, 0.0000, 0.0000",
+			"100, 100, 1, 0, 0, 1.0000, 1.0000",
+			"100, -100, 0, 1, 0, -1.0000, 0.0000",
+			"300, 50, 1, 1, 1, 0.1667, 0.5000",
+			"50, 0, 0, 0, 1, 0.0000, 0.0000" })
+	void shouldComputeRoiAndWinRateFromAggregate(String staked, String profit, long won, long lost, long voided,
+			String roi, String winRate) {
+		long settled = won + lost + voided;
+		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(new BetAggregate(
+				new BigDecimal(staked), new BigDecimal(profit), won, lost, voided, 0, 0, null, settled));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 

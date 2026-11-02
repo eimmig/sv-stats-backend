@@ -149,12 +149,14 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public SearchAggregate aggregateForSearch(StatisticsSearchFilter filter) {
-		AggregateWithOddProjection projection = jpaRepository.aggregateForSearch(BetStatus.PENDING, resolve(filter));
+		AggregateWithOddProjection projection = jpaRepository.aggregateForSearch(BetStatus.PENDING, BetStatus.LOST,
+				resolve(filter));
 		BigDecimal totalStaked = projection.getTotalStaked() != null ? projection.getTotalStaked() : BigDecimal.ZERO;
 		BigDecimal netProfit = projection.getNetProfit() != null ? projection.getNetProfit() : BigDecimal.ZERO;
 		long wonCount = projection.getWonCount() != null ? projection.getWonCount() : 0L;
+		long lostCount = projection.getLostCount() != null ? projection.getLostCount() : 0L;
 		long settledCount = projection.getSettledCount() != null ? projection.getSettledCount() : 0L;
-		return new SearchAggregate(totalStaked, netProfit, wonCount, settledCount, projection.getAvgOdd());
+		return new SearchAggregate(totalStaked, netProfit, wonCount, lostCount, settledCount, projection.getAvgOdd());
 	}
 
 	@Override

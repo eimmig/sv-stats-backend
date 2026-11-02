@@ -245,7 +245,8 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 
 	@Query("""
 			SELECT SUM(f.stake) AS totalStaked, SUM(f.profit) AS netProfit,
-			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount, COUNT(f) AS settledCount,
+			       SUM(CASE WHEN f.isWin = true THEN 1L ELSE 0L END) AS wonCount,
+			       SUM(CASE WHEN f.status = :lost THEN 1L ELSE 0L END) AS lostCount, COUNT(f) AS settledCount,
 			       AVG(f.odd) AS avgOdd
 			FROM FactBetJpaEntity f, DimDateJpaEntity d
 			WHERE f.dateId = d.id AND f.status <> :pending
@@ -257,7 +258,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
 			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
 			""")
-	AggregateWithOddProjection aggregateForSearch(@Param("pending") BetStatus pending,
+	AggregateWithOddProjection aggregateForSearch(@Param("pending") BetStatus pending, @Param("lost") BetStatus lost,
 			@Param("filter") ResolvedStatisticsSearchFilter filter);
 
 	@Query("""
