@@ -10,6 +10,8 @@ interface AggregateWithOddProjection {
 
 	Long getWonCount();
 
+	Long getLostCount();
+
 	Long getSettledCount();
 
 	BigDecimal getAvgOdd();
