@@ -2238,7 +2238,7 @@
         {
           "id": "feat-032.2",
           "name": "CHANGELOG e verificacao final",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-793",
           "detail": "Fechamento: vault com uma definicao unica, init.sh e skills de revisao.",
           "checklist": [
@@ -2252,7 +2252,34 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": {
+        "resumo": "Fechada em 2026-11-02. winRate = wonCount / (wonCount + lostCount) em todos os endpoints do stats-service; aposta devolvida fora do denominador, igual a taxaAcertoEntradas do web e a equacao do TCC 2.",
+        "secoes": [
+          {
+            "titulo": "O que foi feito",
+            "itens": [
+              "CalculateMetricsService.toMetrics (overall, segmentos, meses e byBetType de GET /api/v1/statistics) e SearchStatisticsService.winRate (GET /api/v1/statistics/search) dividem por wonCount + lostCount; sem ganhas nem perdidas devolve 0.",
+              "aggregateForSearch ganhou lostCount (SUM(CASE WHEN f.status = :lost ...)), em SearchAggregate e AggregateWithOddProjection, mesmo padrao das outras queries.",
+              "Vault (sv-harness 16cadf7): docs/estatisticas.md com uma definicao unica e nota do valor antigo; docs/services/stats-service.md e docs/contratos-de-api.md alinhados."
+            ]
+          },
+          {
+            "titulo": "Como foi verificado",
+            "itens": [
+              "CalculateMetricsServiceTest: casos com void (1 ganha, 1 perdida, 1 devolvida -> 0.5000; so devolvida -> 0) FALHARAM com a formula antiga ('expected 0.5000 but was 0.3333') e passam.",
+              "StatisticsSearchControllerIntegrationTest.shouldLeaveVoidBetsOutOfTheWinRateDenominator (Testcontainers, HTTP real): falhou com 0.3333 e passa com 0.5.",
+              "./init.sh (mvn verify, gate de cobertura) verde; CI do PR #106 verde.",
+              "Delivery Reviewer, Test Suite Auditor e Persistence Auditor (auto-revisao): PASS. Consumidores do web (dashboard, visao geral, comparativo, busca) so exibem o campo."
+            ]
+          },
+          {
+            "titulo": "O que divergiu do plano",
+            "itens": [
+              "Nada. Metricas ja no Redis mantem o valor antigo por no maximo 1 h apos o deploy (SAFETY_NET_TTL), aceito no plan_review. Producao so muda depois do rollout manual do stats-service no k3s."
+            ]
+          }
+        ]
+      }
     }
   ]
 }
