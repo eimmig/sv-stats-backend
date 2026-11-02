@@ -2222,7 +2222,7 @@
         {
           "id": "feat-032.1",
           "name": "winRate com ganhas / (ganhas + perdidas)",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-792",
           "detail": "Troca o denominador nos dois calculos e faz a busca contar perdidas.",
           "checklist": [
@@ -2238,7 +2238,7 @@
         {
           "id": "feat-032.2",
           "name": "CHANGELOG e verificacao final",
-          "status": "not-started",
+          "status": "in-progress",
           "jira": "SV-793",
           "detail": "Fechamento: vault com uma definicao unica, init.sh e skills de revisao.",
           "checklist": [
