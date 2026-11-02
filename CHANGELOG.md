@@ -6,6 +6,8 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+
+## [0.3.1] - 2026-11-02
 - [SV-791](https://stakevault.atlassian.net/browse/SV-791) - winRate sem apostas devolvidas no denominador
 - [SV-792](https://stakevault.atlassian.net/browse/SV-792) - winRate com ganhas / (ganhas + perdidas)
 - [SV-793](https://stakevault.atlassian.net/browse/SV-793) - CHANGELOG e verificacao final
