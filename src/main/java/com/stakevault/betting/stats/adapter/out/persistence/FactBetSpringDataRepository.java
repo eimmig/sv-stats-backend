@@ -36,7 +36,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimDateJpaEntity d
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -57,7 +61,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimSportJpaEntity s, DimDateJpaEntity d
 			WHERE f.sportId = s.id AND f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -79,7 +87,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimMarketJpaEntity m, DimDateJpaEntity d
 			WHERE f.marketId = m.id AND f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -101,7 +113,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimBettingHouseJpaEntity h, DimDateJpaEntity d
 			WHERE f.bettingHouseId = h.id AND f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -123,7 +139,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimLeagueJpaEntity l, DimDateJpaEntity d
 			WHERE f.leagueId = l.id AND f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -145,7 +165,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimTipsterJpaEntity t, DimDateJpaEntity d
 			WHERE f.tipsterId = t.id AND f.dateId = d.id AND f.status <> :pending AND f.tipsterId IS NOT NULL
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -167,7 +191,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimTeamJpaEntity tm, DimDateJpaEntity d
 			WHERE (f.team1Id = tm.id OR f.team2Id = tm.id) AND f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -189,7 +217,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimDateJpaEntity d
 			WHERE f.dateId = d.id AND f.status <> :pending
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})
@@ -211,7 +243,11 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			       SUM(CASE WHEN f.status = :voidStatus THEN 1L ELSE 0L END) AS voidCount,
 			       SUM(CASE WHEN f.betType = :pre THEN 1L ELSE 0L END) AS preCount,
 			       SUM(CASE WHEN f.betType = :live THEN 1L ELSE 0L END) AS liveCount,
-			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount
+			       AVG(f.odd) AS avgOdd, COUNT(f) AS settledCount,
+			       AVG(CASE WHEN (f.isWin = true OR f.status = :lost) AND f.odd IS NOT NULL THEN 1.0 / f.odd END)
+			           AS impliedProbability,
+			       SUM(f.profit * f.profit) AS profitSquaredSum, SUM(f.stake * f.stake) AS stakeSquaredSum,
+			       SUM(f.profit * f.stake) AS profitStakeSum
 			FROM FactBetJpaEntity f, DimDateJpaEntity d
 			WHERE f.dateId = d.id AND f.status <> :pending AND f.betType IS NOT NULL
 			  AND (:#{#filter.bettingHouseId()} IS NULL OR f.bettingHouseId = :#{#filter.bettingHouseId()})

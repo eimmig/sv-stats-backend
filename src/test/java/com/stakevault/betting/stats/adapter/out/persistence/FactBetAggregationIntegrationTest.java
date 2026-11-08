@@ -291,6 +291,53 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 	}
 
 	@Test
+	void shouldComputeImpliedProbabilityFromDecidedBetsWithOddAndRoiSumsFromAllSettledBets() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Sport")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			// decididas com odd: entram na probabilidade implicita (1/2,0 e 1/1,6)
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(100),
+					BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), BetStatus.WON, BetType.PRE));
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(50),
+					BigDecimal.valueOf(1.6), BigDecimal.valueOf(-50), BetStatus.LOST, BetType.PRE));
+			// decidida sem odd (linha anterior a coluna odd): fora da implicita, dentro dos somatorios
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(30), null,
+					BigDecimal.valueOf(15), BetStatus.WON, BetType.PRE));
+			// devolvida: fora da implicita, dentro dos somatorios do ROI
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(20),
+					BigDecimal.valueOf(3.0), BigDecimal.ZERO, BetStatus.VOID, BetType.PRE));
+			// pendente: fora de tudo
+			factBetRepository.save(pendingBet(houseId, sportId, marketId, BigDecimal.valueOf(500)));
+
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.impliedProbability()).isEqualByComparingTo("0.5625");
+			assertThat(aggregate.profitSquaredSum()).isEqualByComparingTo("12725");
+			assertThat(aggregate.stakeSquaredSum()).isEqualByComparingTo("13800");
+			assertThat(aggregate.profitStakeSum()).isEqualByComparingTo("7950");
+
+			List<SegmentedBetAggregate> bySport = factBetRepository.aggregateBySport(StatisticsFilter.none());
+			assertThat(bySport).singleElement().satisfies(segment -> {
+				assertThat(segment.aggregate().impliedProbability()).isEqualByComparingTo("0.5625");
+				assertThat(segment.aggregate().profitStakeSum()).isEqualByComparingTo("7950");
+			});
+		}
+	}
+
+	@Test
+	void shouldReturnNullImpliedProbabilityAndZeroSumsWhenThereIsNoSettledBet() {
+		try (var _ = TenantContextScope.open(schema)) {
+			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
+
+			assertThat(aggregate.impliedProbability()).isNull();
+			assertThat(aggregate.profitSquaredSum()).isZero();
+			assertThat(aggregate.stakeSquaredSum()).isZero();
+			assertThat(aggregate.profitStakeSum()).isZero();
+		}
+	}
+
+	@Test
 	void shouldAggregateByBetTypeWithExactlyTwoBuckets() {
 		try (var _ = TenantContextScope.open(schema)) {
 			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();

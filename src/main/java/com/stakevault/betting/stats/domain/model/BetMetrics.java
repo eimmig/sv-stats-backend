@@ -4,5 +4,6 @@ import java.math.BigDecimal;
 
 public record BetMetrics(BigDecimal totalStaked, BigDecimal netProfit, BigDecimal roi, BigDecimal winRate,
 		long settledCount, long wonCount, long lostCount, long voidCount, long preCount, long liveCount,
-		BigDecimal avgOdd) {
+		BigDecimal avgOdd, BigDecimal impliedProbability, BigDecimal edge, BigDecimal winRateLower,
+		BigDecimal winRateUpper, BigDecimal roiLower, BigDecimal roiUpper) {
 }
