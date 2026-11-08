@@ -12,7 +12,9 @@ import java.math.RoundingMode;
 public final class ConfidenceIntervals {
 
 	private static final int SCALE = 4;
-	private static final MathContext MC = MathContext.DECIMAL64;
+	private static final MathContext MC = MathContext.DECIMAL128;
+	/** Abaixo desta fracao da soma dos quadrados, a soma dos residuos e cancelamento numerico. */
+	private static final BigDecimal RELATIVE_TOLERANCE = new BigDecimal("1E-20");
 	private static final BigDecimal Z = new BigDecimal("1.96");
 	private static final BigDecimal Z_SQUARED = Z.multiply(Z);
 	private static final BigDecimal TWO = BigDecimal.valueOf(2);
@@ -54,7 +56,8 @@ public final class ConfidenceIntervals {
 		BigDecimal ratio = profitSum.divide(stakeSum, MC);
 		BigDecimal residualSquares = profitSquaredSum.subtract(TWO.multiply(ratio).multiply(profitStakeSum))
 				.add(ratio.multiply(ratio).multiply(stakeSquaredSum));
-		if (residualSquares.signum() <= 0) {
+		BigDecimal scale = profitSquaredSum.add(ratio.multiply(ratio).multiply(stakeSquaredSum));
+		if (residualSquares.compareTo(scale.multiply(RELATIVE_TOLERANCE)) <= 0) {
 			return null;
 		}
 		BigDecimal variance = residualSquares.divide(n.subtract(BigDecimal.ONE), MC);

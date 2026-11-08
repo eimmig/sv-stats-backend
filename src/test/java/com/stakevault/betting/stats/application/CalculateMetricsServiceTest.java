@@ -50,7 +50,7 @@ class CalculateMetricsServiceTest {
 		long settled = won + lost + voided;
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(new BetAggregate(
 				new BigDecimal(staked), new BigDecimal(profit), won, lost, voided, 0, 0, null, settled, null,
-				BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+				won + lost, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 
@@ -64,7 +64,8 @@ class CalculateMetricsServiceTest {
 		// 2 ganhas, 1 perdida e 1 devolvida: stakes 100, 50, 30, 20 e lucros 100, -50, 15, 0
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(new BetAggregate(
 				BigDecimal.valueOf(200), BigDecimal.valueOf(65), 2, 1, 1, 4, 0, BigDecimal.valueOf(2.15), 4,
-				new BigDecimal("0.5625"), new BigDecimal("12725"), new BigDecimal("13800"), new BigDecimal("7950")));
+				new BigDecimal("0.5625"), 3, new BigDecimal("12725"), new BigDecimal("13800"),
+				new BigDecimal("7950")));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 
@@ -79,9 +80,23 @@ class CalculateMetricsServiceTest {
 	}
 
 	@Test
+	void shouldLeaveEdgeNullWhenSomeDecidedBetHasNoOdd() {
+		// 3 decididas, so 2 com odd: a taxa de acerto e a implicita teriam populacoes diferentes
+		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(new BetAggregate(
+				BigDecimal.valueOf(180), BigDecimal.valueOf(65), 2, 1, 0, 3, 0, BigDecimal.valueOf(1.8), 3,
+				new BigDecimal("0.5625"), 2, new BigDecimal("12725"), new BigDecimal("13400"),
+				new BigDecimal("7950")));
+
+		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
+
+		assertThat(metrics.impliedProbability()).isEqualByComparingTo("0.5625");
+		assertThat(metrics.edge()).isNull();
+	}
+
+	@Test
 	void shouldLeaveImpliedProbabilityEdgeAndIntervalsNullWithoutDecidedBets() {
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(new BetAggregate(
-				BigDecimal.valueOf(50), BigDecimal.ZERO, 0, 0, 1, 0, 0, null, 1, null, BigDecimal.ZERO,
+				BigDecimal.valueOf(50), BigDecimal.ZERO, 0, 0, 1, 0, 0, null, 1, null, 0, BigDecimal.ZERO,
 				new BigDecimal("2500"), BigDecimal.ZERO));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
@@ -98,7 +113,7 @@ class CalculateMetricsServiceTest {
 	void shouldCopyNewCountsAndAvgOddFromAggregateToMetrics() {
 		when(factBetRepository.aggregateOverall(StatisticsFilter.none())).thenReturn(
 				new BetAggregate(BigDecimal.valueOf(300), BigDecimal.valueOf(-50), 1, 1, 1, 1, 1,
-						BigDecimal.valueOf(1.75), 3, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+						BigDecimal.valueOf(1.75), 3, null, 2, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
 
 		BetMetrics metrics = service.calculateOverall(StatisticsFilter.none());
 
@@ -115,7 +130,7 @@ class CalculateMetricsServiceTest {
 		String sportId = UUID.randomUUID().toString();
 		when(factBetRepository.aggregateBySport(StatisticsFilter.none())).thenReturn(
 				List.of(new SegmentedBetAggregate(sportId, "Soccer",
-						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, 1, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
 
 		List<SegmentedBetMetrics> result = service.calculateBySport(StatisticsFilter.none());
 
@@ -132,7 +147,7 @@ class CalculateMetricsServiceTest {
 		String leagueId = UUID.randomUUID().toString();
 		when(factBetRepository.aggregateByLeague(StatisticsFilter.none())).thenReturn(
 				List.of(new SegmentedBetAggregate(leagueId, "Premier League",
-						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, 1, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
 
 		List<SegmentedBetMetrics> result = service.calculateByLeague(StatisticsFilter.none());
 
@@ -146,7 +161,7 @@ class CalculateMetricsServiceTest {
 		String tipsterId = UUID.randomUUID().toString();
 		when(factBetRepository.aggregateByTipster(StatisticsFilter.none())).thenReturn(
 				List.of(new SegmentedBetAggregate(tipsterId, "Tipster",
-						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
+						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 0, 0, null, 1, null, 1, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
 
 		List<SegmentedBetMetrics> result = service.calculateByTipster(StatisticsFilter.none());
 
@@ -160,7 +175,7 @@ class CalculateMetricsServiceTest {
 		when(factBetRepository.aggregateByBetType(StatisticsFilter.none())).thenReturn(
 				List.of(new SegmentedBetAggregate("PRE", "PRE",
 						new BetAggregate(BigDecimal.valueOf(100), BigDecimal.valueOf(50), 1, 0, 0, 1, 0,
-								BigDecimal.valueOf(1.9), 1, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
+								BigDecimal.valueOf(1.9), 1, null, 1, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
 
 		List<SegmentedBetMetrics> result = service.calculateByBetType(StatisticsFilter.none());
 

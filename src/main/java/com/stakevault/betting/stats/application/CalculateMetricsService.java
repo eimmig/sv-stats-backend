@@ -99,9 +99,11 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 		BigDecimal winRate = decided == 0 ? BigDecimal.ZERO
 				: BigDecimal.valueOf(aggregate.wonCount())
 						.divide(BigDecimal.valueOf(decided), SCALE, RoundingMode.HALF_UP);
-		BigDecimal impliedProbability = decided == 0 || aggregate.impliedProbability() == null ? null
+		BigDecimal impliedProbability = aggregate.impliedProbability() == null ? null
 				: aggregate.impliedProbability().setScale(SCALE, RoundingMode.HALF_UP);
-		BigDecimal edge = impliedProbability == null ? null : winRate.subtract(impliedProbability);
+		// a vantagem so compara populacoes iguais: indefinida se alguma decidida nao tem odd
+		BigDecimal edge = impliedProbability == null || aggregate.decidedWithOddCount() != decided ? null
+				: winRate.subtract(impliedProbability);
 		ConfidenceInterval winRateInterval = ConfidenceIntervals.wilson(aggregate.wonCount(), decided);
 		ConfidenceInterval roiInterval = ConfidenceIntervals.ratio(aggregate.netProfit(), aggregate.totalStaked(),
 				aggregate.profitSquaredSum(), aggregate.stakeSquaredSum(), aggregate.profitStakeSum(),

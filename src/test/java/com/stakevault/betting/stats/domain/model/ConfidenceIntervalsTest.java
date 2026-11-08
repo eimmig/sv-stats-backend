@@ -60,4 +60,18 @@ class ConfidenceIntervalsTest {
 		assertThat(ConfidenceIntervals.ratio(new BigDecimal("10"), new BigDecimal("20"), new BigDecimal("50"),
 				new BigDecimal("200"), new BigDecimal("100"), 2)).isNull();
 	}
+
+	@Test
+	void ratioShouldBeUndefinedWhenResidualsCancelOnlyUpToRoundingError() {
+		// tres apostas de 99,99 com lucro de 33,33: todas com o mesmo retorno, mas a razao
+		// 33,33 / 99,99 = 0,3333... nao e exata em decimal e a soma dos residuos nao zera
+		BigDecimal stake = new BigDecimal("99.99");
+		BigDecimal profit = new BigDecimal("33.33");
+		BigDecimal three = BigDecimal.valueOf(3);
+		ConfidenceInterval interval = ConfidenceIntervals.ratio(profit.multiply(three), stake.multiply(three),
+				profit.multiply(profit).multiply(three), stake.multiply(stake).multiply(three),
+				profit.multiply(stake).multiply(three), 3);
+
+		assertThat(interval).isNull();
+	}
 }

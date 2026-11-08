@@ -185,6 +185,7 @@ public class JpaFactBetRepository implements FactBetRepository {
 		long settledCount = projection.getSettledCount() != null ? projection.getSettledCount() : 0L;
 		return new BetAggregate(totalStaked, netProfit, wonCount, lostCount, voidCount, preCount, liveCount,
 				projection.getAvgOdd(), settledCount, projection.getImpliedProbability(),
+				projection.getDecidedWithOddCount() != null ? projection.getDecidedWithOddCount() : 0L,
 				orZero(projection.getProfitSquaredSum()), orZero(projection.getStakeSquaredSum()),
 				orZero(projection.getProfitStakeSum()));
 	}

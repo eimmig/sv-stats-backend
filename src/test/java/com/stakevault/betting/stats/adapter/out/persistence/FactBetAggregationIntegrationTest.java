@@ -307,20 +307,24 @@ class FactBetAggregationIntegrationTest extends TenantSchemaIntegrationSupport {
 			// devolvida: fora da implicita, dentro dos somatorios do ROI
 			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(20),
 					BigDecimal.valueOf(3.0), BigDecimal.ZERO, BetStatus.VOID, BetType.PRE));
+			// odd zero (dado invalido): fora da implicita, sem divisao por zero; dentro dos somatorios
+			factBetRepository.save(settledBetWithTypeAndOdd(houseId, sportId, marketId, BigDecimal.valueOf(10),
+					BigDecimal.ZERO, BigDecimal.valueOf(-10), BetStatus.LOST, BetType.PRE));
 			// pendente: fora de tudo
 			factBetRepository.save(pendingBet(houseId, sportId, marketId, BigDecimal.valueOf(500)));
 
 			BetAggregate aggregate = factBetRepository.aggregateOverall(StatisticsFilter.none());
 
 			assertThat(aggregate.impliedProbability()).isEqualByComparingTo("0.5625");
-			assertThat(aggregate.profitSquaredSum()).isEqualByComparingTo("12725");
-			assertThat(aggregate.stakeSquaredSum()).isEqualByComparingTo("13800");
-			assertThat(aggregate.profitStakeSum()).isEqualByComparingTo("7950");
+			assertThat(aggregate.decidedWithOddCount()).isEqualTo(2);
+			assertThat(aggregate.profitSquaredSum()).isEqualByComparingTo("12825");
+			assertThat(aggregate.stakeSquaredSum()).isEqualByComparingTo("13900");
+			assertThat(aggregate.profitStakeSum()).isEqualByComparingTo("7850");
 
 			List<SegmentedBetAggregate> bySport = factBetRepository.aggregateBySport(StatisticsFilter.none());
 			assertThat(bySport).singleElement().satisfies(segment -> {
 				assertThat(segment.aggregate().impliedProbability()).isEqualByComparingTo("0.5625");
-				assertThat(segment.aggregate().profitStakeSum()).isEqualByComparingTo("7950");
+				assertThat(segment.aggregate().profitStakeSum()).isEqualByComparingTo("7850");
 			});
 		}
 	}

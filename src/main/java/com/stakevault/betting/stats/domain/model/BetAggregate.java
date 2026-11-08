@@ -4,6 +4,6 @@ import java.math.BigDecimal;
 
 public record BetAggregate(BigDecimal totalStaked, BigDecimal netProfit, long wonCount, long lostCount,
 		long voidCount, long preCount, long liveCount, BigDecimal avgOdd, long settledCount,
-		BigDecimal impliedProbability, BigDecimal profitSquaredSum, BigDecimal stakeSquaredSum,
-		BigDecimal profitStakeSum) {
+		BigDecimal impliedProbability, long decidedWithOddCount, BigDecimal profitSquaredSum,
+		BigDecimal stakeSquaredSum, BigDecimal profitStakeSum) {
 }
