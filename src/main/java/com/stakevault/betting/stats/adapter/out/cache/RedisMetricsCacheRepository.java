@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import com.stakevault.betting.stats.config.TenantContextHolder;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
@@ -127,12 +128,27 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	@Override
+	public Optional<List<MonthlyBetMetrics>> findMonthlySeries() {
+		String json = redisTemplate.opsForValue().get(monthlySeriesKey());
+		if (json == null) {
+			return Optional.empty();
+		}
+		return Optional.of(objectMapper.readValue(json,
+				objectMapper.getTypeFactory().constructCollectionType(List.class, MonthlyBetMetrics.class)));
+	}
+
+	@Override
+	public void saveMonthlySeries(List<MonthlyBetMetrics> series) {
+		save(monthlySeriesKey(), series);
+	}
+
+	@Override
 	public void evict(int year, int month) {
 		redisTemplate.delete(
 				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
 						segmentKey(LEAGUE_SEGMENT), segmentKey(TIPSTER_SEGMENT), segmentKey(TEAM_SEGMENT),
 						segmentKey(BET_TYPE_SEGMENT),
-						monthlyKey(year, month)));
+						monthlySeriesKey(), monthlyKey(year, month)));
 	}
 
 	private Optional<List<SegmentedBetMetrics>> findSegmentList(String key) {
@@ -163,6 +179,10 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
 	private static String segmentKey(String segment) {
 		return KEY_PREFIX + tenantSlug() + ":segment:" + segment;
+	}
+
+	private static String monthlySeriesKey() {
+		return KEY_PREFIX + tenantSlug() + ":dashboard:monthly";
 	}
 
 	private static String monthlyKey(int year, int month) {
