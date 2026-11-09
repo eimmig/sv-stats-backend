@@ -2428,6 +2428,50 @@
         }
       ],
       "evidence": "Entregue em 2026-11-09 (feature/SV-824, PR #116). Agregacoes do caminho filtrado em virtual threads com o schema propagado. ./init.sh verde; medicao em evidencias/20261109-dashboard-filtrado."
+    },
+    {
+      "id": "feat-036",
+      "name": "Somas diarias por segmento e cache do dashboard por filtro",
+      "goal": "GET /api/v1/statistics com periodo e sem filtro de dimensao le somas diarias pre-calculadas (presets de 1 a 31 dias abaixo de 300 ms no p95), e qualquer combinacao de filtros repetida sai do Redis (continua o epic-056 da raiz).",
+      "scope": "Migration nova (indice fact_bet.date_id, tabelas agg_daily_segment e agg_dirty_day, trigger em fact_bet que marca o dia alterado, carga inicial marcando todos os dias); DailySegmentAggregateSpringDataRepository (consultas nativas de leitura e recalculo); JpaFactBetRepository (usa as somas quando o filtro so tem periodo e nao ha dia pendente no intervalo); RefreshDailyAggregatesService e agendador por tenant com pg_try_advisory_xact_lock; RedisMetricsCacheRepository e GetStatisticsDashboardService (dashboard filtrado em cache por filtro, invalidado por geracao a cada evento). Fora de escopo: busca de estatisticas, serie diaria, filtros de dimensao no caminho agregado.",
+      "description": "Ver epic-056 da raiz. Medicao de 2026-11-09 (v0.4.2): cada agregacao varre as 100 mil linhas de fact_bet (sem indice) e as 9 em paralelo esgotam os 2 cores do postgres-stats; presets de 7 a 30 dias com p95 de 380 a 710 ms. Todas as colunas de BetAggregate sao somas ou contagens (media da odd e implicita viram soma/contagem), entao somas por dia e segmento reconstituem qualquer periodo.",
+      "dependencies": [
+        "feat-035"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-11-09, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao, sem subagente (independencia reduzida, declarada). Veredito: READY WITH CONCERNS. Conferido: BetAggregate so tem somas/contagens; AVG(odd) ignora odd nula, por isso a tabela guarda odd_sum e odd_count; a implicita guarda a soma de 1/odd e decidedWithOddCount; a consulta por time usa team1 OR team2 (aposta com os dois times iguais conta uma vez), reproduzido com CASE no recalculo. Eventos podem mudar data e dimensoes de um fato ja gravado (ProcessBetEventService.save), por isso o recalculo e por dia inteiro, nao incremental; o trigger marca o dia antigo e o novo. Concorrencia: o agendador roda nas 4 replicas, entao cada tenant e recalculado sob pg_try_advisory_xact_lock; DELETE ... RETURNING do agg_dirty_day nao enxerga marca de transacao ainda aberta, que fica para a rodada seguinte (sem perda). Leitura so usa as somas sem dia pendente no intervalo, entao o resultado e o mesmo do fact_bet (teste de equivalencia compara os dois caminhos). Cache: chave com geracao por tenant (INCR no evict), TTL de 10 min; leitura antiga gravada com geracao velha nunca e lida. Riscos aceitos: sob carga continua o dia corrente fica pendente e o dashboard volta ao caminho atual; o trigger acrescenta um INSERT ON CONFLICT DO NOTHING por escrita no fato.",
+      "subtasks": [
+        {
+          "id": "feat-036.1",
+          "name": "Migration, recalculo, leitura agregada, agendador e cache por filtro",
+          "status": "in-progress",
+          "detail": "Codigo e testes.",
+          "checklist": [
+            "Migration: indice, agg_daily_segment, agg_dirty_day, trigger, carga inicial.",
+            "Recalculo por dia sob advisory lock; agendador por tenant (desligado no perfil test).",
+            "JpaFactBetRepository usa as somas quando o filtro so tem periodo e o intervalo nao tem dia pendente.",
+            "Cache do dashboard filtrado por filtro com geracao por tenant.",
+            "Testes: trigger, equivalencia fact x somas nas 9 agregacoes, agendador, cache, servico."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-833"
+        },
+        {
+          "id": "feat-036.2",
+          "name": "Implantacao, medicao e docs",
+          "status": "not-started",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "docs/services/stats-service.md.",
+            "Release, rollout restart, medicao dos presets, 2 meses e 1 ano."
+          ],
+          "validation": "evidencias/20261109-dashboard-filtrado.",
+          "owner": "agente",
+          "jira": "SV-834"
+        }
+      ],
+      "jira": "SV-832"
     }
   ]
 }
