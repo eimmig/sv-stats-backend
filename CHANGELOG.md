@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-09
+
 ## [0.4.0] - 2026-11-09
 
 ## [0.3.1] - 2026-11-02
