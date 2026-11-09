@@ -100,6 +100,15 @@ public class GetDashboardMetricsService implements GetDashboardMetricsUseCase {
 	}
 
 	@Override
+	public List<MonthlyBetMetrics> getMonthlySeries() {
+		return cache.findMonthlySeries().orElseGet(() -> {
+			List<MonthlyBetMetrics> series = calculateMetrics.calculateMonthly(StatisticsFilter.none());
+			cache.saveMonthlySeries(series);
+			return series;
+		});
+	}
+
+	@Override
 	public BetMetrics getMonthly(int year, int month) {
 		return cache.findMonthly(year, month).orElseGet(() -> {
 			List<MonthlyBetMetrics> series = calculateMetrics.calculateMonthly(StatisticsFilter.none());
