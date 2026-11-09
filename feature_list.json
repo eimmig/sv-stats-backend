@@ -2438,13 +2438,13 @@
       "dependencies": [
         "feat-035"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-11-09, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao, sem subagente (independencia reduzida, declarada). Veredito: READY WITH CONCERNS. Conferido: BetAggregate so tem somas/contagens; AVG(odd) ignora odd nula, por isso a tabela guarda odd_sum e odd_count; a implicita guarda a soma de 1/odd e decidedWithOddCount; a consulta por time usa team1 OR team2 (aposta com os dois times iguais conta uma vez), reproduzido com CASE no recalculo. Eventos podem mudar data e dimensoes de um fato ja gravado (ProcessBetEventService.save), por isso o recalculo e por dia inteiro, nao incremental; o trigger marca o dia antigo e o novo. Concorrencia: o agendador roda nas 4 replicas, entao cada tenant e recalculado sob pg_try_advisory_xact_lock; DELETE ... RETURNING do agg_dirty_day nao enxerga marca de transacao ainda aberta, que fica para a rodada seguinte (sem perda). Leitura so usa as somas sem dia pendente no intervalo, entao o resultado e o mesmo do fact_bet (teste de equivalencia compara os dois caminhos). Cache: chave com geracao por tenant (INCR no evict), TTL de 10 min; leitura antiga gravada com geracao velha nunca e lida. Riscos aceitos: sob carga continua o dia corrente fica pendente e o dashboard volta ao caminho atual; o trigger acrescenta um INSERT ON CONFLICT DO NOTHING por escrita no fato.",
       "subtasks": [
         {
           "id": "feat-036.1",
           "name": "Migration, recalculo, leitura agregada, agendador e cache por filtro",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Codigo e testes.",
           "checklist": [
             "Migration: indice, agg_daily_segment, agg_dirty_day, trigger, carga inicial.",
@@ -2460,7 +2460,7 @@
         {
           "id": "feat-036.2",
           "name": "Implantacao, medicao e docs",
-          "status": "not-started",
+          "status": "done",
           "detail": "Prova no servidor.",
           "checklist": [
             "docs/services/stats-service.md.",
@@ -2471,7 +2471,8 @@
           "jira": "SV-834"
         }
       ],
-      "jira": "SV-832"
+      "jira": "SV-832",
+      "evidence": "Entregue em 2026-11-09 (feature/SV-832, PR #119). Somas diarias por segmento (agg_daily_segment) com recalculo agendado e cache do dashboard por filtro; DailySegmentAggregateIntegrationTest compara fact_bet e somas nas 9 agregacoes. ./init.sh verde; medicao em evidencias/20261109-dashboard-filtrado."
     }
   ]
 }
