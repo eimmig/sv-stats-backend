@@ -38,7 +38,7 @@ class CacheInvalidationOnEventIntegrationTest extends TenantSchemaIntegrationSup
 
 	private BetMetrics staleCachedMetrics() {
 		return new BetMetrics(BigDecimal.valueOf(100), BigDecimal.valueOf(50), BigDecimal.valueOf(0.5),
-				BigDecimal.valueOf(0.5), 1, 1, 0, 0, 0, 0, null);
+				BigDecimal.valueOf(0.5), 1, 1, 0, 0, 0, 0, null, null, null, null, null, null, null);
 	}
 
 	private String betSettledBody(UUID betId, Instant settledAt) {

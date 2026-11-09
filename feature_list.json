@@ -2280,6 +2280,65 @@
           }
         ]
       }
+    },
+    {
+      "id": "feat-033",
+      "name": "Vantagem sobre a probabilidade implicita e intervalos de confianca em BetMetrics",
+      "goal": "Expor no bundle de estatisticas a probabilidade implicita media, a vantagem do apostador sobre ela e os intervalos de confianca de 95% da taxa de acerto e do ROI.",
+      "scope": "BetMetrics ganha impliedProbability (AVG(1/odd) das ganhas e perdidas), edge (winRate - impliedProbability), winRateLower/winRateUpper (Wilson, z = 1,96, n = ganhas + perdidas) e roiLower/roiUpper (metodo delta do estimador de razao sum(profit)/sum(stake), n = liquidadas). Todas as queries que alimentam AggregateProjection (overall, segmentos, mensal, tipo de aposta) passam a somar 1/odd das decididas, profit^2, stake^2 e profit*stake. Campos nulos quando indefinidos (n = 0, ou n < 2 para o ROI, ou variancia nula). Atualizar docs/estatisticas.md (nova secao, +EV renomeado), docs/contratos-de-api.md e docs/services/stats-service.md. Fora de escopo: GET /api/v1/statistics/search, a curva/drawdown e o apps/web (feature propria).",
+      "description": "epic-053 da raiz. Formulas: Wilson (1927) centro (p + z^2/2n)/(1 + z^2/n), meia-largura z*sqrt(p(1-p)/n + z^2/4n^2)/(1 + z^2/n); ROI = L/S, d_i = l_i - ROI*s_i, sum(d^2) = sum(l^2) - 2*ROI*sum(l*s) + ROI^2*sum(s^2), var = sum(d^2)/(n-1), EP = sqrt(var/n)/(S/n), IC = ROI +/- 1,96*EP (Cochran, Sampling Techniques, estimador de razao).",
+      "dependencies": [
+        "feat-032"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-11-08, Plan Reviewer (risco baixo/medio, auto-revisao sem subagente): READY WITH CONCERNS. Verificado: 9 queries projetam AggregateProjection (overall, 6 segmentos, mensal, tipo); odd NUMERIC(19,2) anulavel (V20260910120000) e profit anulavel; BetMetrics construido tambem em GetDashboardMetricsService.ZERO_METRICS e em 3 testes; cache Redis com Jackson 3 readValue por classe e TTL 1 h; Wilson 7/10 = [0,3968; 0,8922] conferido. Emendas: (1) impliedProbability via AVG(CASE WHEN decidida AND odd IS NOT NULL THEN 1.0/odd END), sem somatorio no dominio; (2) as 9 queries; (3) ZERO_METRICS e testes com os campos novos nulos; (4) soma dos quadrados dos residuos <= 0 devolve intervalo nulo; (5) teste com odd nula. Risco aceito: entradas antigas do cache devolvem os campos novos nulos por ate 1 h.",
+      "jira": "SV-810",
+      "subtasks": [
+        {
+          "id": "feat-033.1",
+          "name": "Agregados com probabilidade implicita e somatorios do ROI",
+          "status": "in-progress",
+          "jira": "SV-811",
+          "detail": "As queries passam a devolver o que os intervalos precisam.",
+          "checklist": [
+            "AggregateProjection e as 9 queries com impliedProbability (AVG de 1/odd das decididas com odd), profitSquaredSum, stakeSquaredSum e profitStakeSum.",
+            "BetAggregate e JpaFactBetRepository.toAggregate com os campos novos (ZERO quando nulos, implicita nula quando nao ha decidida com odd).",
+            "Teste de integracao com ganha, perdida, devolvida, pendente e decidida sem odd."
+          ],
+          "validation": "Teste de integracao confere os valores calculados a mao.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-033.2",
+          "name": "Intervalos de confianca e vantagem em BetMetrics",
+          "status": "not-started",
+          "jira": "SV-812",
+          "detail": "Calculo puro no dominio e preenchimento do contrato.",
+          "checklist": [
+            "ConfidenceIntervals.wilson e ConfidenceIntervals.ratio (metodo delta) com testes de referencia e bordas (n = 0, n = 1, variancia nula ou negativa).",
+            "BetMetrics com impliedProbability, edge, winRateLower, winRateUpper, roiLower e roiUpper ao final; CalculateMetricsService.toMetrics preenche.",
+            "ZERO_METRICS e testes existentes atualizados; StatisticsControllerIntegrationTest confere o JSON."
+          ],
+          "validation": "mvn verify verde com cobertura.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-033.3",
+          "name": "CHANGELOG e verificacao final",
+          "status": "not-started",
+          "jira": "SV-813",
+          "detail": "Vault, CHANGELOG, init.sh e revisoes.",
+          "checklist": [
+            "docs/estatisticas.md: secao dos intervalos e '+EV' renomeado para vantagem sobre a probabilidade implicita, com o motivo.",
+            "docs/contratos-de-api.md e docs/services/stats-service.md com os campos novos.",
+            "CHANGELOG.md [Unreleased].",
+            "./init.sh verde; /code-review sem achado aberto.",
+            "Vault: conferir se alguma outra nota cita +EV ou a formula antiga."
+          ],
+          "validation": "init.sh verde, PR em develop com CI e SonarCloud verdes.",
+          "owner": "agente"
+        }
+      ]
     }
   ]
 }
