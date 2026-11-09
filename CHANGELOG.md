@@ -10,6 +10,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-825](https://stakevault.atlassian.net/browse/SV-825) - ConcurrentCalls, propagacao do tenant e uso no dashboard
 - [SV-826](https://stakevault.atlassian.net/browse/SV-826) - Implantacao, medicao e docs
 
+## [0.4.1] - 2026-11-09
+
 ## [0.4.0] - 2026-11-09
 
 ## [0.3.1] - 2026-11-02
