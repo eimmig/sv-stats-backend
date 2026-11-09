@@ -7,6 +7,7 @@ import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetDashboardMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetStatisticsDashboardUseCase;
+import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
 @Service
 public class GetStatisticsDashboardService implements GetStatisticsDashboardUseCase {
@@ -14,12 +15,15 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 	private final GetDashboardMetricsUseCase dashboardMetrics;
 	private final CalculateMetricsUseCase calculateMetrics;
 	private final ConcurrentCalls concurrentCalls;
+	private final MetricsCacheRepository metricsCache;
 
 	public GetStatisticsDashboardService(GetDashboardMetricsUseCase dashboardMetrics,
-			CalculateMetricsUseCase calculateMetrics, ConcurrentCalls concurrentCalls) {
+			CalculateMetricsUseCase calculateMetrics, ConcurrentCalls concurrentCalls,
+			MetricsCacheRepository metricsCache) {
 		this.dashboardMetrics = dashboardMetrics;
 		this.calculateMetrics = calculateMetrics;
 		this.concurrentCalls = concurrentCalls;
+		this.metricsCache = metricsCache;
 	}
 
 	@Override
@@ -30,7 +34,15 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 					dashboardMetrics.getMonthlySeries(), dashboardMetrics.getByBetType(),
 					dashboardMetrics.getByLeague(), dashboardMetrics.getByTipster(), dashboardMetrics.getByTeam());
 		}
-		// sem cache para filtros: as nove agregacoes sao independentes e rodam ao mesmo tempo
+		return metricsCache.findDashboard(filter).orElseGet(() -> {
+			StatisticsDashboard dashboard = calculateFiltered(filter);
+			metricsCache.saveDashboard(filter, dashboard);
+			return dashboard;
+		});
+	}
+
+	// as nove agregacoes sao independentes e rodam ao mesmo tempo
+	private StatisticsDashboard calculateFiltered(StatisticsFilter filter) {
 		var overall = concurrentCalls.fork(() -> calculateMetrics.calculateOverall(filter));
 		var bySport = concurrentCalls.fork(() -> calculateMetrics.calculateBySport(filter));
 		var byMarket = concurrentCalls.fork(() -> calculateMetrics.calculateByMarket(filter));

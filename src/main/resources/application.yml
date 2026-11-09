@@ -67,6 +67,11 @@ spring:
 admin:
   api-key: test-admin-api-key
 
+# os testes chamam o recalculo direto; o agendador mexeria nas tabelas no meio do teste
+stats:
+  daily-aggregates:
+    refresh-enabled: false
+
 ---
 spring:
   config:

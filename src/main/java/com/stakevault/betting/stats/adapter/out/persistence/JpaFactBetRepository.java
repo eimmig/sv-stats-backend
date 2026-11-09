@@ -24,15 +24,24 @@ import com.stakevault.betting.stats.domain.port.out.FactBetRepository;
 @Repository
 public class JpaFactBetRepository implements FactBetRepository {
 
+	private static final String SPORT_SEGMENT = "SPORT";
+	private static final String MARKET_SEGMENT = "MARKET";
+	private static final String HOUSE_SEGMENT = "HOUSE";
+	private static final String LEAGUE_SEGMENT = "LEAGUE";
+	private static final String TIPSTER_SEGMENT = "TIPSTER";
+	private static final String TEAM_SEGMENT = "TEAM";
 	private static final LocalDate MIN_DATE = LocalDate.of(1900, 1, 1);
 	private static final LocalDate MAX_DATE = LocalDate.of(2999, 12, 31);
 	private static final BetStatusAttributeConverter STATUS_CONVERTER = new BetStatusAttributeConverter();
 	private static final BetTypeAttributeConverter BET_TYPE_CONVERTER = new BetTypeAttributeConverter();
 
 	private final FactBetSpringDataRepository jpaRepository;
+	private final DailySegmentAggregateSpringDataRepository dailySums;
 
-	public JpaFactBetRepository(FactBetSpringDataRepository jpaRepository) {
+	public JpaFactBetRepository(FactBetSpringDataRepository jpaRepository,
+			DailySegmentAggregateSpringDataRepository dailySums) {
 		this.jpaRepository = jpaRepository;
+		this.dailySums = dailySums;
 	}
 
 	@Override
@@ -62,69 +71,68 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public BetAggregate aggregateOverall(StatisticsFilter filter) {
+		if (readsDailySums(filter)) {
+			return toAggregate(dailySums.sumOverall(from(filter), to(filter)));
+		}
 		return toAggregate(jpaRepository.aggregateOverall(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID,
 				BetType.PRE, BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateBySport(StatisticsFilter filter) {
-		return jpaRepository.aggregateBySport(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumBySport(SPORT_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateBySport(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByMarket(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMarket(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumByMarket(MARKET_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateByMarket(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByBettingHouse(StatisticsFilter filter) {
-		return jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumByBettingHouse(HOUSE_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateByBettingHouse(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID,
+						BetType.PRE, BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByLeague(StatisticsFilter filter) {
-		return jpaRepository.aggregateByLeague(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumByLeague(LEAGUE_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateByLeague(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByTipster(StatisticsFilter filter) {
-		return jpaRepository.aggregateByTipster(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumByTipster(TIPSTER_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateByTipster(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByTeam(StatisticsFilter filter) {
-		return jpaRepository.aggregateByTeam(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
-				.map(JpaFactBetRepository::toSegment)
-				.toList();
+		return toSegments(readsDailySums(filter)
+				? dailySums.sumByTeam(TEAM_SEGMENT, from(filter), to(filter))
+				: jpaRepository.aggregateByTeam(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter)));
 	}
 
 	@Override
 	public List<MonthlyBetAggregate> aggregateByMonth(StatisticsFilter filter) {
-		return jpaRepository.aggregateByMonth(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
+		List<? extends MonthlyAggregateProjection> months = readsDailySums(filter)
+				? dailySums.sumByMonth(from(filter), to(filter))
+				: jpaRepository.aggregateByMonth(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter));
+		return months.stream()
 				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
 						toAggregate(projection)))
 				.toList();
@@ -132,10 +140,28 @@ public class JpaFactBetRepository implements FactBetRepository {
 
 	@Override
 	public List<SegmentedBetAggregate> aggregateByBetType(StatisticsFilter filter) {
-		return jpaRepository.aggregateByBetType(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
-				BetType.LIVE, resolve(filter))
-				.stream()
+		List<? extends BetTypeAggregateProjection> betTypes = readsDailySums(filter)
+				? dailySums.sumByBetType(from(filter), to(filter))
+				: jpaRepository.aggregateByBetType(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
+						BetType.LIVE, resolve(filter));
+		return betTypes.stream()
 				.map(JpaFactBetRepository::toBetTypeSegment)
+				.toList();
+	}
+
+	/**
+	 * As somas diarias so cobrem o periodo: com filtro de dimensao, ou com algum dia do intervalo
+	 * ainda por recalcular, a consulta vai para fact_bet e o resultado e o mesmo.
+	 */
+	private boolean readsDailySums(StatisticsFilter filter) {
+		boolean periodOnly = filter.bettingHouseId() == null && filter.sportId() == null
+				&& filter.leagueId() == null && filter.marketId() == null && filter.tipsterId() == null;
+		return periodOnly && !dailySums.hasDirtyDay(from(filter), to(filter));
+	}
+
+	private static List<SegmentedBetAggregate> toSegments(List<SegmentedAggregateProjection> projections) {
+		return projections.stream()
+				.map(JpaFactBetRepository::toSegment)
 				.toList();
 	}
 

@@ -11,6 +11,8 @@ import com.stakevault.betting.stats.config.TenantContextHolder;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsDashboard;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
 import tools.jackson.databind.ObjectMapper;
@@ -19,6 +21,8 @@ import tools.jackson.databind.ObjectMapper;
 public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
 	private static final Duration SAFETY_NET_TTL = Duration.ofHours(1);
+	// a geracao muda a cada evento; entradas de geracoes antigas so esperam este prazo para sumir
+	private static final Duration FILTERED_DASHBOARD_TTL = Duration.ofMinutes(10);
 
 	private static final String KEY_PREFIX = "tenant:";
 	private static final String SPORT_SEGMENT = "sport";
@@ -143,7 +147,19 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 	}
 
 	@Override
+	public Optional<StatisticsDashboard> findDashboard(StatisticsFilter filter) {
+		return find(filteredDashboardKey(filter), StatisticsDashboard.class);
+	}
+
+	@Override
+	public void saveDashboard(StatisticsFilter filter, StatisticsDashboard dashboard) {
+		redisTemplate.opsForValue().set(filteredDashboardKey(filter), objectMapper.writeValueAsString(dashboard),
+				FILTERED_DASHBOARD_TTL);
+	}
+
+	@Override
 	public void evict(int year, int month) {
+		redisTemplate.opsForValue().increment(filteredGenerationKey());
 		redisTemplate.delete(
 				List.of(overallKey(), segmentKey(SPORT_SEGMENT), segmentKey(MARKET_SEGMENT), segmentKey(HOUSE_SEGMENT),
 						segmentKey(LEAGUE_SEGMENT), segmentKey(TIPSTER_SEGMENT), segmentKey(TEAM_SEGMENT),
@@ -183,6 +199,21 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
 	private static String monthlySeriesKey() {
 		return KEY_PREFIX + tenantSlug() + ":dashboard:monthly";
+	}
+
+	private static String filteredGenerationKey() {
+		return KEY_PREFIX + tenantSlug() + ":dashboard:filtered:generation";
+	}
+
+	/**
+	 * Uma chave por combinacao de filtros, prefixada pela geracao corrente: o evict so incrementa a
+	 * geracao, e um calculo que comecou antes dele grava na geracao velha, que ninguem mais le.
+	 */
+	private String filteredDashboardKey(StatisticsFilter filter) {
+		String generation = redisTemplate.opsForValue().get(filteredGenerationKey());
+		return KEY_PREFIX + tenantSlug() + ":dashboard:filtered:" + (generation == null ? "0" : generation) + ":"
+				+ filter.from() + ":" + filter.to() + ":" + filter.bettingHouseId() + ":" + filter.sportId() + ":"
+				+ filter.leagueId() + ":" + filter.marketId() + ":" + filter.tipsterId();
 	}
 
 	private static String monthlyKey(int year, int month) {
