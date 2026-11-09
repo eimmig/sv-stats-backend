@@ -13,11 +13,13 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 
 	private final GetDashboardMetricsUseCase dashboardMetrics;
 	private final CalculateMetricsUseCase calculateMetrics;
+	private final ConcurrentCalls concurrentCalls;
 
 	public GetStatisticsDashboardService(GetDashboardMetricsUseCase dashboardMetrics,
-			CalculateMetricsUseCase calculateMetrics) {
+			CalculateMetricsUseCase calculateMetrics, ConcurrentCalls concurrentCalls) {
 		this.dashboardMetrics = dashboardMetrics;
 		this.calculateMetrics = calculateMetrics;
+		this.concurrentCalls = concurrentCalls;
 	}
 
 	@Override
@@ -28,10 +30,17 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 					dashboardMetrics.getMonthlySeries(), dashboardMetrics.getByBetType(),
 					dashboardMetrics.getByLeague(), dashboardMetrics.getByTipster(), dashboardMetrics.getByTeam());
 		}
-		return new StatisticsDashboard(calculateMetrics.calculateOverall(filter),
-				calculateMetrics.calculateBySport(filter), calculateMetrics.calculateByMarket(filter),
-				calculateMetrics.calculateByBettingHouse(filter), calculateMetrics.calculateMonthly(filter),
-				calculateMetrics.calculateByBetType(filter), calculateMetrics.calculateByLeague(filter),
-				calculateMetrics.calculateByTipster(filter), calculateMetrics.calculateByTeam(filter));
+		// sem cache para filtros: as nove agregacoes sao independentes e rodam ao mesmo tempo
+		var overall = concurrentCalls.fork(() -> calculateMetrics.calculateOverall(filter));
+		var bySport = concurrentCalls.fork(() -> calculateMetrics.calculateBySport(filter));
+		var byMarket = concurrentCalls.fork(() -> calculateMetrics.calculateByMarket(filter));
+		var byHouse = concurrentCalls.fork(() -> calculateMetrics.calculateByBettingHouse(filter));
+		var monthly = concurrentCalls.fork(() -> calculateMetrics.calculateMonthly(filter));
+		var byBetType = concurrentCalls.fork(() -> calculateMetrics.calculateByBetType(filter));
+		var byLeague = concurrentCalls.fork(() -> calculateMetrics.calculateByLeague(filter));
+		var byTipster = concurrentCalls.fork(() -> calculateMetrics.calculateByTipster(filter));
+		var byTeam = concurrentCalls.fork(() -> calculateMetrics.calculateByTeam(filter));
+		return new StatisticsDashboard(overall.get(), bySport.get(), byMarket.get(), byHouse.get(), monthly.get(),
+				byBetType.get(), byLeague.get(), byTipster.get(), byTeam.get());
 	}
 }

@@ -6,6 +6,9 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+- [SV-824](https://stakevault.atlassian.net/browse/SV-824) - Agregacoes do dashboard filtrado em paralelo
+- [SV-825](https://stakevault.atlassian.net/browse/SV-825) - ConcurrentCalls, propagacao do tenant e uso no dashboard
+- [SV-826](https://stakevault.atlassian.net/browse/SV-826) - Implantacao, medicao e docs
 
 ## [0.4.1] - 2026-11-09
 
