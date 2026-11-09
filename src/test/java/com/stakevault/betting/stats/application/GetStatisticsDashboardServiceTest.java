@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +25,7 @@ import com.stakevault.betting.stats.domain.model.StatisticsDashboard;
 import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.port.in.CalculateMetricsUseCase;
 import com.stakevault.betting.stats.domain.port.in.GetDashboardMetricsUseCase;
+import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
 @ExtendWith(MockitoExtension.class)
 class GetStatisticsDashboardServiceTest {
@@ -31,12 +34,15 @@ class GetStatisticsDashboardServiceTest {
 	private GetDashboardMetricsUseCase dashboardMetrics;
 	@Mock
 	private CalculateMetricsUseCase calculateMetrics;
+	@Mock
+	private MetricsCacheRepository metricsCache;
 
 	private GetStatisticsDashboardService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new GetStatisticsDashboardService(dashboardMetrics, calculateMetrics, new SameThreadCalls());
+		service = new GetStatisticsDashboardService(dashboardMetrics, calculateMetrics, new SameThreadCalls(),
+				metricsCache);
 	}
 
 	private BetMetrics sampleMetrics() {
@@ -63,7 +69,7 @@ class GetStatisticsDashboardServiceTest {
 		when(calculateMetrics.calculateOverall(filter)).thenReturn(sampleMetrics());
 		when(calculateMetrics.calculateMonthly(filter)).thenReturn(series);
 		SameThreadCalls calls = new SameThreadCalls();
-		service = new GetStatisticsDashboardService(dashboardMetrics, calculateMetrics, calls);
+		service = new GetStatisticsDashboardService(dashboardMetrics, calculateMetrics, calls, metricsCache);
 
 		StatisticsDashboard dashboard = service.getDashboard(filter);
 
@@ -78,6 +84,22 @@ class GetStatisticsDashboardServiceTest {
 		verify(calculateMetrics).calculateByTipster(filter);
 		verify(calculateMetrics).calculateByTeam(filter);
 		verify(dashboardMetrics, never()).getOverall();
+		verify(metricsCache).saveDashboard(filter, dashboard);
+	}
+
+	@Test
+	void shouldServeARepeatedFilteredDashboardFromTheCacheWithoutQuerying() {
+		StatisticsFilter filter = new StatisticsFilter(null, null, null, null, null, LocalDate.of(2026, 10, 1),
+				LocalDate.of(2026, 10, 31));
+		StatisticsDashboard cached = new StatisticsDashboard(sampleMetrics(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of(), List.of(), List.of());
+		when(metricsCache.findDashboard(filter)).thenReturn(Optional.of(cached));
+
+		StatisticsDashboard dashboard = service.getDashboard(filter);
+
+		assertThat(dashboard).isSameAs(cached);
+		verifyNoInteractions(calculateMetrics);
+		verify(metricsCache, never()).saveDashboard(any(), any());
 	}
 
 	private static final class SameThreadCalls implements ConcurrentCalls {

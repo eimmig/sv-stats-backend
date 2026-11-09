@@ -1,5 +1,6 @@
 package com.stakevault.betting.stats.adapter.out.persistence;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,6 +49,18 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 		}
 		flywayFor(schema, false).migrate();
 		migratedSchemas.add(schema.value());
+	}
+
+	@Override
+	public List<TenantSchemaName> listWithDailyAggregates() {
+		return jdbcTemplate.queryForList("""
+				SELECT table_schema FROM information_schema.tables
+				WHERE table_name = 'agg_dirty_day' AND table_schema LIKE 'tenant\\_%'
+				ORDER BY table_schema
+				""", String.class)
+				.stream()
+				.map(TenantSchemaName::new)
+				.toList();
 	}
 
 	private Flyway flywayFor(TenantSchemaName schema, boolean createSchemas) {

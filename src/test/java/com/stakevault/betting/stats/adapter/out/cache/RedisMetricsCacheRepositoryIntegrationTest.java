@@ -3,6 +3,7 @@ package com.stakevault.betting.stats.adapter.out.cache;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
+import com.stakevault.betting.stats.domain.model.StatisticsDashboard;
+import com.stakevault.betting.stats.domain.model.StatisticsFilter;
 import com.stakevault.betting.stats.domain.model.TenantSchemaName;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
 
@@ -174,5 +177,30 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 
 		assertThat(redisTemplate.hasKey("tenant:" + tenant.slug() + ":dashboard:consolidated")).isTrue();
 		assertThat(redisTemplate.hasKey("tenant:" + tenant.slug() + ":stats:monthly:2026_9")).isTrue();
+	}
+	@Test
+	void shouldCacheAFilteredDashboardPerFilterAndDropEveryOneOnEvict() {
+		try (var _ = TenantContextScope.open(newTenant())) {
+			StatisticsFilter october = new StatisticsFilter(null, null, null, null, null, LocalDate.of(2026, 10, 1),
+					LocalDate.of(2026, 10, 31));
+			StatisticsFilter octoberOneSport = new StatisticsFilter(null, UUID.randomUUID(), null, null, null,
+					LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+			StatisticsDashboard dashboard = new StatisticsDashboard(sampleMetrics(), List.of(), List.of(), List.of(),
+					List.of(new MonthlyBetMetrics(2026, 10, sampleMetrics())), List.of(), List.of(), List.of(),
+					List.of());
+
+			cacheRepository.saveDashboard(october, dashboard);
+
+			StatisticsDashboard found = cacheRepository.findDashboard(october).orElseThrow();
+			assertThat(found.overall().totalStaked()).isEqualByComparingTo(dashboard.overall().totalStaked());
+			assertThat(found.monthly()).hasSize(1);
+			assertThat(cacheRepository.findDashboard(octoberOneSport)).isEmpty();
+
+			cacheRepository.evict(2026, 10);
+
+			assertThat(cacheRepository.findDashboard(october)).isEmpty();
+			cacheRepository.saveDashboard(october, dashboard);
+			assertThat(cacheRepository.findDashboard(october)).isPresent();
+		}
 	}
 }
