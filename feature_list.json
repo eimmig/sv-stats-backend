@@ -2483,13 +2483,13 @@
       "dependencies": [
         "feat-036"
       ],
-      "status": "in-progress",
+      "status": "done",
       "plan_review": "2026-11-09, Plan Reviewer em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY. Conferido: readsDailySums so usa as somas sem dia pendente no intervalo, entao atrasar ou fatiar o recalculo nao muda resultado, so a velocidade; DELETE ... WHERE day IN (SELECT ... ORDER BY day DESC LIMIT n) RETURNING mantem a garantia de nao perder marca (marca nao confirmada nao e vista e fica); dias mais recentes primeiro favorecem os presets. Risco aceito: depois de uma carga que toca 366 dias, as somas levam ~12 rodadas (12 min) para cobrir o ano, periodo em que consultas longas leem fact_bet.",
       "subtasks": [
         {
           "id": "feat-037.1",
           "name": "Limite por rodada, intervalo de 60 s e testes",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Codigo e testes.",
           "checklist": [
             "takeDirtyDays(limit) com os mais recentes primeiro.",
@@ -2503,7 +2503,7 @@
         {
           "id": "feat-037.2",
           "name": "Implantacao e rodada c2-500m repetida",
-          "status": "not-started",
+          "status": "done",
           "detail": "Prova no servidor.",
           "checklist": [
             "Release, rollout, rodada c2-500m, comparacao com 08/11."
@@ -2513,7 +2513,8 @@
           "jira": "SV-840"
         }
       ],
-      "jira": "SV-838"
+      "jira": "SV-838",
+      "evidence": "Entregue em 2026-11-09 (feature/SV-838, PR #122). Recalculo das somas diarias a cada 60 s com no maximo 31 dias por rodada, os mais recentes primeiro. ./init.sh verde; rodada c2-500m repetida em evidencias/20261109-carga-somas-v2."
     }
   ]
 }
