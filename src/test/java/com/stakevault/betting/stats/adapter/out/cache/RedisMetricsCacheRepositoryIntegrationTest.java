@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import com.stakevault.betting.stats.TestcontainersConfiguration;
 import com.stakevault.betting.stats.config.TenantContextScope;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 import com.stakevault.betting.stats.domain.model.TenantSchemaName;
 import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
@@ -103,6 +104,7 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			cacheRepository.saveByTeam(segments);
 			cacheRepository.saveByBetType(segments);
 			cacheRepository.saveMonthly(2026, 9, sampleMetrics());
+			cacheRepository.saveMonthlySeries(List.of(new MonthlyBetMetrics(2026, 9, sampleMetrics())));
 
 			cacheRepository.evict(2026, 9);
 
@@ -115,6 +117,20 @@ class RedisMetricsCacheRepositoryIntegrationTest {
 			assertThat(cacheRepository.findByTeam()).isEmpty();
 			assertThat(cacheRepository.findByBetType()).isEmpty();
 			assertThat(cacheRepository.findMonthly(2026, 9)).isEmpty();
+			assertThat(cacheRepository.findMonthlySeries()).isEmpty();
+		}
+	}
+
+	@Test
+	void shouldRoundTripTheMonthlySeries() {
+		try (var _ = TenantContextScope.open(newTenant())) {
+			List<MonthlyBetMetrics> series = List.of(new MonthlyBetMetrics(2026, 8, sampleMetrics()),
+					new MonthlyBetMetrics(2026, 9, sampleMetrics()));
+			assertThat(cacheRepository.findMonthlySeries()).isEmpty();
+
+			cacheRepository.saveMonthlySeries(series);
+
+			assertThat(cacheRepository.findMonthlySeries()).contains(series);
 		}
 	}
 

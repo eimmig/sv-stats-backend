@@ -17,6 +17,9 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-811](https://stakevault.atlassian.net/browse/SV-811) - Agregados com probabilidade implicita e somatorios do ROI
 - [SV-812](https://stakevault.atlassian.net/browse/SV-812) - Intervalos de confianca e vantagem em BetMetrics
 - [SV-813](https://stakevault.atlassian.net/browse/SV-813) - CHANGELOG e verificacao final
+- [SV-821](https://stakevault.atlassian.net/browse/SV-821) - Serie mensal do dashboard sem filtro no cache do Redis
+- [SV-822](https://stakevault.atlassian.net/browse/SV-822) - Chave da serie mensal, uso no dashboard e testes
+- [SV-823](https://stakevault.atlassian.net/browse/SV-823) - Implantacao, medicao e docs
 
 ## [0.3.0] - 2026-10-06
 
