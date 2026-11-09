@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * 2026-11-09 contou 394 mil SET para 20 mil apostas, quase metade das instrucoes do banco (feat-038).
  *
  * <p>O SET vai direto na conexao fisica, sem passar pelo proxy do Hikari, para o pool nao restaurar o
- * schema na devolucao. Todo uso do Hibernate passa por getConnection ou getAnyConnection, que ajustam
+ * schema na devolucao. Qualquer uso do Hibernate passa por getConnection ou getAnyConnection, que ajustam
  * o schema antes de entregar. Fora do Hibernate, so o gateway do Flyway usa o DataSource, com consultas
  * qualificadas pelo schema, e o Flyway restaura o search_path que encontrou.
  */
