@@ -11,6 +11,9 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-824](https://stakevault.atlassian.net/browse/SV-824) - Agregacoes do dashboard filtrado em paralelo
 - [SV-825](https://stakevault.atlassian.net/browse/SV-825) - ConcurrentCalls, propagacao do tenant e uso no dashboard
 - [SV-826](https://stakevault.atlassian.net/browse/SV-826) - Implantacao, medicao e docs
+- [SV-832](https://stakevault.atlassian.net/browse/SV-832) - Somas diarias por segmento e cache do dashboard por filtro
+- [SV-833](https://stakevault.atlassian.net/browse/SV-833) - Migration, recalculo, leitura agregada, agendador e cache por filtro
+- [SV-834](https://stakevault.atlassian.net/browse/SV-834) - Implantacao, medicao e docs
 
 ## [0.4.1] - 2026-11-09
 
