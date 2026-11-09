@@ -6,6 +6,9 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+- [SV-838](https://stakevault.atlassian.net/browse/SV-838) - Recalculo das somas diarias com orcamento por rodada
+- [SV-839](https://stakevault.atlassian.net/browse/SV-839) - Limite por rodada, intervalo de 60 s e testes
+- [SV-840](https://stakevault.atlassian.net/browse/SV-840) - Implantacao e rodada c2-500m repetida
 
 ## [0.4.2] - 2026-11-09
 - [SV-824](https://stakevault.atlassian.net/browse/SV-824) - Agregacoes do dashboard filtrado em paralelo
