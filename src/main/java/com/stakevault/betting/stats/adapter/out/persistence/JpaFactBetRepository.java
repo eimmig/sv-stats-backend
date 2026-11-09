@@ -184,7 +184,14 @@ public class JpaFactBetRepository implements FactBetRepository {
 		long liveCount = projection.getLiveCount() != null ? projection.getLiveCount() : 0L;
 		long settledCount = projection.getSettledCount() != null ? projection.getSettledCount() : 0L;
 		return new BetAggregate(totalStaked, netProfit, wonCount, lostCount, voidCount, preCount, liveCount,
-				projection.getAvgOdd(), settledCount);
+				projection.getAvgOdd(), settledCount, projection.getImpliedProbability(),
+				projection.getDecidedWithOddCount() != null ? projection.getDecidedWithOddCount() : 0L,
+				orZero(projection.getProfitSquaredSum()), orZero(projection.getStakeSquaredSum()),
+				orZero(projection.getProfitStakeSum()));
+	}
+
+	private static BigDecimal orZero(BigDecimal value) {
+		return value != null ? value : BigDecimal.ZERO;
 	}
 
 	private static SegmentedBetAggregate toSegment(SegmentedAggregateProjection projection) {

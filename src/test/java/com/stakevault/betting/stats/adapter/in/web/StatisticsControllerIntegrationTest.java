@@ -131,6 +131,35 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 	}
 
 	@Test
+	void shouldExposeImpliedProbabilityEdgeAndConfidenceIntervalsOnOverall() throws Exception {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID sportId = dimSportRepository.save(new DimSport(UUID.randomUUID(), "Soccer")).id();
+			UUID houseId = dimBettingHouseRepository.save(new DimBettingHouse(UUID.randomUUID(), "House")).id();
+			UUID marketId = dimMarketRepository.save(new DimMarket(UUID.randomUUID(), "Market")).id();
+			UUID leagueId = dimLeagueRepository.save(new DimLeague(UUID.randomUUID(), "League")).id();
+			UUID dateId = DimDateFixtures.ensure(dimDateRepository, 6, 9, 2026, 3, "SUNDAY");
+			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(2.0), BigDecimal.valueOf(100), true,
+					BetStatus.WON, null, 1));
+			factBetRepository.save(new FactBet(UUID.randomUUID(), dateId, houseId, sportId, leagueId, marketId, null,
+					null, null, BigDecimal.valueOf(100), BigDecimal.valueOf(1.6), BigDecimal.valueOf(-100), false,
+					BetStatus.LOST, null, 1));
+		}
+
+		HttpResponse<String> response = get(null, "X-Tenant-Id", tenantSlug);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		JsonNode overall = objectMapper.readTree(response.body()).path("overall");
+		assertThat(overall.path("impliedProbability").decimalValue()).isEqualByComparingTo("0.5625");
+		assertThat(overall.path("edge").decimalValue()).isEqualByComparingTo("-0.0625");
+		assertThat(overall.path("winRateLower").decimalValue()).isEqualByComparingTo("0.0945");
+		assertThat(overall.path("winRateUpper").decimalValue()).isEqualByComparingTo("0.9055");
+		// ROI = 0 e residuos de +100 e -100: erro padrao 1, intervalo de -1,96 a 1,96
+		assertThat(overall.path("roiLower").decimalValue()).isEqualByComparingTo("-1.96");
+		assertThat(overall.path("roiUpper").decimalValue()).isEqualByComparingTo("1.96");
+	}
+
+	@Test
 	void shouldReturnByBetTypeSegmentWithExactlyTwoBuckets() throws Exception {
 		seedSettledBet("Soccer", BetType.PRE);
 		seedSettledBet("Soccer", BetType.LIVE);
