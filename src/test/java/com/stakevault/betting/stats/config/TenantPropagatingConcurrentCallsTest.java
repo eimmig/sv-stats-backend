@@ -3,6 +3,8 @@ package com.stakevault.betting.stats.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -49,5 +51,36 @@ class TenantPropagatingConcurrentCallsTest {
 		});
 
 		assertThatThrownBy(result::get).isSameAs(failure);
+	}
+
+	@Test
+	void shouldRethrowTheCallsOwnErrorUnwrapped() {
+		AssertionError failure = new AssertionError("broken invariant");
+		Supplier<Object> result = calls.fork(() -> {
+			throw failure;
+		});
+
+		assertThatThrownBy(result::get).isSameAs(failure);
+	}
+
+	@Test
+	void shouldCancelTheCallAndKeepTheInterruptFlagWhenTheWaitingThreadIsInterrupted() {
+		CountDownLatch never = new CountDownLatch(1);
+		Supplier<Object> result = calls.fork(() -> {
+			try {
+				never.await();
+			} catch (InterruptedException _) {
+				Thread.currentThread().interrupt();
+			}
+			return null;
+		});
+
+		Thread.currentThread().interrupt();
+		try {
+			assertThatThrownBy(result::get).isInstanceOf(CancellationException.class);
+			assertThat(Thread.currentThread().isInterrupted()).isTrue();
+		} finally {
+			Thread.interrupted();
+		}
 	}
 }

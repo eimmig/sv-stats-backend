@@ -40,19 +40,15 @@ public class TenantPropagatingConcurrentCalls implements ConcurrentCalls, Dispos
 	private static <T> T await(Future<T> future) {
 		try {
 			return future.get();
-		} catch (InterruptedException e) {
+		} catch (InterruptedException _) {
 			Thread.currentThread().interrupt();
 			future.cancel(true);
 			throw new CancellationException("interrupted while waiting for a concurrent call");
 		} catch (ExecutionException e) {
-			Throwable cause = e.getCause();
-			if (cause instanceof RuntimeException runtime) {
-				throw runtime;
-			}
-			if (cause instanceof Error error) {
+			if (e.getCause() instanceof Error error) {
 				throw error;
 			}
-			throw new IllegalStateException(cause);
+			throw (RuntimeException) e.getCause();
 		}
 	}
 
