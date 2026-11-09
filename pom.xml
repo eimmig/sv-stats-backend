@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.stakevault.betting</groupId>
 	<artifactId>stats-service</artifactId>
-	<version>0.4.2</version>
+	<version>0.5.0</version>
 	<name>stats-service</name>
 	<description>Consumidor de eventos, modelo OLAP e metricas de desempenho (Arka)</description>
 	<properties>

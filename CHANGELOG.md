@@ -10,6 +10,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-839](https://stakevault.atlassian.net/browse/SV-839) - Limite por rodada, intervalo de 60 s e testes
 - [SV-840](https://stakevault.atlassian.net/browse/SV-840) - Implantacao e rodada c2-500m repetida
 
+## [0.5.0] - 2026-11-09
+
 ## [0.4.2] - 2026-11-09
 - [SV-824](https://stakevault.atlassian.net/browse/SV-824) - Agregacoes do dashboard filtrado em paralelo
 - [SV-825](https://stakevault.atlassian.net/browse/SV-825) - ConcurrentCalls, propagacao do tenant e uso no dashboard
