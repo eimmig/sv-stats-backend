@@ -102,11 +102,17 @@ interface DailySegmentAggregateSpringDataRepository extends Repository<FactBetJp
 	boolean tryLockSchema();
 
 	/**
-	 * Marca gravada por transacao ainda aberta nao aparece aqui e continua na tabela para a rodada
-	 * seguinte; o recalculo roda depois, em outra instrucao, e ja enxerga o que foi confirmado antes.
+	 * Remove e devolve ate {@code limit} dias pendentes, os mais recentes primeiro (os dos atalhos de
+	 * periodo do dashboard). Marca gravada por transacao ainda aberta nao aparece aqui e continua na
+	 * tabela para a rodada seguinte; o recalculo roda depois, em outra instrucao, e ja enxerga o que
+	 * foi confirmado antes.
 	 */
-	@Query(value = "DELETE FROM agg_dirty_day RETURNING day", nativeQuery = true)
-	List<LocalDate> takeDirtyDays();
+	@Query(value = """
+			DELETE FROM agg_dirty_day
+			WHERE day IN (SELECT day FROM agg_dirty_day ORDER BY day DESC LIMIT :limit)
+			RETURNING day
+			""", nativeQuery = true)
+	List<LocalDate> takeDirtyDays(@Param("limit") int limit);
 
 	@Modifying
 	@Query(value = "DELETE FROM agg_daily_segment WHERE day IN (:days)", nativeQuery = true)
