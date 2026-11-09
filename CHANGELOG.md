@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-09
+
 ## [0.3.1] - 2026-11-02
 - [SV-791](https://stakevault.atlassian.net/browse/SV-791) - winRate sem apostas devolvidas no denominador
 - [SV-792](https://stakevault.atlassian.net/browse/SV-792) - winRate com ganhas / (ganhas + perdidas)
