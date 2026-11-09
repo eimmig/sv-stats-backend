@@ -2384,6 +2384,50 @@
         }
       ],
       "evidence": "Entregue em 2026-11-08 (feature/SV-821, PR #113 da subtask/SV-822). Chave tenant:<slug>:dashboard:monthly, cache-aside em getMonthlySeries, apagada no evict. ./init.sh verde; medicao no servidor em evidencias/20261108-cache-pos-034 (04-cache.sh)."
+    },
+    {
+      "id": "feat-035",
+      "name": "Agregacoes do dashboard filtrado em paralelo",
+      "goal": "GET /api/v1/statistics com filtros executa as 9 agregacoes em paralelo (fecha a parte do stats-service do epic-056).",
+      "scope": "application/ConcurrentCalls (porta nova), config/TenantPropagatingConcurrentCalls (virtual threads, propaga TenantContextHolder e limpa ao fim), application/GetStatisticsDashboardService (caminho filtrado), testes. Fora de escopo: consultas SQL, cache de filtros, pool do Hikari (10 conexoes, que limita a concorrencia por requisicao).",
+      "description": "Ver epic-056 da raiz. Hoje o caminho filtrado chama calculateOverall, calculateBySport, ..., calculateByTeam em sequencia; cada chamada pega uma conexao propria (sem @Transactional) e o schema da organizacao vem do ThreadLocal TenantContextHolder, que nao passa para outras threads.",
+      "dependencies": [
+        "feat-034"
+      ],
+      "status": "in-progress",
+      "jira": "SV-824",
+      "plan_review": "2026-11-09, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY WITH CONCERNS. Conferido: CalculateMetricsService nao tem @Transactional (cada repositorio usa a sua conexao, entao chamadas paralelas nao dividem transacao); o schema vem de TenantIdentifierResolver lendo TenantContextHolder (ThreadLocal), por isso cada tarefa abre TenantContextScope com o schema capturado na thread da requisicao e fecha ao terminar (virtual thread nao reaproveitada, mas o close mantem a regra). A camada application nao depende de config hoje: a porta ConcurrentCalls fica em application e a implementacao em config. Riscos aceitos: com o pool padrao do Hikari (10), duas requisicoes filtradas simultaneas disputam conexoes e esperam, sem deadlock porque a thread da requisicao nao segura conexao; excecao de uma tarefa e propagada sem embrulho (unwrap de ExecutionException) para manter o tratamento de erro atual.",
+      "subtasks": [
+        {
+          "id": "feat-035.1",
+          "name": "ConcurrentCalls, propagacao do tenant e uso no dashboard",
+          "status": "done",
+          "jira": "SV-825",
+          "detail": "Paralelismo com o contexto da organizacao.",
+          "checklist": [
+            "application/ConcurrentCalls com <T> Supplier<T> fork(Supplier<T>) (o Supplier devolvido bloqueia ate o resultado e relanca RuntimeException original).",
+            "config/TenantPropagatingConcurrentCalls com Executors.newVirtualThreadPerTaskExecutor, captura TenantContextHolder.current() e abre TenantContextScope na tarefa; fecha o executor no destroy.",
+            "GetStatisticsDashboardService: caminho filtrado com fork das 9 agregacoes.",
+            "Testes: unitario do servico com ConcurrentCalls sincrono; teste da implementacao (schema visivel na tarefa, limpo depois, excecao relancada sem embrulho); integracao filtrada existente continua verde."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-035.2",
+          "name": "Implantacao, medicao e docs",
+          "status": "in-progress",
+          "jira": "SV-826",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "docs/services/stats-service.md.",
+            "Release, rollout restart, medicao com periodo de 2 meses e 1 ano."
+          ],
+          "validation": "evidencias/20261109-dashboard-filtrado.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }
