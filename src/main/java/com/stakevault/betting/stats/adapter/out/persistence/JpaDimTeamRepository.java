@@ -13,9 +13,11 @@ import com.stakevault.betting.stats.domain.port.out.DimTeamRepository;
 public class JpaDimTeamRepository implements DimTeamRepository {
 
 	private final DimTeamSpringDataRepository jpaRepository;
+	private final KnownDimensions knownDimensions;
 
-	public JpaDimTeamRepository(DimTeamSpringDataRepository jpaRepository) {
+	public JpaDimTeamRepository(DimTeamSpringDataRepository jpaRepository, KnownDimensions knownDimensions) {
 		this.jpaRepository = jpaRepository;
+		this.knownDimensions = knownDimensions;
 	}
 
 	@Override
@@ -31,7 +33,15 @@ public class JpaDimTeamRepository implements DimTeamRepository {
 
 	@Override
 	public Optional<DimTeam> findByNameAndSportId(String name, UUID sportId) {
-		return jpaRepository.findByNameAndSportId(name, sportId).map(JpaDimTeamRepository::toDomain);
+		String key = sportId + "|" + name;
+		Optional<DimTeam> known = knownDimensions.find("team", key, DimTeam.class);
+		if (known.isPresent()) {
+			return known;
+		}
+		Optional<DimTeam> found = jpaRepository.findByNameAndSportId(name, sportId)
+				.map(JpaDimTeamRepository::toDomain);
+		found.ifPresent(team -> knownDimensions.remember("team", key, team));
+		return found;
 	}
 
 	@Override

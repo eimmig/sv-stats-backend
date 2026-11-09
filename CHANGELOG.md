@@ -11,6 +11,9 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-838](https://stakevault.atlassian.net/browse/SV-838) - Recalculo das somas diarias com orcamento por rodada
 - [SV-839](https://stakevault.atlassian.net/browse/SV-839) - Limite por rodada, intervalo de 60 s e testes
 - [SV-840](https://stakevault.atlassian.net/browse/SV-840) - Implantacao e rodada c2-500m repetida
+- [SV-844](https://stakevault.atlassian.net/browse/SV-844) - Cache das dimensoes, SET de schema so quando muda e cache do schema existente
+- [SV-845](https://stakevault.atlassian.net/browse/SV-845) - Implementacao e testes
+- [SV-846](https://stakevault.atlassian.net/browse/SV-846) - Implantacao e carga de diagnostico repetida
 
 ## [0.5.0] - 2026-11-09
 
