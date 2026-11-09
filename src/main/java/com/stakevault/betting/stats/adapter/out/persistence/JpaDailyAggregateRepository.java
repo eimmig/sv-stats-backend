@@ -23,8 +23,8 @@ public class JpaDailyAggregateRepository implements DailyAggregateRepository {
 	}
 
 	@Override
-	public List<LocalDate> takeDirtyDays() {
-		return dailySums.takeDirtyDays();
+	public List<LocalDate> takeDirtyDays(int limit) {
+		return dailySums.takeDirtyDays(limit);
 	}
 
 	@Override

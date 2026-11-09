@@ -68,6 +68,7 @@ admin:
   api-key: test-admin-api-key
 
 # os testes chamam o recalculo direto; o agendador mexeria nas tabelas no meio do teste
+# (fora do perfil test: refresh-delay-ms 60000 e max-days-per-refresh 31, padroes do agendador)
 stats:
   daily-aggregates:
     refresh-enabled: false

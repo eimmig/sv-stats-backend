@@ -20,11 +20,11 @@ public class RefreshDailyAggregatesService implements RefreshDailyAggregatesUseC
 
 	@Override
 	@Transactional
-	public int refreshDirtyDays() {
+	public int refreshDirtyDays(int maxDays) {
 		if (!dailyAggregateRepository.tryLock()) {
 			return 0;
 		}
-		List<LocalDate> days = dailyAggregateRepository.takeDirtyDays();
+		List<LocalDate> days = dailyAggregateRepository.takeDirtyDays(maxDays);
 		if (!days.isEmpty()) {
 			dailyAggregateRepository.rebuild(days);
 		}

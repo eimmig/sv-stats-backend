@@ -29,7 +29,8 @@ class DailyAggregateRefreshSchedulerTest {
 	void shouldRefreshEachTenantInsideItsOwnSchemaAndGoOnAfterAFailure() {
 		when(tenantSchemaGateway.listWithDailyAggregates()).thenReturn(List.of(FIRST, SECOND));
 		List<TenantSchemaName> seen = new ArrayList<>();
-		RefreshDailyAggregatesUseCase refresh = () -> {
+		RefreshDailyAggregatesUseCase refresh = maxDays -> {
+			assertThat(maxDays).isEqualTo(31);
 			seen.add(TenantContextHolder.current());
 			if (seen.size() == 1) {
 				throw new IllegalStateException("database unavailable");
@@ -37,7 +38,7 @@ class DailyAggregateRefreshSchedulerTest {
 			return 1;
 		};
 
-		new DailyAggregateRefreshScheduler(tenantSchemaGateway, refresh).refreshAll();
+		new DailyAggregateRefreshScheduler(tenantSchemaGateway, refresh, 31).refreshAll();
 
 		assertThat(seen).containsExactly(FIRST, SECOND);
 		assertThat(TenantContextHolder.current()).isNull();
