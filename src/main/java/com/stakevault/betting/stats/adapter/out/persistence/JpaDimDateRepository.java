@@ -11,9 +11,11 @@ import com.stakevault.betting.stats.domain.port.out.DimDateRepository;
 public class JpaDimDateRepository implements DimDateRepository {
 
 	private final DimDateSpringDataRepository jpaRepository;
+	private final KnownDimensions knownDimensions;
 
-	public JpaDimDateRepository(DimDateSpringDataRepository jpaRepository) {
+	public JpaDimDateRepository(DimDateSpringDataRepository jpaRepository, KnownDimensions knownDimensions) {
 		this.jpaRepository = jpaRepository;
+		this.knownDimensions = knownDimensions;
 	}
 
 	@Override
@@ -31,7 +33,15 @@ public class JpaDimDateRepository implements DimDateRepository {
 
 	@Override
 	public Optional<DimDate> findByDayAndMonthAndYear(int day, int month, int year) {
-		return jpaRepository.findByDayAndMonthAndYear(day, month, year).map(JpaDimDateRepository::toDomain);
+		String key = year + "-" + month + "-" + day;
+		Optional<DimDate> known = knownDimensions.find("date", key, DimDate.class);
+		if (known.isPresent()) {
+			return known;
+		}
+		Optional<DimDate> found = jpaRepository.findByDayAndMonthAndYear(day, month, year)
+				.map(JpaDimDateRepository::toDomain);
+		found.ifPresent(date -> knownDimensions.remember("date", key, date));
+		return found;
 	}
 
 	private static DimDate toDomain(DimDateJpaEntity entity) {

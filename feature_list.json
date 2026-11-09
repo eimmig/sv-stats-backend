@@ -2515,6 +2515,46 @@
       ],
       "jira": "SV-838",
       "evidence": "Entregue em 2026-11-09 (feature/SV-838, PR #122). Recalculo das somas diarias a cada 60 s com no maximo 31 dias por rodada, os mais recentes primeiro. ./init.sh verde; rodada c2-500m repetida em evidencias/20261109-carga-somas-v2."
+    },
+    {
+      "id": "feat-038",
+      "name": "Cache das dimensoes, SET de schema so quando muda e cache do schema existente",
+      "goal": "Cortar as instrucoes por evento no postgres-stats (diagnostico de 2026-11-09: 35 mil INSERT ON CONFLICT por dimensao para menos de 20 linhas novas, 70 mil buscas de time, 156 mil SET/current_schema e 38,8 mil consultas ao information_schema para 20 mil apostas).",
+      "scope": "adapter/out/persistence/KnownDimensions (dimensoes ja gravadas por schema, registradas so depois do commit) usado em JpaDim*Repository; config/SchemaMultiTenantConnectionProvider; JdbcFlywayTenantSchemaGateway.exists; testes.",
+      "description": "Ver diagnostico em evidencias/20261109-diagnostico-bancos.",
+      "plan_review": "2026-11-09, Plan Reviewer em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY WITH CONCERNS. Conferido: todo acesso do Hibernate passa por getConnection/getAnyConnection; fora dele so JdbcFlywayTenantSchemaGateway usa o DataSource, com consultas qualificadas, e o Flyway restaura o search_path que encontrou. O SET na conexao fisica (unwrap) nao marca o proxy do Hikari como alterado, entao o pool nao restaura o schema na devolucao. Risco aceito: a conexao volta ao pool com o schema da ultima organizacao; qualquer codigo futuro que use o DataSource direto com nome nao qualificado leria esse schema. Dimensoes: insertIfAbsent nunca atualiza nome e nada apaga dimensao, entao a entrada nao fica velha; a chave inclui o schema; registrar so no afterCommit evita dar como existente uma dimensao de transacao desfeita (violaria a FK do fato).",
+      "dependencies": [],
+      "status": "done",
+      "subtasks": [
+        {
+          "id": "feat-038.1",
+          "name": "Implementacao e testes",
+          "status": "done",
+          "detail": "Codigo e testes.",
+          "checklist": [
+            "Provider com schema por conexao fisica.",
+            "Atalho no exists.",
+            "Testes unitarios."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-845"
+        },
+        {
+          "id": "feat-038.2",
+          "name": "Implantacao e carga de diagnostico repetida",
+          "status": "done",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "Release, rollout, carga de 20 mil apostas com pg_stat_statements, comparacao."
+          ],
+          "validation": "evidencias/20261109-diagnostico-bancos-pos.",
+          "owner": "agente",
+          "jira": "SV-846"
+        }
+      ],
+      "jira": "SV-844",
+      "evidence": "Entregue em 2026-11-09 (feature/SV-844, PR #125). Dimensoes conhecidas por schema (registradas apos o commit), SET de schema so quando muda, exists sem consulta ao catalogo. ./init.sh verde; comparacao em evidencias/20261109-diagnostico-bancos-pos."
     }
   ]
 }

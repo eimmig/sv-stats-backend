@@ -30,6 +30,10 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 
 	@Override
 	public boolean exists(TenantSchemaName schema) {
+		// schema migrado nesta instancia existe; evita uma consulta ao catalogo por requisicao (feat-038)
+		if (migratedSchemas.contains(schema.value())) {
+			return true;
+		}
 		Integer count = jdbcTemplate.queryForObject(
 				"SELECT count(*) FROM information_schema.schemata WHERE schema_name = ?",
 				Integer.class, schema.value());
