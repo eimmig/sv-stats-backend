@@ -2473,6 +2473,47 @@
       ],
       "jira": "SV-832",
       "evidence": "Entregue em 2026-11-09 (feature/SV-832, PR #119). Somas diarias por segmento (agg_daily_segment) com recalculo agendado e cache do dashboard por filtro; DailySegmentAggregateIntegrationTest compara fact_bet e somas nas 9 agregacoes. ./init.sh verde; medicao em evidencias/20261109-dashboard-filtrado."
+    },
+    {
+      "id": "feat-037",
+      "name": "Recalculo das somas diarias com orcamento por rodada",
+      "goal": "O recalculo agendado das somas diarias deixa de competir com o consumo de eventos sob carga (fecha a regressao medida na rodada c2-500m de 2026-11-09).",
+      "scope": "DailySegmentAggregateSpringDataRepository.takeDirtyDays (no maximo N dias por rodada, os mais recentes primeiro), RefreshDailyAggregatesService (recebe o limite), DailyAggregateRefreshScheduler e application.yml (intervalo padrao de 60 s, limite padrao de 31 dias), testes.",
+      "description": "Rodada c2-500m de 2026-11-09 (evidencias/20261109-carga-somas): vazao de registro igual (107,7/s), mas atraso p95 das estatisticas de 625 s para 1.573 s e ultimo evento 1.680 s apos o fim (antes 656 s). Recalculo completo dos 366 dias da carga leva 5,5 s no postgres-stats de 500m; com intervalo de 5 s o agendador ocupava o banco metade do tempo. O intervalo nao afeta o resultado das consultas: dia pendente e lido de fact_bet.",
+      "dependencies": [
+        "feat-036"
+      ],
+      "status": "in-progress",
+      "plan_review": "2026-11-09, Plan Reviewer em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY. Conferido: readsDailySums so usa as somas sem dia pendente no intervalo, entao atrasar ou fatiar o recalculo nao muda resultado, so a velocidade; DELETE ... WHERE day IN (SELECT ... ORDER BY day DESC LIMIT n) RETURNING mantem a garantia de nao perder marca (marca nao confirmada nao e vista e fica); dias mais recentes primeiro favorecem os presets. Risco aceito: depois de uma carga que toca 366 dias, as somas levam ~12 rodadas (12 min) para cobrir o ano, periodo em que consultas longas leem fact_bet.",
+      "subtasks": [
+        {
+          "id": "feat-037.1",
+          "name": "Limite por rodada, intervalo de 60 s e testes",
+          "status": "in-progress",
+          "detail": "Codigo e testes.",
+          "checklist": [
+            "takeDirtyDays(limit) com os mais recentes primeiro.",
+            "Propriedades stats.daily-aggregates.refresh-delay-ms (60000) e max-days-per-refresh (31).",
+            "Teste de integracao: com 3 dias pendentes e limite 2, recalcula os 2 mais recentes e deixa o mais antigo."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-839"
+        },
+        {
+          "id": "feat-037.2",
+          "name": "Implantacao e rodada c2-500m repetida",
+          "status": "not-started",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "Release, rollout, rodada c2-500m, comparacao com 08/11."
+          ],
+          "validation": "evidencias/20261109-carga-somas-v2.",
+          "owner": "agente",
+          "jira": "SV-840"
+        }
+      ],
+      "jira": "SV-838"
     }
   ]
 }
