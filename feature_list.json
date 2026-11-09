@@ -2394,7 +2394,7 @@
       "dependencies": [
         "feat-034"
       ],
-      "status": "in-progress",
+      "status": "done",
       "jira": "SV-824",
       "plan_review": "2026-11-09, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY WITH CONCERNS. Conferido: CalculateMetricsService nao tem @Transactional (cada repositorio usa a sua conexao, entao chamadas paralelas nao dividem transacao); o schema vem de TenantIdentifierResolver lendo TenantContextHolder (ThreadLocal), por isso cada tarefa abre TenantContextScope com o schema capturado na thread da requisicao e fecha ao terminar (virtual thread nao reaproveitada, mas o close mantem a regra). A camada application nao depende de config hoje: a porta ConcurrentCalls fica em application e a implementacao em config. Riscos aceitos: com o pool padrao do Hikari (10), duas requisicoes filtradas simultaneas disputam conexoes e esperam, sem deadlock porque a thread da requisicao nao segura conexao; excecao de uma tarefa e propagada sem embrulho (unwrap de ExecutionException) para manter o tratamento de erro atual.",
       "subtasks": [
@@ -2416,7 +2416,7 @@
         {
           "id": "feat-035.2",
           "name": "Implantacao, medicao e docs",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-826",
           "detail": "Prova no servidor.",
           "checklist": [
@@ -2427,7 +2427,7 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": "Entregue em 2026-11-09 (feature/SV-824, PR #116). Agregacoes do caminho filtrado em virtual threads com o schema propagado. ./init.sh verde; medicao em evidencias/20261109-dashboard-filtrado."
     }
   ]
 }
