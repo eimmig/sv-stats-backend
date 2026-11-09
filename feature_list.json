@@ -2350,7 +2350,7 @@
       "dependencies": [
         "feat-033"
       ],
-      "status": "in-progress",
+      "status": "done",
       "jira": "SV-821",
       "plan_review": "2026-11-08, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY. Conferido: o caminho sem filtro e o unico que usa os agregados cacheados; MetricsCacheRepository tem uma so implementacao (Redis) e os testes usam Mockito; o evict e chamado depois do commit do consumo (ProcessBetEventService:132), entao a chave nova invalidada ali segue a mesma consistencia das outras. Risco aceito: a primeira requisicao depois de um evento recalcula a serie, como ja faz com os agregados.",
       "subtasks": [
@@ -2372,7 +2372,7 @@
         {
           "id": "feat-034.2",
           "name": "Implantacao, medicao e docs",
-          "status": "in-progress",
+          "status": "done",
           "jira": "SV-823",
           "detail": "Prova no servidor.",
           "checklist": [
@@ -2383,7 +2383,7 @@
           "owner": "agente"
         }
       ],
-      "evidence": ""
+      "evidence": "Entregue em 2026-11-08 (feature/SV-821, PR #113 da subtask/SV-822). Chave tenant:<slug>:dashboard:monthly, cache-aside em getMonthlySeries, apagada no evict. ./init.sh verde; medicao no servidor em evidencias/20261108-cache-pos-034 (04-cache.sh)."
     }
   ]
 }
