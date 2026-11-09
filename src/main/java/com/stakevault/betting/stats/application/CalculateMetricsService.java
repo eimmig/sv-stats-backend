@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.stakevault.betting.stats.domain.model.BetAggregate;
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.ConfidenceInterval;
+import com.stakevault.betting.stats.domain.model.ConfidenceIntervals;
 import com.stakevault.betting.stats.domain.model.DailyBetMetrics;
 import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetAggregate;
@@ -97,9 +99,27 @@ public class CalculateMetricsService implements CalculateMetricsUseCase {
 		BigDecimal winRate = decided == 0 ? BigDecimal.ZERO
 				: BigDecimal.valueOf(aggregate.wonCount())
 						.divide(BigDecimal.valueOf(decided), SCALE, RoundingMode.HALF_UP);
+		BigDecimal impliedProbability = aggregate.impliedProbability() == null ? null
+				: aggregate.impliedProbability().setScale(SCALE, RoundingMode.HALF_UP);
+		// a vantagem so compara populacoes iguais: indefinida se alguma decidida nao tem odd
+		BigDecimal edge = impliedProbability == null || aggregate.decidedWithOddCount() != decided ? null
+				: winRate.subtract(impliedProbability);
+		ConfidenceInterval winRateInterval = ConfidenceIntervals.wilson(aggregate.wonCount(), decided);
+		ConfidenceInterval roiInterval = ConfidenceIntervals.ratio(aggregate.netProfit(), aggregate.totalStaked(),
+				aggregate.profitSquaredSum(), aggregate.stakeSquaredSum(), aggregate.profitStakeSum(),
+				aggregate.settledCount());
 		return new BetMetrics(aggregate.totalStaked(), aggregate.netProfit(), roi, winRate, aggregate.settledCount(),
 				aggregate.wonCount(), aggregate.lostCount(), aggregate.voidCount(), aggregate.preCount(),
-				aggregate.liveCount(), aggregate.avgOdd());
+				aggregate.liveCount(), aggregate.avgOdd(), impliedProbability, edge, lower(winRateInterval),
+				upper(winRateInterval), lower(roiInterval), upper(roiInterval));
+	}
+
+	private static BigDecimal lower(ConfidenceInterval interval) {
+		return interval == null ? null : interval.lower();
+	}
+
+	private static BigDecimal upper(ConfidenceInterval interval) {
+		return interval == null ? null : interval.upper();
 	}
 
 	private static BigDecimal roiOf(BigDecimal netProfit, BigDecimal totalStaked) {

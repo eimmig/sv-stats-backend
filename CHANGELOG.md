@@ -11,6 +11,10 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-791](https://stakevault.atlassian.net/browse/SV-791) - winRate sem apostas devolvidas no denominador
 - [SV-792](https://stakevault.atlassian.net/browse/SV-792) - winRate com ganhas / (ganhas + perdidas)
 - [SV-793](https://stakevault.atlassian.net/browse/SV-793) - CHANGELOG e verificacao final
+- [SV-810](https://stakevault.atlassian.net/browse/SV-810) - Vantagem sobre a probabilidade implicita e intervalos de confianca em BetMetrics
+- [SV-811](https://stakevault.atlassian.net/browse/SV-811) - Agregados com probabilidade implicita e somatorios do ROI
+- [SV-812](https://stakevault.atlassian.net/browse/SV-812) - Intervalos de confianca e vantagem em BetMetrics
+- [SV-813](https://stakevault.atlassian.net/browse/SV-813) - CHANGELOG e verificacao final
 
 ## [0.3.0] - 2026-10-06
 

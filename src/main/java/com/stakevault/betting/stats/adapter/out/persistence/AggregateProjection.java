@@ -21,4 +21,14 @@ interface AggregateProjection {
 	BigDecimal getAvgOdd();
 
 	Long getSettledCount();
+
+	BigDecimal getImpliedProbability();
+
+	Long getDecidedWithOddCount();
+
+	BigDecimal getProfitSquaredSum();
+
+	BigDecimal getStakeSquaredSum();
+
+	BigDecimal getProfitStakeSum();
 }
