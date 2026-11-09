@@ -2340,6 +2340,50 @@
         }
       ],
       "evidence": "Entregue em 2026-11-08 (feature/SV-810, PR #110 da subtask/SV-811 com feat-033.1 e feat-033.2). BetMetrics com impliedProbability, edge, winRateLower/Upper e roiLower/Upper; ConfidenceIntervals.wilson e ratio (metodo delta); WorkedExampleIntegrationTest confere o exemplo numerico do TCC pela API. ./init.sh verde em 2026-11-08 (Testcontainers PG18/Redis 8), CI verde no PR #110. Docs: estatisticas.md, contratos-de-api.md, services/stats-service.md. Delivery Reviewer nao rodado nesta sessao; revisao feita no proprio PR."
+    },
+    {
+      "id": "feat-034",
+      "name": "Serie mensal do dashboard sem filtro no cache do Redis",
+      "goal": "GET /api/v1/statistics sem filtro e com cache quente nao consulta o banco (fecha epic-055 da raiz).",
+      "scope": "domain/port/out/MetricsCacheRepository (findMonthlySeries/saveMonthlySeries), adapter/out/cache/RedisMetricsCacheRepository (chave tenant:<slug>:dashboard:monthly, incluida no evict), domain/port/in/GetDashboardMetricsUseCase e application/GetDashboardMetricsService (getMonthlySeries), application/GetStatisticsDashboardService (usa getMonthlySeries no caminho sem filtro); testes; docs. Fora de escopo: filtros (continuam sem cache), formato da resposta.",
+      "description": "Ver epic-055 da raiz. GetStatisticsDashboardService.getDashboard chama calculateMetrics.calculateMonthly(filter) mesmo sem filtro, enquanto os outros 8 agregados vem de GetDashboardMetricsService (cache-aside). O evict de ProcessBetEventService apaga as 8 chaves e a mensal do mes do evento; a serie inteira precisa entrar na mesma lista.",
+      "dependencies": [
+        "feat-033"
+      ],
+      "status": "in-progress",
+      "jira": "SV-821",
+      "plan_review": "2026-11-08, Plan Reviewer (review-suite:ln-11-plan-reviewer) em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY. Conferido: o caminho sem filtro e o unico que usa os agregados cacheados; MetricsCacheRepository tem uma so implementacao (Redis) e os testes usam Mockito; o evict e chamado depois do commit do consumo (ProcessBetEventService:132), entao a chave nova invalidada ali segue a mesma consistencia das outras. Risco aceito: a primeira requisicao depois de um evento recalcula a serie, como ja faz com os agregados.",
+      "subtasks": [
+        {
+          "id": "feat-034.1",
+          "name": "Chave da serie mensal, uso no dashboard e testes",
+          "status": "done",
+          "jira": "SV-822",
+          "detail": "Cache-aside da serie mensal sem filtro, invalidada pelo evict.",
+          "checklist": [
+            "MetricsCacheRepository.findMonthlySeries/saveMonthlySeries; Redis com chave tenant:<slug>:dashboard:monthly e TTL de 1 h; evict inclui a chave.",
+            "GetDashboardMetricsUseCase.getMonthlySeries e GetDashboardMetricsService (cache-aside).",
+            "GetStatisticsDashboardService usa getMonthlySeries quando o filtro e vazio.",
+            "Testes: GetDashboardMetricsServiceTest (hit e miss), RedisMetricsCacheRepositoryIntegrationTest (ida e volta e evict), teste do servico do dashboard sem filtro sem chamar calculateMonthly."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente"
+        },
+        {
+          "id": "feat-034.2",
+          "name": "Implantacao, medicao e docs",
+          "status": "in-progress",
+          "jira": "SV-823",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "docs/services/stats-service.md (chaves do cache).",
+            "Release em main, rollout restart, 04-cache.sh no servidor com p95 < 300 ms."
+          ],
+          "validation": "evidencias/20261108-cache-*.",
+          "owner": "agente"
+        }
+      ],
+      "evidence": ""
     }
   ]
 }

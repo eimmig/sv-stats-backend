@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.stakevault.betting.stats.domain.model.BetMetrics;
+import com.stakevault.betting.stats.domain.model.MonthlyBetMetrics;
 import com.stakevault.betting.stats.domain.model.SegmentedBetMetrics;
 
 public interface MetricsCacheRepository {
@@ -43,6 +44,10 @@ public interface MetricsCacheRepository {
 	Optional<BetMetrics> findMonthly(int year, int month);
 
 	void saveMonthly(int year, int month, BetMetrics metrics);
+
+	Optional<List<MonthlyBetMetrics>> findMonthlySeries();
+
+	void saveMonthlySeries(List<MonthlyBetMetrics> series);
 
 	void evict(int year, int month);
 }

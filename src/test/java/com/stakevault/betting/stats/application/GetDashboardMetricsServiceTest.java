@@ -91,6 +91,30 @@ class GetDashboardMetricsServiceTest {
 	}
 
 	@Test
+	void shouldReturnCachedMonthlySeriesWithoutCallingCalculateOnHit() {
+		List<MonthlyBetMetrics> series = List.of(new MonthlyBetMetrics(2026, 9, sampleMetrics()));
+		when(cache.findMonthlySeries()).thenReturn(Optional.of(series));
+
+		List<MonthlyBetMetrics> result = service.getMonthlySeries();
+
+		assertThat(result).isEqualTo(series);
+		verify(calculateMetrics, never()).calculateMonthly(any());
+	}
+
+	@Test
+	void shouldCalculateAndSaveMonthlySeriesOnMiss() {
+		List<MonthlyBetMetrics> series = List.of(new MonthlyBetMetrics(2026, 8, sampleMetrics()),
+				new MonthlyBetMetrics(2026, 9, sampleMetrics()));
+		when(cache.findMonthlySeries()).thenReturn(Optional.empty());
+		when(calculateMetrics.calculateMonthly(StatisticsFilter.none())).thenReturn(series);
+
+		List<MonthlyBetMetrics> result = service.getMonthlySeries();
+
+		assertThat(result).isEqualTo(series);
+		verify(cache).saveMonthlySeries(series);
+	}
+
+	@Test
 	void shouldReturnCachedMonthlyWithoutCallingCalculateOnHit() {
 		when(cache.findMonthly(2026, 9)).thenReturn(Optional.of(sampleMetrics()));
 

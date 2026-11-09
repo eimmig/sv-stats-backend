@@ -25,7 +25,7 @@ public class GetStatisticsDashboardService implements GetStatisticsDashboardUseC
 		if (filter.isEmpty()) {
 			return new StatisticsDashboard(dashboardMetrics.getOverall(), dashboardMetrics.getBySport(),
 					dashboardMetrics.getByMarket(), dashboardMetrics.getByBettingHouse(),
-					calculateMetrics.calculateMonthly(filter), dashboardMetrics.getByBetType(),
+					dashboardMetrics.getMonthlySeries(), dashboardMetrics.getByBetType(),
 					dashboardMetrics.getByLeague(), dashboardMetrics.getByTipster(), dashboardMetrics.getByTeam());
 		}
 		return new StatisticsDashboard(calculateMetrics.calculateOverall(filter),
