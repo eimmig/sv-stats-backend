@@ -9,9 +9,11 @@ import com.stakevault.betting.stats.domain.port.out.DimLeagueRepository;
 public class JpaDimLeagueRepository implements DimLeagueRepository {
 
 	private final DimLeagueSpringDataRepository jpaRepository;
+	private final KnownDimensions knownDimensions;
 
-	public JpaDimLeagueRepository(DimLeagueSpringDataRepository jpaRepository) {
+	public JpaDimLeagueRepository(DimLeagueSpringDataRepository jpaRepository, KnownDimensions knownDimensions) {
 		this.jpaRepository = jpaRepository;
+		this.knownDimensions = knownDimensions;
 	}
 
 	@Override
@@ -22,6 +24,11 @@ public class JpaDimLeagueRepository implements DimLeagueRepository {
 
 	@Override
 	public void insertIfAbsent(DimLeague dimLeague) {
+		String key = String.valueOf(dimLeague.id());
+		if (knownDimensions.contains("league", key)) {
+			return;
+		}
 		jpaRepository.insertIfAbsent(dimLeague.id(), dimLeague.name());
+		knownDimensions.remember("league", key, Boolean.TRUE);
 	}
 }
