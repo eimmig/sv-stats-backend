@@ -2,6 +2,7 @@ package com.stakevault.betting.stats.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,18 +35,18 @@ class RefreshDailyAggregatesServiceTest {
 	void shouldLeaveTheDirtyDaysAloneWhenAnotherReplicaHoldsTheLock() {
 		when(dailyAggregateRepository.tryLock()).thenReturn(false);
 
-		assertThat(service.refreshDirtyDays()).isZero();
+		assertThat(service.refreshDirtyDays(31)).isZero();
 
-		verify(dailyAggregateRepository, never()).takeDirtyDays();
+		verify(dailyAggregateRepository, never()).takeDirtyDays(anyInt());
 		verify(dailyAggregateRepository, never()).rebuild(any());
 	}
 
 	@Test
 	void shouldNotRebuildWhenNoDayIsDirty() {
 		when(dailyAggregateRepository.tryLock()).thenReturn(true);
-		when(dailyAggregateRepository.takeDirtyDays()).thenReturn(List.of());
+		when(dailyAggregateRepository.takeDirtyDays(31)).thenReturn(List.of());
 
-		assertThat(service.refreshDirtyDays()).isZero();
+		assertThat(service.refreshDirtyDays(31)).isZero();
 
 		verify(dailyAggregateRepository, never()).rebuild(any());
 	}
@@ -54,9 +55,9 @@ class RefreshDailyAggregatesServiceTest {
 	void shouldRebuildEveryDirtyDay() {
 		List<LocalDate> days = List.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 2));
 		when(dailyAggregateRepository.tryLock()).thenReturn(true);
-		when(dailyAggregateRepository.takeDirtyDays()).thenReturn(days);
+		when(dailyAggregateRepository.takeDirtyDays(2)).thenReturn(days);
 
-		assertThat(service.refreshDirtyDays()).isEqualTo(2);
+		assertThat(service.refreshDirtyDays(2)).isEqualTo(2);
 
 		verify(dailyAggregateRepository).rebuild(days);
 	}

@@ -167,7 +167,7 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 			Dashboard fromFactBet = read(PERIOD);
 			Dashboard everythingFromFactBet = read(StatisticsFilter.none());
 
-			assertThat(refreshDailyAggregates.refreshDirtyDays()).isEqualTo(4);
+			assertThat(refreshDailyAggregates.refreshDirtyDays(31)).isEqualTo(4);
 
 			assertThat(count("agg_dirty_day")).isZero();
 			assertThat(count("agg_daily_segment")).isPositive();
@@ -189,7 +189,7 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 			UUID d2 = day(DAY_2);
 			FactBet original = factBetRepository.save(bet(d1, house, sport, league, market, null, null, null,
 					"100.00", "2.00", "100.00", BetStatus.WON, BetType.PRE));
-			refreshDailyAggregates.refreshDirtyDays();
+			refreshDailyAggregates.refreshDirtyDays(31);
 
 			factBetRepository.save(new FactBet(original.id(), d2, house, sport, league, market, null, null, null,
 					original.stake(), original.odd(), original.profit(), true, BetStatus.WON, BetType.PRE, 1));
@@ -197,7 +197,7 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 			assertThat(jdbcTemplate.queryForList("SELECT day FROM \"" + schema.value() + "\".agg_dirty_day ORDER BY day",
 					LocalDate.class)).containsExactly(DAY_1, DAY_2);
 			Dashboard fromFactBet = read(PERIOD);
-			refreshDailyAggregates.refreshDirtyDays();
+			refreshDailyAggregates.refreshDirtyDays(31);
 			assertThat(read(PERIOD)).usingRecursiveComparison(numericallyEqual()).isEqualTo(fromFactBet);
 			assertThat(factBetRepository.aggregateOverall(new StatisticsFilter(null, null, null, null, null, DAY_1,
 					DAY_1)).settledCount()).isZero();
@@ -217,7 +217,7 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 					"100.00", BetStatus.WON, BetType.PRE));
 			factBetRepository.save(bet(d1, otherHouse, sport, league, market, null, null, null, "10.00", "2.00",
 					"-10.00", BetStatus.LOST, BetType.PRE));
-			refreshDailyAggregates.refreshDirtyDays();
+			refreshDailyAggregates.refreshDirtyDays(31);
 
 			StatisticsFilter byHouse = new StatisticsFilter(house, null, null, null, null, DAY_1, DAY_3);
 
@@ -227,10 +227,31 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 	}
 
 	@Test
+	void shouldRefreshOnlyTheMostRecentDirtyDaysUpToTheLimitAndKeepTheRest() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID house = houses.save(new DimBettingHouse(UUID.randomUUID(), "Casa")).id();
+			UUID sport = sports.save(new DimSport(UUID.randomUUID(), "Futebol")).id();
+			UUID league = leagues.save(new DimLeague(UUID.randomUUID(), "Liga")).id();
+			UUID market = markets.save(new DimMarket(UUID.randomUUID(), "Resultado")).id();
+			for (LocalDate date : List.of(DAY_1, DAY_2, DAY_3)) {
+				factBetRepository.save(bet(day(date), house, sport, league, market, null, null, null, "10.00",
+						"2.00", "10.00", BetStatus.WON, BetType.PRE));
+			}
+
+			assertThat(refreshDailyAggregates.refreshDirtyDays(2)).isEqualTo(2);
+
+			assertThat(jdbcTemplate.queryForList("SELECT day FROM \"" + schema.value() + "\".agg_dirty_day",
+					LocalDate.class)).containsExactly(DAY_1);
+			assertThat(refreshDailyAggregates.refreshDirtyDays(2)).isEqualTo(1);
+			assertThat(count("agg_dirty_day")).isZero();
+		}
+	}
+
+	@Test
 	void shouldListTheTenantSchemaAndRefreshNothingWithoutDirtyDays() {
 		assertThat(tenantSchemaGateway.listWithDailyAggregates()).contains(schema);
 		try (var _ = TenantContextScope.open(schema)) {
-			assertThat(refreshDailyAggregates.refreshDirtyDays()).isZero();
+			assertThat(refreshDailyAggregates.refreshDirtyDays(31)).isZero();
 		}
 	}
 }
