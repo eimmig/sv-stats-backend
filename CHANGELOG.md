@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-09
+
 ## [0.4.2] - 2026-11-09
 - [SV-824](https://stakevault.atlassian.net/browse/SV-824) - Agregacoes do dashboard filtrado em paralelo
 - [SV-825](https://stakevault.atlassian.net/browse/SV-825) - ConcurrentCalls, propagacao do tenant e uso no dashboard
