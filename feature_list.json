@@ -2566,12 +2566,12 @@
       "dependencies": [
         "feat-037"
       ],
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": "feat-039.1",
           "name": "Migration e teste",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Migration Flyway e teste de integracao.",
           "checklist": [
             "Migration com CREATE STATISTICS e ANALYZE.",
@@ -2584,7 +2584,7 @@
         {
           "id": "feat-039.2",
           "name": "Implantacao e medicao",
-          "status": "not-started",
+          "status": "done",
           "detail": "Prova no servidor.",
           "checklist": [
             "Release, rollout, 07-oltp-olap.sh e dashboard com periodo."
@@ -2594,7 +2594,8 @@
           "jira": "SV-849"
         }
       ],
-      "jira": "SV-847"
+      "jira": "SV-847",
+      "evidence": "Entregue em 2026-11-09 (feature/SV-847, PR #128). Migration V20261109200000 com CREATE STATISTICS dim_date_day sobre make_date(year, month, day) e ANALYZE; teste DimDateStatisticsIntegrationTest. ./init.sh verde; medicao em evidencias/20261110-oltp-olap-final."
     }
   ]
 }
