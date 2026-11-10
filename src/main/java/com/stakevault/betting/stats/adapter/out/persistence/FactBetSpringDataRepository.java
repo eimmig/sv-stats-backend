@@ -223,6 +223,7 @@ interface FactBetSpringDataRepository extends JpaRepository<FactBetJpaEntity, UU
 			  AND (:#{#filter.tipsterId()} IS NULL OR f.tipsterId = :#{#filter.tipsterId()})
 			  AND FUNCTION('make_date', d.year, d.month, d.day) BETWEEN :#{#filter.from()} AND :#{#filter.to()}
 			GROUP BY d.year, d.month
+			ORDER BY d.year, d.month
 			""")
 	List<MonthlyAggregateProjection> aggregateByMonth(@Param("pending") BetStatus pending, @Param("lost") BetStatus lost,
 			@Param("voidStatus") BetStatus voidStatus, @Param("pre") BetType pre, @Param("live") BetType live,
