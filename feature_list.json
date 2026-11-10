@@ -2555,6 +2555,46 @@
       ],
       "jira": "SV-844",
       "evidence": "Entregue em 2026-11-09 (feature/SV-844, PR #125). Dimensoes conhecidas por schema (registradas apos o commit), SET de schema so quando muda, exists sem consulta ao catalogo. ./init.sh verde; comparacao em evidencias/20261109-diagnostico-bancos-pos."
+    },
+    {
+      "id": "feat-039",
+      "name": "Estatistica sobre a data montada em dim_date",
+      "goal": "Corrigir a estimativa do planejador para o filtro de periodo make_date(year, month, day) BETWEEN ... em dim_date. Sem estatistica sobre a expressao, o PostgreSQL estima 2 dias para qualquer intervalo e escolhe nested loop com uma busca no idx_fact_bet_date_id por dia: 83,4 ms no ano inteiro contra 23,6 ms com a estimativa certa (teste em BEGIN/ROLLBACK, 2026-11-09, tenant loadtest-b1c68eae).",
+      "scope": "Migration Flyway por tenant: CREATE STATISTICS dim_date_day ON (make_date(year, month, day)) FROM dim_date; ANALYZE dim_date. Teste de integracao que confere a estatistica criada. Fora de escopo: consultas e indices (o idx_fact_bet_date_id continua, usado nos periodos curtos e no recalculo das somas diarias).",
+      "description": "Par com infra feat-015 (random_page_cost=1.1 no postgres-stats, disco SSD): so a estatistica fez o periodo de 30 dias trocar o indice por leitura sequencial (6,7 -> 15,5 ms); com as duas, todos os periodos ficaram iguais ou melhores (30 dias 5,5 ms, 7 dias 1,3 ms, ano 23,6 ms).",
+      "plan_review": "2026-11-09, Plan Reviewer em auto-revisao curta, sem subagente (independencia reduzida, declarada). Veredito: READY. make_date e IMMUTABLE, exigido por CREATE STATISTICS com expressao (PostgreSQL 14+; producao em 18.6). As migrations rodam com search_path no schema do tenant, entao o nome da estatistica e a tabela ficam no schema certo; ANALYZE roda dentro da transacao do Flyway. dim_date cresce um dia por vez, e o autovacuum reanalisa a tabela e atualiza a estatistica estendida. Sem mudanca de codigo Java nem de contrato.",
+      "dependencies": [
+        "feat-037"
+      ],
+      "status": "in-progress",
+      "subtasks": [
+        {
+          "id": "feat-039.1",
+          "name": "Migration e teste",
+          "status": "in-progress",
+          "detail": "Migration Flyway e teste de integracao.",
+          "checklist": [
+            "Migration com CREATE STATISTICS e ANALYZE.",
+            "Teste confere pg_statistic_ext no schema do tenant."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-848"
+        },
+        {
+          "id": "feat-039.2",
+          "name": "Implantacao e medicao",
+          "status": "not-started",
+          "detail": "Prova no servidor.",
+          "checklist": [
+            "Release, rollout, 07-oltp-olap.sh e dashboard com periodo."
+          ],
+          "validation": "evidencias/20261110-oltp-olap-final e 20261110-dashboard-filtrado refeitas.",
+          "owner": "agente",
+          "jira": "SV-849"
+        }
+      ],
+      "jira": "SV-847"
     }
   ]
 }
