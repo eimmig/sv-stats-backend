@@ -6,6 +6,9 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+- [SV-847](https://stakevault.atlassian.net/browse/SV-847) - Estatistica sobre a data montada em dim_date
+- [SV-848](https://stakevault.atlassian.net/browse/SV-848) - Migration e teste
+- [SV-849](https://stakevault.atlassian.net/browse/SV-849) - Implantacao e medicao
 
 ## [0.5.1] - 2026-11-09
 - [SV-838](https://stakevault.atlassian.net/browse/SV-838) - Recalculo das somas diarias com orcamento por rodada
