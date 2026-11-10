@@ -11,6 +11,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-847](https://stakevault.atlassian.net/browse/SV-847) - Estatistica sobre a data montada em dim_date
 - [SV-848](https://stakevault.atlassian.net/browse/SV-848) - Migration e teste
 - [SV-849](https://stakevault.atlassian.net/browse/SV-849) - Implantacao e medicao
+- [SV-858](https://stakevault.atlassian.net/browse/SV-858) - Serie mensal da tabela fato em ordem cronologica
+- [SV-859](https://stakevault.atlassian.net/browse/SV-859) - ORDER BY e teste
 
 ## [0.5.2] - 2026-11-09
 

@@ -227,6 +227,30 @@ class DailySegmentAggregateIntegrationTest extends TenantSchemaIntegrationSuppor
 	}
 
 	@Test
+	void shouldReturnTheMonthlySeriesFromFactBetInChronologicalOrder() {
+		try (var _ = TenantContextScope.open(schema)) {
+			UUID house = houses.save(new DimBettingHouse(UUID.randomUUID(), "Casa")).id();
+			UUID sport = sports.save(new DimSport(UUID.randomUUID(), "Futebol")).id();
+			UUID league = leagues.save(new DimLeague(UUID.randomUUID(), "Liga")).id();
+			UUID market = markets.save(new DimMarket(UUID.randomUUID(), "Resultado")).id();
+			// meses de dois anos gravados fora de ordem: sem ORDER BY, a agregacao por hash os devolve em ordem arbitraria
+			int[][] months = { { 2026, 3 }, { 2025, 11 }, { 2026, 10 }, { 2026, 1 }, { 2025, 12 }, { 2026, 7 }, { 2026, 5 },
+					{ 2026, 2 }, { 2026, 9 }, { 2026, 4 }, { 2026, 8 }, { 2026, 6 } };
+			for (int[] month : months) {
+				factBetRepository.save(bet(day(LocalDate.of(month[0], month[1], 15)), house, sport, league, market, null,
+						null, null, "10.00", "2.00", "10.00", BetStatus.WON, BetType.PRE));
+			}
+			StatisticsFilter bySport = new StatisticsFilter(null, sport, null, null, null, LocalDate.of(2025, 11, 1),
+					LocalDate.of(2026, 10, 31));
+
+			assertThat(factBetRepository.aggregateByMonth(bySport))
+					.extracting(month -> month.year() * 100 + month.month())
+					.containsExactly(202511, 202512, 202601, 202602, 202603, 202604, 202605, 202606, 202607, 202608,
+							202609, 202610);
+		}
+	}
+
+	@Test
 	void shouldRefreshOnlyTheMostRecentDirtyDaysUpToTheLimitAndKeepTheRest() {
 		try (var _ = TenantContextScope.open(schema)) {
 			UUID house = houses.save(new DimBettingHouse(UUID.randomUUID(), "Casa")).id();
