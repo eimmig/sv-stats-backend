@@ -2607,12 +2607,12 @@
         "feat-039"
       ],
       "plan_review": "2026-11-09, Plan Reviewer em auto-revisao curta (independencia reduzida, declarada). Veredito: READY. Unico consumidor da lista e CalculateMetricsService, que a repassa na ordem recebida ao front; o grafico usa a ordem do array. As listas por segmento nao tem ordem implicita no contrato (o front ordena as abas). ORDER BY sobre colunas do GROUP BY nao muda os totais.",
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": "feat-040.1",
           "name": "ORDER BY e teste",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Consulta e teste de integracao.",
           "checklist": [
             "Teste vermelho antes da correcao.",
@@ -2623,7 +2623,8 @@
           "jira": "SV-859"
         }
       ],
-      "jira": "SV-858"
+      "jira": "SV-858",
+      "evidence": "Entregue em 2026-11-09 (feature/SV-858, PR #131). ORDER BY d.year, d.month em aggregateByMonth e ordenacao no JpaFactBetRepository; JpaFactBetRepositoryMonthOrderTest vermelho sem a correcao. ./init.sh verde; captura do dashboard com filtro de futebol em producao."
     }
   ]
 }
