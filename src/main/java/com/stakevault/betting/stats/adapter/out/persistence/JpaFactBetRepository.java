@@ -2,6 +2,7 @@ package com.stakevault.betting.stats.adapter.out.persistence;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -132,7 +133,10 @@ public class JpaFactBetRepository implements FactBetRepository {
 				? dailySums.sumByMonth(from(filter), to(filter))
 				: jpaRepository.aggregateByMonth(BetStatus.PENDING, BetStatus.LOST, BetStatus.VOID, BetType.PRE,
 						BetType.LIVE, resolve(filter));
+		// O grafico usa a ordem da lista; sem ordenar, uma agregacao por hash no banco devolve os meses fora de ordem.
 		return months.stream()
+				.sorted(Comparator.comparingInt(MonthlyAggregateProjection::getYear)
+						.thenComparingInt(MonthlyAggregateProjection::getMonth))
 				.map(projection -> new MonthlyBetAggregate(projection.getYear(), projection.getMonth(),
 						toAggregate(projection)))
 				.toList();
