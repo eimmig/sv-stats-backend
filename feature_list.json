@@ -2625,6 +2625,38 @@
       ],
       "jira": "SV-858",
       "evidence": "Entregue em 2026-11-09 (feature/SV-858, PR #131). ORDER BY d.year, d.month em aggregateByMonth e ordenacao no JpaFactBetRepository; JpaFactBetRepositoryMonthOrderTest vermelho sem a correcao. ./init.sh verde; captura do dashboard com filtro de futebol em producao."
+    },
+    {
+      "id": "feat-041",
+      "name": "Intervalo do ROI com t de Student",
+      "goal": "O intervalo de 95% do ROI passa a usar o quantil da distribuicao t de Student com n - 1 graus de liberdade no lugar de z = 1,96. Com poucas apostas (o exemplo do TCC tem seis), a aproximacao normal subestima a largura do intervalo; a orientadora apontou isso na devolutiva de 2026-11-16.",
+      "scope": "ConfidenceIntervals.ratio usa t(0,975; n - 1): tabela exata para 1 a 30 graus de liberdade e expansao de Cornish-Fisher (Abramowitz e Stegun 26.7.5) acima disso. Wilson continua com z (intervalo de escore para proporcao). Testes de referencia e do exemplo numerico atualizados; docs/estatisticas.md e docs/services/stats-service.md.",
+      "description": "Sem dependencia nova: o quantil sai de uma tabela e de uma formula fechada. O contrato da API nao muda (roiLower/roiUpper continuam os mesmos campos); so os valores ficam mais largos para amostras pequenas e praticamente iguais para amostras grandes (t(0,975; 1000) = 1,9623).",
+      "dependencies": [
+        "feat-033"
+      ],
+      "plan_review": "2026-11-16, Plan Reviewer em auto-revisao curta (independencia reduzida, declarada). Veredito: READY. Unico ponto de uso do Z no ROI e ConfidenceIntervals.ratio; o aviso de acaso (roiLower <= 0 <= roiUpper) e calculado sobre os mesmos campos e passa a ser mais conservador, o que e o efeito desejado. Cache: o bundle em Redis e invalidado por geracao a cada evento; depois do deploy, valores antigos somem no proximo evento ou no TTL. Quantis da tabela conferidos contra a tabela padrao da t; a expansao acima de 30 graus tem erro menor que 1e-4.",
+      "status": "in-progress",
+      "subtasks": [
+        {
+          "id": "feat-041.1",
+          "name": "Quantil t no intervalo do ROI",
+          "status": "in-progress",
+          "detail": "Troca de z por t(0,975; n - 1) em ConfidenceIntervals.ratio, testes e CHANGELOG.",
+          "checklist": [
+            "Teste vermelho antes da troca (valor de referencia com t).",
+            "Tabela de 1 a 30 graus de liberdade e Cornish-Fisher acima.",
+            "WorkedExampleIntegrationTest com o novo intervalo das seis apostas.",
+            "CHANGELOG em [Unreleased].",
+            "Vault (docs/) revisado: estatisticas.md e services/stats-service.md com o quantil t."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-861"
+        }
+      ],
+      "jira": "SV-860",
+      "evidence": ""
     }
   ]
 }
