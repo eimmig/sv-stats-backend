@@ -29,7 +29,7 @@ final class StudentT {
 		if (degreesOfFreedom <= TABLE.length) {
 			return BigDecimal.valueOf(TABLE[(int) degreesOfFreedom - 1]);
 		}
-		double n = degreesOfFreedom;
+		double n = (double) degreesOfFreedom;
 		double z3 = Z * Z * Z;
 		double z5 = z3 * Z * Z;
 		double z7 = z5 * Z * Z;
