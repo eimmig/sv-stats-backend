@@ -6,6 +6,8 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-11-16
 - [SV-860](https://stakevault.atlassian.net/browse/SV-860) - Intervalo do ROI com t de Student
 - [SV-861](https://stakevault.atlassian.net/browse/SV-861) - Quantil t no intervalo do ROI
 - [SV-866](https://stakevault.atlassian.net/browse/SV-866) - Rota admin para apagar o schema e o cache de uma organizacao
