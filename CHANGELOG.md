@@ -7,6 +7,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-16
+
 ## [0.7.0] - 2026-11-16
 - [SV-860](https://stakevault.atlassian.net/browse/SV-860) - Intervalo do ROI com t de Student
 - [SV-861](https://stakevault.atlassian.net/browse/SV-861) - Quantil t no intervalo do ROI
