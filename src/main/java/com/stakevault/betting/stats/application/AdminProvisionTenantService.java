@@ -7,14 +7,21 @@ import com.stakevault.betting.stats.domain.model.TenantAlreadyProvisionedExcepti
 import com.stakevault.betting.stats.domain.model.TenantSchemaName;
 import com.stakevault.betting.stats.domain.port.in.AdminProvisionTenantUseCase;
 import com.stakevault.betting.stats.domain.port.in.ProvisionTenantSchemaUseCase;
+import com.stakevault.betting.stats.domain.port.out.MetricsCacheRepository;
+import com.stakevault.betting.stats.domain.port.out.TenantSchemaGateway;
 
 @Service
 public class AdminProvisionTenantService implements AdminProvisionTenantUseCase {
 
 	private final ProvisionTenantSchemaUseCase provisionTenantSchema;
+	private final TenantSchemaGateway gateway;
+	private final MetricsCacheRepository cache;
 
-	public AdminProvisionTenantService(ProvisionTenantSchemaUseCase provisionTenantSchema) {
+	public AdminProvisionTenantService(ProvisionTenantSchemaUseCase provisionTenantSchema, TenantSchemaGateway gateway,
+			MetricsCacheRepository cache) {
 		this.provisionTenantSchema = provisionTenantSchema;
+		this.gateway = gateway;
+		this.cache = cache;
 	}
 
 	@Override
@@ -31,5 +38,17 @@ public class AdminProvisionTenantService implements AdminProvisionTenantUseCase 
 		}
 		provisionTenantSchema.ensureSchemaExists(slug);
 		return schema;
+	}
+
+	@Override
+	public void deleteTenant(String slug) {
+		TenantSchemaName schema;
+		try {
+			schema = TenantSchemaName.fromSlug(slug);
+		} catch (IllegalArgumentException cause) {
+			throw new InvalidTenantSlugException(slug, cause);
+		}
+		gateway.drop(schema);
+		cache.deleteAllFor(slug);
 	}
 }
