@@ -116,8 +116,8 @@ class WorkedExampleIntegrationTest extends TenantSchemaIntegrationSupport {
 		assertThat(overall.path("edge").decimalValue()).isEqualByComparingTo("0.0703");
 		assertThat(overall.path("winRateLower").decimalValue()).isEqualByComparingTo("0.2307");
 		assertThat(overall.path("winRateUpper").decimalValue()).isEqualByComparingTo("0.8824");
-		assertThat(overall.path("roiLower").decimalValue()).isEqualByComparingTo("-0.7684");
-		assertThat(overall.path("roiUpper").decimalValue()).isEqualByComparingTo("1.0284");
+		assertThat(overall.path("roiLower").decimalValue()).isEqualByComparingTo("-1.0483");
+		assertThat(overall.path("roiUpper").decimalValue()).isEqualByComparingTo("1.3083");
 
 		JsonNode summary = get("/api/v1/statistics/search?sportId=" + sportId + "&leagueId=" + leagueId)
 				.path("summary");

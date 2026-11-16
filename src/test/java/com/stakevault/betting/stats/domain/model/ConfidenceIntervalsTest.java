@@ -33,13 +33,30 @@ class ConfidenceIntervalsTest {
 	}
 
 	@Test
-	void ratioShouldMatchTheDeltaMethodReferenceValue() {
-		// stakes 100, 50, 30, 20 e lucros 100, -50, 15, 0: ROI = 65 / 200 = 0,325
+	void ratioShouldMatchTheDeltaMethodReferenceValueWithTheStudentQuantile() {
+		// stakes 100, 50, 30, 20 e lucros 100, -50, 15, 0: ROI = 65 / 200 = 0,325, erro padrao
+		// 0,5482 e t(0,975; 3) = 3,1824 (com z = 1,96 o intervalo seria -0,7494 a 1,3994)
 		ConfidenceInterval interval = ConfidenceIntervals.ratio(new BigDecimal("65"), new BigDecimal("200"),
 				new BigDecimal("12725"), new BigDecimal("13800"), new BigDecimal("7950"), 4);
 
-		assertThat(interval.lower()).isEqualByComparingTo("-0.7494");
-		assertThat(interval.upper()).isEqualByComparingTo("1.3994");
+		assertThat(interval.lower()).isEqualByComparingTo("-1.4195");
+		assertThat(interval.upper()).isEqualByComparingTo("2.0695");
+	}
+
+	@Test
+	void studentQuantileShouldMatchTheTableAndApproachTheNormalOne() {
+		assertThat(StudentT.quantile975(1)).isEqualByComparingTo("12.7062");
+		assertThat(StudentT.quantile975(5)).isEqualByComparingTo("2.5706");
+		assertThat(StudentT.quantile975(30)).isEqualByComparingTo("2.0423");
+		assertThat(StudentT.quantile975(40).doubleValue()).isCloseTo(2.0211, org.assertj.core.data.Offset.offset(1e-4));
+		assertThat(StudentT.quantile975(120).doubleValue()).isCloseTo(1.9799, org.assertj.core.data.Offset.offset(1e-4));
+		assertThat(StudentT.quantile975(100_000).doubleValue()).isCloseTo(1.96, org.assertj.core.data.Offset.offset(1e-4));
+	}
+
+	@Test
+	void studentQuantileShouldRejectZeroDegreesOfFreedom() {
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> StudentT.quantile975(0))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
