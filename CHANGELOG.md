@@ -9,6 +9,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 - [SV-860](https://stakevault.atlassian.net/browse/SV-860) - Intervalo do ROI com t de Student
 - [SV-861](https://stakevault.atlassian.net/browse/SV-861) - Quantil t no intervalo do ROI
 
+## [0.6.1] - 2026-11-10
+
 ## [0.6.0] - 2026-11-10
 - [SV-847](https://stakevault.atlassian.net/browse/SV-847) - Estatistica sobre a data montada em dim_date
 - [SV-848](https://stakevault.atlassian.net/browse/SV-848) - Migration e teste
