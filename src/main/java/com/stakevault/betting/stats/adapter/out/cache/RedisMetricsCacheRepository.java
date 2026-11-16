@@ -1,9 +1,12 @@
 package com.stakevault.betting.stats.adapter.out.cache;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -191,6 +194,18 @@ public class RedisMetricsCacheRepository implements MetricsCacheRepository {
 
 	private static String overallKey() {
 		return KEY_PREFIX + tenantSlug() + ":dashboard:consolidated";
+	}
+
+	@Override
+	public void deleteAllFor(String tenantSlug) {
+		ScanOptions options = ScanOptions.scanOptions().match(KEY_PREFIX + tenantSlug + ":*").count(500).build();
+		List<String> keys = new ArrayList<>();
+		try (Cursor<String> cursor = redisTemplate.scan(options)) {
+			cursor.forEachRemaining(keys::add);
+		}
+		if (!keys.isEmpty()) {
+			redisTemplate.delete(keys);
+		}
 	}
 
 	private static String segmentKey(String segment) {

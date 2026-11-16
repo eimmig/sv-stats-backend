@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.stakevault.betting.stats.domain.port.in.ProvisionTenantSchemaUseCase;
@@ -24,8 +25,59 @@ class AdminTenantControllerIntegrationTest extends TenantSchemaIntegrationSuppor
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 
-	AdminTenantControllerIntegrationTest(ProvisionTenantSchemaUseCase provisionTenantSchema, JdbcTemplate jdbcTemplate) {
+	private final StringRedisTemplate redisTemplate;
+
+	AdminTenantControllerIntegrationTest(ProvisionTenantSchemaUseCase provisionTenantSchema, JdbcTemplate jdbcTemplate,
+			StringRedisTemplate redisTemplate) {
 		super(provisionTenantSchema, jdbcTemplate);
+		this.redisTemplate = redisTemplate;
+	}
+
+	private HttpResponse<String> delete(String slug, String... headers) throws Exception {
+		HttpRequest.Builder builder = HttpRequest
+				.newBuilder(URI.create("http://localhost:" + port + "/api/v1/admin/tenants/" + slug)).DELETE();
+		for (int i = 0; i < headers.length; i += 2) {
+			builder.header(headers[i], headers[i + 1]);
+		}
+		return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+	}
+
+	@Test
+	void shouldDropTheTenantSchemaAndItsCacheKeysOnly() throws Exception {
+		String slug = "del-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+		assertThat(post("{\"slug\":\"" + slug + "\"}", "X-Admin-Api-Key", "test-admin-api-key").statusCode())
+				.isEqualTo(201);
+		redisTemplate.opsForValue().set("tenant:" + slug + ":dashboard:consolidated", "{}");
+		redisTemplate.opsForValue().set("tenant:" + slug + ":segment:sport", "[]");
+		String otherKey = "tenant:" + slug + "x:dashboard:consolidated";
+		redisTemplate.opsForValue().set(otherKey, "{}");
+
+		try {
+			assertThat(delete(slug, "X-Admin-Api-Key", "test-admin-api-key").statusCode()).isEqualTo(204);
+
+			assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM information_schema.schemata WHERE schema_name = ?",
+					Integer.class, "tenant_" + slug)).isZero();
+			assertThat(redisTemplate.keys("tenant:" + slug + ":*")).isEmpty();
+			assertThat(redisTemplate.hasKey(otherKey)).isTrue();
+		} finally {
+			redisTemplate.delete(otherKey);
+		}
+	}
+
+	@Test
+	void shouldAnswer204WhenTheTenantDoesNotExist() throws Exception {
+		assertThat(delete("nao-existe-" + UUID.randomUUID().toString().substring(0, 8), "X-Admin-Api-Key",
+				"test-admin-api-key").statusCode()).isEqualTo(204);
+	}
+
+	@Test
+	void shouldReturn422WhenDeletingAnInvalidSlug() throws Exception {
+		assertThat(delete("1invalid", "X-Admin-Api-Key", "test-admin-api-key").statusCode()).isEqualTo(422);
+	}
+
+	@Test
+	void shouldRejectDeletionWithoutTheAdminKey() throws Exception {
+		assertThat(delete(tenantSlug).statusCode()).isEqualTo(401);
 	}
 
 	private HttpResponse<String> post(String body, String... headers) throws Exception {

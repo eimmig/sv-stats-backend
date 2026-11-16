@@ -37,6 +37,25 @@ class KnownDimensionsTest {
 	}
 
 	@Test
+	void shouldForgetOnlyTheDeletedOrganization() {
+		try (var _ = TenantContextScope.open(ORG_A)) {
+			known.remember("sport", "1", Boolean.TRUE);
+		}
+		try (var _ = TenantContextScope.open(ORG_B)) {
+			known.remember("sport", "1", Boolean.TRUE);
+		}
+
+		known.forget(ORG_A);
+
+		try (var _ = TenantContextScope.open(ORG_A)) {
+			assertThat(known.contains("sport", "1")).isFalse();
+		}
+		try (var _ = TenantContextScope.open(ORG_B)) {
+			assertThat(known.contains("sport", "1")).isTrue();
+		}
+	}
+
+	@Test
 	void shouldIgnoreCallsWithoutOrganizationOrKey() {
 		known.remember("sport", "1", Boolean.TRUE);
 		assertThat(known.contains("sport", "1")).isFalse();

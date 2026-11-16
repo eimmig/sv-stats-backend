@@ -8,6 +8,8 @@ por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de comm
 ## [Unreleased]
 - [SV-860](https://stakevault.atlassian.net/browse/SV-860) - Intervalo do ROI com t de Student
 - [SV-861](https://stakevault.atlassian.net/browse/SV-861) - Quantil t no intervalo do ROI
+- [SV-866](https://stakevault.atlassian.net/browse/SV-866) - Rota admin para apagar o schema e o cache de uma organizacao
+- [SV-867](https://stakevault.atlassian.net/browse/SV-867) - Rota DELETE e teste
 
 ## [0.6.1] - 2026-11-10
 
