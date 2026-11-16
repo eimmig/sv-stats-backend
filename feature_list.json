@@ -2636,12 +2636,12 @@
         "feat-033"
       ],
       "plan_review": "2026-11-16, Plan Reviewer em auto-revisao curta (independencia reduzida, declarada). Veredito: READY. Unico ponto de uso do Z no ROI e ConfidenceIntervals.ratio; o aviso de acaso (roiLower <= 0 <= roiUpper) e calculado sobre os mesmos campos e passa a ser mais conservador, o que e o efeito desejado. Cache: o bundle em Redis e invalidado por geracao a cada evento; depois do deploy, valores antigos somem no proximo evento ou no TTL. Quantis da tabela conferidos contra a tabela padrao da t; a expansao acima de 30 graus tem erro menor que 1e-4.",
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": "feat-041.1",
           "name": "Quantil t no intervalo do ROI",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Troca de z por t(0,975; n - 1) em ConfidenceIntervals.ratio, testes e CHANGELOG.",
           "checklist": [
             "Teste vermelho antes da troca (valor de referencia com t).",
@@ -2656,7 +2656,7 @@
         }
       ],
       "jira": "SV-860",
-      "evidence": ""
+      "evidence": "Entregue em 2026-11-16 (feature/SV-860, PR #134). StudentT.quantile975 (tabela de 1 a 30 gl e Cornish-Fisher acima, erro < 1e-4) em ConfidenceIntervals.ratio; Wilson segue com z. Testes de referencia atualizados: 4 apostas -1,4195 a 2,0695; exemplo de seis apostas do TCC -1,0483 a 1,3083 (WorkedExampleIntegrationTest). ./init.sh verde. Auto-revisao (Delivery Reviewer e Test Suite Auditor em modo curto, independencia reduzida): unico ponto de uso e ratio(); contrato da API inalterado."
     }
   ]
 }
