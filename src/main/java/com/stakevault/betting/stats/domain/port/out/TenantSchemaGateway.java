@@ -14,4 +14,7 @@ public interface TenantSchemaGateway {
 
 	/** Schemas de organizacao que ja tem as somas diarias (migration da feat-036 aplicada). */
 	List<TenantSchemaName> listWithDailyAggregates();
+
+	/** Apaga o schema da organizacao e o que esta instancia guarda dele em memoria (epic-065). Nao falha sem schema. */
+	void drop(TenantSchemaName schema);
 }

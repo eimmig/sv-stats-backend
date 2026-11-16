@@ -57,4 +57,7 @@ public interface MetricsCacheRepository {
 
 	/** Invalida a visao geral, o mes e todos os dashboards filtrados da organizacao corrente. */
 	void evict(int year, int month);
+
+	/** Apaga todas as chaves da organizacao no cache (epic-065). */
+	void deleteAllFor(String tenantSlug);
 }

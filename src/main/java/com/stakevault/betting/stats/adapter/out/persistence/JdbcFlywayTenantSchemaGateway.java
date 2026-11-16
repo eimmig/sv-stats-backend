@@ -21,9 +21,11 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final DataSource dataSource;
+	private final KnownDimensions knownDimensions;
 	private final Set<String> migratedSchemas = ConcurrentHashMap.newKeySet();
 
-	public JdbcFlywayTenantSchemaGateway(DataSource dataSource) {
+	public JdbcFlywayTenantSchemaGateway(DataSource dataSource, KnownDimensions knownDimensions) {
+		this.knownDimensions = knownDimensions;
 		this.dataSource = dataSource;
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
 	}
@@ -53,6 +55,14 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 		}
 		flywayFor(schema, false).migrate();
 		migratedSchemas.add(schema.value());
+	}
+
+	@Override
+	public void drop(TenantSchemaName schema) {
+		// o nome ja foi validado por TenantSchemaName (letras, digitos e hifen), e vai entre aspas
+		jdbcTemplate.execute("DROP SCHEMA IF EXISTS \"" + schema.value() + "\" CASCADE");
+		migratedSchemas.remove(schema.value());
+		knownDimensions.forget(schema);
 	}
 
 	@Override

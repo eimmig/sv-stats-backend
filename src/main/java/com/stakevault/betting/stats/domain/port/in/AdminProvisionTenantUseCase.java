@@ -5,4 +5,6 @@ import com.stakevault.betting.stats.domain.model.TenantSchemaName;
 public interface AdminProvisionTenantUseCase {
 
 	TenantSchemaName provisionTenant(String slug);
+
+	void deleteTenant(String slug);
 }
