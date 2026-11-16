@@ -2657,6 +2657,36 @@
       ],
       "jira": "SV-860",
       "evidence": "Entregue em 2026-11-16 (feature/SV-860, PR #134). StudentT.quantile975 (tabela de 1 a 30 gl e Cornish-Fisher acima, erro < 1e-4) em ConfidenceIntervals.ratio; Wilson segue com z. Testes de referencia atualizados: 4 apostas -1,4195 a 2,0695; exemplo de seis apostas do TCC -1,0483 a 1,3083 (WorkedExampleIntegrationTest). ./init.sh verde. Auto-revisao (Delivery Reviewer e Test Suite Auditor em modo curto, independencia reduzida): unico ponto de uso e ratio(); contrato da API inalterado."
+    },
+    {
+      "id": "feat-042",
+      "name": "Rota admin para apagar o schema e o cache de uma organizacao",
+      "goal": "DELETE /api/v1/admin/tenants/{slug} apaga o schema tenant_<slug> e as chaves tenant:{slug}:* do Redis, para a exclusao de organizacao pedida pelo admin (epic-065).",
+      "scope": "TenantSchemaGateway.drop, remocao do cache de schemas migrados e das dimensoes em memoria da organizacao, SCAN e DEL das chaves no Redis; AdminProvisionTenantUseCase.deleteTenant; 204 idempotente; teste de integracao.",
+      "description": "",
+      "dependencies": [],
+      "plan_review": "2026-11-16, Plan Reviewer em auto-revisao curta (independencia reduzida, declarada), plano cross-service do epic-065 (exclusao da organizacao a pedido do admin, LGPD art. 18 VI, devolutiva de 2026-11-16). Veredito: READY WITH CONCERNS. Fluxo sincrono igual ao da criacao: auth valida admin, chama DELETE /api/v1/admin/tenants/{slug} no bets e no stats (X-Admin-Api-Key, idempotente, 204 mesmo sem schema) e so entao apaga o proprio schema e os vinculos do Telegram; falha em servico abaixo devolve 502 sem apagar nada no auth, e repetir e seguro. Riscos aceitos: (1) o cache de schema existente por instancia (feat-038 do bets) faz outras replicas responderem 500 a tokens antigos da organizacao ate reiniciar; nenhum dado volta, porque o schema so e criado pela rota admin. (2) Eventos em voo para o stats caem na DLQ por schema inexistente. (3) Historico de execucoes do n8n (ate 14 dias) nao e apagado.",
+      "status": "in-progress",
+      "subtasks": [
+        {
+          "id": "feat-042.1",
+          "name": "Rota DELETE e teste",
+          "status": "in-progress",
+          "detail": "Rota DELETE e teste",
+          "checklist": [
+            "Teste vermelho antes.",
+            "DROP SCHEMA e chaves do Redis.",
+            "204 idempotente; 422 slug invalido.",
+            "CHANGELOG em [Unreleased].",
+            "Vault (docs/) revisado: services/stats-service.md e contratos-de-api."
+          ],
+          "validation": "./init.sh verde; CI e SonarCloud verdes.",
+          "owner": "agente",
+          "jira": "SV-867"
+        }
+      ],
+      "jira": "SV-866",
+      "evidence": ""
     }
   ]
 }
