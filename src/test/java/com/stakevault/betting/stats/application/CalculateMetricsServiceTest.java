@@ -75,8 +75,8 @@ class CalculateMetricsServiceTest {
 		assertThat(metrics.winRateLower()).isEqualByComparingTo("0.2077");
 		assertThat(metrics.winRateUpper()).isEqualByComparingTo("0.9385");
 		assertThat(metrics.roi()).isEqualByComparingTo("0.3250");
-		assertThat(metrics.roiLower()).isEqualByComparingTo("-0.7494");
-		assertThat(metrics.roiUpper()).isEqualByComparingTo("1.3994");
+		assertThat(metrics.roiLower()).isEqualByComparingTo("-1.4195");
+		assertThat(metrics.roiUpper()).isEqualByComparingTo("2.0695");
 	}
 
 	@Test

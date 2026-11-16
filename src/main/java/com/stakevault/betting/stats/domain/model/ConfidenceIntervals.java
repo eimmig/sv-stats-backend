@@ -44,8 +44,9 @@ public final class ConfidenceIntervals {
 	/**
 	 * Intervalo pelo metodo delta para o estimador de razao R = sum(l) / sum(s) (ROI, com n =
 	 * apostas liquidadas). Usa os residuos d_i = l_i - R * s_i, cuja soma dos quadrados sai dos
-	 * somatorios sum(l^2), sum(s^2) e sum(l*s) sem reler as apostas. Nulo quando n < 2, sem valor
-	 * apostado ou sem variancia.
+	 * somatorios sum(l^2), sum(s^2) e sum(l*s) sem reler as apostas, e o quantil t(0,975; n - 1)
+	 * de Student no lugar de z, que subestima a largura com poucas apostas (feat-041). Nulo quando
+	 * n < 2, sem valor apostado ou sem variancia.
 	 */
 	public static ConfidenceInterval ratio(BigDecimal profitSum, BigDecimal stakeSum, BigDecimal profitSquaredSum,
 			BigDecimal stakeSquaredSum, BigDecimal profitStakeSum, long count) {
@@ -63,7 +64,7 @@ public final class ConfidenceIntervals {
 		BigDecimal variance = residualSquares.divide(n.subtract(BigDecimal.ONE), MC);
 		BigDecimal meanStake = stakeSum.divide(n, MC);
 		BigDecimal standardError = variance.divide(n, MC).sqrt(MC).divide(meanStake, MC);
-		BigDecimal halfWidth = Z.multiply(standardError);
+		BigDecimal halfWidth = StudentT.quantile975(count - 1).multiply(standardError);
 		return new ConfidenceInterval(round(ratio.subtract(halfWidth)), round(ratio.add(halfWidth)));
 	}
 

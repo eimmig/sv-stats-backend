@@ -154,9 +154,9 @@ class StatisticsControllerIntegrationTest extends TenantSchemaIntegrationSupport
 		assertThat(overall.path("edge").decimalValue()).isEqualByComparingTo("-0.0625");
 		assertThat(overall.path("winRateLower").decimalValue()).isEqualByComparingTo("0.0945");
 		assertThat(overall.path("winRateUpper").decimalValue()).isEqualByComparingTo("0.9055");
-		// ROI = 0 e residuos de +100 e -100: erro padrao 1, intervalo de -1,96 a 1,96
-		assertThat(overall.path("roiLower").decimalValue()).isEqualByComparingTo("-1.96");
-		assertThat(overall.path("roiUpper").decimalValue()).isEqualByComparingTo("1.96");
+		// ROI = 0 e residuos de +100 e -100: erro padrao 1 e t(0,975; 1) = 12,7062
+		assertThat(overall.path("roiLower").decimalValue()).isEqualByComparingTo("-12.7062");
+		assertThat(overall.path("roiUpper").decimalValue()).isEqualByComparingTo("12.7062");
 	}
 
 	@Test
