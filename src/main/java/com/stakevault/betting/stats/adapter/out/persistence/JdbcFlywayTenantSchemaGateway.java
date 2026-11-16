@@ -21,9 +21,11 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final DataSource dataSource;
+	private final KnownDimensions knownDimensions;
 	private final Set<String> migratedSchemas = ConcurrentHashMap.newKeySet();
 
-	public JdbcFlywayTenantSchemaGateway(DataSource dataSource) {
+	public JdbcFlywayTenantSchemaGateway(DataSource dataSource, KnownDimensions knownDimensions) {
+		this.knownDimensions = knownDimensions;
 		this.dataSource = dataSource;
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
 	}
@@ -53,6 +55,16 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 		}
 		flywayFor(schema, false).migrate();
 		migratedSchemas.add(schema.value());
+	}
+
+	@Override
+	public void drop(TenantSchemaName schema) {
+		if (exists(schema)) {
+			// o clean do Flyway apaga os objetos e o proprio schema, que foi criado por ele (createSchemas)
+			Flyway.configure().dataSource(dataSource).schemas(schema.value()).cleanDisabled(false).load().clean();
+		}
+		migratedSchemas.remove(schema.value());
+		knownDimensions.forget(schema);
 	}
 
 	@Override

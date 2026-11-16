@@ -62,6 +62,12 @@ public class KnownDimensions {
 		});
 	}
 
+	/** Esquece as dimensoes de uma organizacao apagada (epic-065), para um slug recriado nao reusar ids antigos. */
+	public void forget(TenantSchemaName schema) {
+		String prefix = schema.value() + '|';
+		known.keySet().removeIf(fullKey -> fullKey.startsWith(prefix));
+	}
+
 	private static String fullKey(String kind, String key) {
 		TenantSchemaName schema = TenantContextHolder.current();
 		return schema == null || key == null ? null : schema.value() + '|' + kind + '|' + key;
