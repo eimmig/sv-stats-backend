@@ -2666,12 +2666,12 @@
       "description": "",
       "dependencies": [],
       "plan_review": "2026-11-16, Plan Reviewer em auto-revisao curta (independencia reduzida, declarada), plano cross-service do epic-065 (exclusao da organizacao a pedido do admin, LGPD art. 18 VI, devolutiva de 2026-11-16). Veredito: READY WITH CONCERNS. Fluxo sincrono igual ao da criacao: auth valida admin, chama DELETE /api/v1/admin/tenants/{slug} no bets e no stats (X-Admin-Api-Key, idempotente, 204 mesmo sem schema) e so entao apaga o proprio schema e os vinculos do Telegram; falha em servico abaixo devolve 502 sem apagar nada no auth, e repetir e seguro. Riscos aceitos: (1) o cache de schema existente por instancia (feat-038 do bets) faz outras replicas responderem 500 a tokens antigos da organizacao ate reiniciar; nenhum dado volta, porque o schema so e criado pela rota admin. (2) Eventos em voo para o stats caem na DLQ por schema inexistente. (3) Historico de execucoes do n8n (ate 14 dias) nao e apagado.",
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": "feat-042.1",
           "name": "Rota DELETE e teste",
-          "status": "in-progress",
+          "status": "done",
           "detail": "Rota DELETE e teste",
           "checklist": [
             "Teste vermelho antes.",
@@ -2686,7 +2686,7 @@
         }
       ],
       "jira": "SV-866",
-      "evidence": ""
+      "evidence": "Entregue em 2026-11-16 (feature/SV-866, PR #137). DELETE /api/v1/admin/tenants/{slug}: DROP SCHEMA, KnownDimensions.forget, SCAN/DEL de tenant:{slug}:* no Redis (teste confirma que chave de outra organizacao com prefixo parecido fica); 204 idempotente, 422, 401. ./init.sh verde. Auto-revisao (Delivery Reviewer e Test Suite Auditor em modo curto, independencia reduzida)."
     }
   ]
 }
