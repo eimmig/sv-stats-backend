@@ -59,8 +59,10 @@ public class JdbcFlywayTenantSchemaGateway implements TenantSchemaGateway {
 
 	@Override
 	public void drop(TenantSchemaName schema) {
-		// o nome ja foi validado por TenantSchemaName (letras, digitos e hifen), e vai entre aspas
-		jdbcTemplate.execute("DROP SCHEMA IF EXISTS \"" + schema.value() + "\" CASCADE");
+		if (exists(schema)) {
+			// o clean do Flyway apaga os objetos e o proprio schema, que foi criado por ele (createSchemas)
+			Flyway.configure().dataSource(dataSource).schemas(schema.value()).cleanDisabled(false).load().clean();
+		}
 		migratedSchemas.remove(schema.value());
 		knownDimensions.forget(schema);
 	}
