@@ -126,6 +126,19 @@ class DimensionResolverTest {
 	}
 
 	@Test
+	void shouldUseTheBrasiliaCalendarDayForBetsPlacedAfterNinePmLocalTime() {
+		// 24/11 21:30 em Brasilia = 25/11 00:30 UTC: a aposta e do dia 24
+		UUID existingId = UUID.randomUUID();
+		Instant instant = Instant.parse("2026-11-25T00:30:00Z");
+		when(dateRepository.findByDayAndMonthAndYear(24, 11, 2026))
+				.thenReturn(Optional.of(new DimDate(existingId, 24, 11, 2026, 4, "TUESDAY")));
+
+		UUID resolved = resolver.resolveDate(instant);
+
+		assertThat(resolved).isEqualTo(existingId);
+	}
+
+	@Test
 	void shouldReturnTheRowThatWonTheRaceWhenAnotherConsumerInsertedTheSameDay() {
 		UUID winnerId = UUID.randomUUID();
 		Instant instant = Instant.parse("2026-09-06T12:00:00Z");

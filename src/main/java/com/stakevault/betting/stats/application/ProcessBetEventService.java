@@ -2,7 +2,6 @@ package com.stakevault.betting.stats.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -128,7 +127,7 @@ public class ProcessBetEventService implements ProcessBetEventUseCase {
 	}
 
 	private void evictMetricsFor(Instant instant) {
-		LocalDate date = instant.atZone(ZoneOffset.UTC).toLocalDate();
+		LocalDate date = instant.atZone(DimensionResolver.CALENDAR_ZONE).toLocalDate();
 		Runnable eviction = () -> metricsCacheRepository.evict(date.getYear(), date.getMonthValue());
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
 			eviction.run();
