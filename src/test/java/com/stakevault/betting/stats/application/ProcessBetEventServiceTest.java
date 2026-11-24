@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -157,7 +156,7 @@ class ProcessBetEventServiceTest {
 		assertThat(saved.isWin()).isTrue();
 		assertThat(saved.bettingHouseId()).isEqualTo(houseId);
 		verify(processedEventRepository).save(any());
-		var betDate = createdAt.atZone(ZoneOffset.UTC).toLocalDate();
+		var betDate = createdAt.atZone(DimensionResolver.CALENDAR_ZONE).toLocalDate();
 		verify(metricsCacheRepository).evict(betDate.getYear(), betDate.getMonthValue());
 	}
 
@@ -209,7 +208,7 @@ class ProcessBetEventServiceTest {
 		assertThat(captor.getValue().profit()).isEqualByComparingTo(BigDecimal.valueOf(50));
 		assertThat(captor.getValue().isWin()).isTrue();
 		verify(processedEventRepository).save(any());
-		var settledDate = settledAt.atZone(ZoneOffset.UTC).toLocalDate();
+		var settledDate = settledAt.atZone(DimensionResolver.CALENDAR_ZONE).toLocalDate();
 		verify(metricsCacheRepository).evict(settledDate.getYear(), settledDate.getMonthValue());
 	}
 

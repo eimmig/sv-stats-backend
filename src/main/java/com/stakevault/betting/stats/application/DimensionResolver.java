@@ -2,7 +2,7 @@ package com.stakevault.betting.stats.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -75,8 +75,14 @@ public class DimensionResolver {
 		return id;
 	}
 
+	/**
+	 * Fuso do dia de calendario da aposta. O usuario filtra o dashboard pelo dia em Brasilia; com UTC,
+	 * a aposta feita depois das 21h caia no dia seguinte.
+	 */
+	public static final ZoneId CALENDAR_ZONE = ZoneId.of("America/Sao_Paulo");
+
 	public UUID resolveDate(Instant instant) {
-		LocalDate date = instant.atZone(ZoneOffset.UTC).toLocalDate();
+		LocalDate date = instant.atZone(CALENDAR_ZONE).toLocalDate();
 		return dateRepository.findByDayAndMonthAndYear(date.getDayOfMonth(), date.getMonthValue(), date.getYear())
 				.map(DimDate::id)
 				.orElseGet(() -> {
