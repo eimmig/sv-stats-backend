@@ -6,6 +6,8 @@ formato `- [chave](url) - título` — sem prosa, sem categoria. Escrita automat
 por serviço"). O "porquê" de cada mudança vive na issue e na mensagem de commit, não aqui.
 
 ## [Unreleased]
+
+## [0.8.1] - 2026-11-24
 - Dia da aposta na dimensao de data passa a ser o dia em Brasilia (America/Sao_Paulo), nao em UTC: aposta feita depois das 21h caia no dia seguinte e sumia do filtro "Hoje"
 
 ## [0.8.0] - 2026-11-16
